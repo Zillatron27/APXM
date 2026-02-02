@@ -1,7 +1,36 @@
 import { useGameState } from '../stores/gameState';
+import { useConnectionStore } from '../stores/connection';
+import {
+  useSitesStore,
+  useStorageStore,
+  useWorkforceStore,
+  useProductionStore,
+  useShipsStore,
+  useFlightsStore,
+  useContractsStore,
+} from '../stores/entities';
 
 export function StatusPanel() {
-  const { connected, overlayVisible, setOverlayVisible, messageCount } = useGameState();
+  const { overlayVisible, setOverlayVisible } = useGameState();
+  const { connected, messageCount } = useConnectionStore();
+
+  // Subscribe to entity counts for debug display
+  const sitesCount = useSitesStore((s) => s.entities.size);
+  const storageCount = useStorageStore((s) => s.entities.size);
+  const workforceCount = useWorkforceStore((s) => s.entities.size);
+  const productionCount = useProductionStore((s) => s.entities.size);
+  const shipsCount = useShipsStore((s) => s.entities.size);
+  const flightsCount = useFlightsStore((s) => s.entities.size);
+  const contractsCount = useContractsStore((s) => s.entities.size);
+
+  const hasEntityData =
+    sitesCount > 0 ||
+    storageCount > 0 ||
+    workforceCount > 0 ||
+    productionCount > 0 ||
+    shipsCount > 0 ||
+    flightsCount > 0 ||
+    contractsCount > 0;
 
   if (!overlayVisible) {
     return null;
@@ -26,8 +55,15 @@ export function StatusPanel() {
         <span>{connected ? 'Connected' : 'Disconnected'}</span>
       </div>
       {messageCount > 0 && (
+        <div className="text-xs text-apxm-text/70">Messages: {messageCount}</div>
+      )}
+      {hasEntityData && (
         <div className="text-xs text-apxm-text/70">
-          Messages: {messageCount}
+          Sites: {sitesCount} | Storage: {storageCount} | Ships: {shipsCount}
+          {workforceCount > 0 && ` | WF: ${workforceCount}`}
+          {productionCount > 0 && ` | Prod: ${productionCount}`}
+          {flightsCount > 0 && ` | Flights: ${flightsCount}`}
+          {contractsCount > 0 && ` | Contracts: ${contractsCount}`}
         </div>
       )}
     </div>

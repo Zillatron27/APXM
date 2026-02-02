@@ -1,7 +1,8 @@
 import { createRoot } from 'react-dom/client';
 import { App } from '../components/App';
 import { initMessageBridge, onMessage, onMessageType } from '../lib/message-bus/content-bridge';
-import { useGameState } from '../stores/gameState';
+import { useConnectionStore } from '../stores/connection';
+import { initMessageHandlers } from '../stores/message-handlers';
 import '../assets/styles.css';
 
 export default defineContentScript({
@@ -17,9 +18,12 @@ export default defineContentScript({
     // 2. Init message bridge (handler registry)
     initMessageBridge();
 
-    // 3. Register Zustand update handlers
+    // 3. Register entity store handlers
+    initMessageHandlers();
+
+    // 4. Register connection state handlers
     onMessage((msg) => {
-      const state = useGameState.getState();
+      const state = useConnectionStore.getState();
       state.incrementMessageCount();
       state.setLastMessageTimestamp(msg.timestamp);
 
@@ -31,10 +35,10 @@ export default defineContentScript({
 
     // Also detect explicit connection message
     onMessageType('CLIENT_CONNECTION_OPENED', () => {
-      useGameState.getState().setConnected(true);
+      useConnectionStore.getState().setConnected(true);
     });
 
-    // 4. Mount React overlay in Shadow DOM
+    // 5. Mount React overlay in Shadow DOM
     const ui = await createShadowRootUi(ctx, {
       name: 'apxm-overlay',
       position: 'inline',

@@ -21,4 +21,11 @@ declare global {
   interface WindowEventMap {
     'apxm-message': CustomEvent<APXMEventDetail>;
   }
+
+  // Firefox-specific API for exporting functions across security contexts
+  function exportFunction(
+    fn: (...args: unknown[]) => unknown,
+    targetScope: object,
+    options?: { defineAs?: string }
+  ): void;
 }

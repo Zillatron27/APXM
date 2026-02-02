@@ -44,37 +44,63 @@ export function onMessageType(type: string, handler: MessageHandler): () => void
 }
 
 /**
- * Initialize the message bridge to listen for CustomEvents
+ * Dispatch a message to registered handlers
  */
-export function initMessageBridge(): void {
-  window.addEventListener('apxm-message', (e: CustomEvent<APXMEventDetail>) => {
-    const detail = e.detail;
-    const message: ProcessedMessage = {
-      messageType: detail.messageType,
-      payload: detail.payload,
-      timestamp: detail.timestamp,
-      direction: detail.direction,
-      rawSize: detail.rawSize,
-    };
+function dispatchToHandlers(message: ProcessedMessage): void {
+  for (const handler of anyHandlers) {
+    try {
+      handler(message);
+    } catch (error) {
+      console.error('[APXM] Content bridge handler error:', error);
+    }
+  }
 
-    // Call handlers
-    for (const handler of anyHandlers) {
+  const handlers = typeHandlers.get(message.messageType);
+  if (handlers) {
+    for (const handler of handlers) {
       try {
         handler(message);
       } catch (error) {
         console.error('[APXM] Content bridge handler error:', error);
       }
     }
+  }
+}
 
-    const handlers = typeHandlers.get(message.messageType);
-    if (handlers) {
-      for (const handler of handlers) {
-        try {
-          handler(message);
-        } catch (error) {
-          console.error('[APXM] Content bridge handler error:', error);
-        }
+/**
+ * Initialize the message bridge to receive messages from main-world
+ */
+export function initMessageBridge(): void {
+  if (typeof exportFunction === 'function') {
+    // Firefox: export a callback into page scope that main-world can call
+    const receiveMessage = (jsonStr: string) => {
+      try {
+        const detail = JSON.parse(jsonStr) as APXMEventDetail;
+        const message: ProcessedMessage = {
+          messageType: detail.messageType,
+          payload: detail.payload,
+          timestamp: detail.timestamp,
+          direction: detail.direction,
+          rawSize: detail.rawSize,
+        };
+        dispatchToHandlers(message);
+      } catch (error) {
+        console.error('[APXM] Failed to parse message from main-world:', error);
       }
-    }
-  });
+    };
+    exportFunction(receiveMessage, window, { defineAs: '__apxm_receive' });
+  } else {
+    // Chrome: use CustomEvent listener
+    window.addEventListener('apxm-message', (e: CustomEvent<APXMEventDetail>) => {
+      const detail = e.detail;
+      const message: ProcessedMessage = {
+        messageType: detail.messageType,
+        payload: detail.payload,
+        timestamp: detail.timestamp,
+        direction: detail.direction,
+        rawSize: detail.rawSize,
+      };
+      dispatchToHandlers(message);
+    });
+  }
 }

@@ -67,7 +67,7 @@ export function emitMessage(message: ProcessedMessage): void {
     }
   }
 
-  // Dispatch CustomEvent for content script bridge
+  // Dispatch to content script bridge
   const detail: APXMEventDetail = {
     messageType: message.messageType,
     payload: message.payload,
@@ -76,5 +76,11 @@ export function emitMessage(message: ProcessedMessage): void {
     rawSize: message.rawSize,
   };
 
-  window.dispatchEvent(new CustomEvent('apxm-message', { detail }));
+  if (typeof (window as any).__apxm_receive === 'function') {
+    // Firefox: call the exported function with JSON string
+    (window as any).__apxm_receive(JSON.stringify(detail));
+  } else {
+    // Chrome: use CustomEvent
+    window.dispatchEvent(new CustomEvent('apxm-message', { detail }));
+  }
 }
