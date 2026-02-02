@@ -69,6 +69,13 @@ Files involved:
 - Information density over whitespace — management tool, not consumer app. Touch targets ≥ 44pt.
 - Monochrome with accent color only for status (red/amber/green burn indicators). Match Prun's dark terminal aesthetic.
 
-## Reference
+## Related Projects
 
-@See ../context/ for the full implementation plan including architecture diagrams, phase breakdown, risk assessment, and platform matrix.
+- **FIO API Reference:** `../FIO-API-Reference/FIO-API-Refrence.md` — full endpoint documentation for rest.fnar.net (supplements WebSocket data)
+- **Context docs:** `../context/apxm-project-context.md` — full implementation plan, architecture diagrams, phase breakdown
+- **rprun source:** Reference for game message types and Socket.IO parsing
+
+## Repo Info
+
+- **GitHub:** Zillatron27/APXM (private, will go public)
+- **When public:** Move CLAUDE.md to context/, symlink back, add to .gitignore
