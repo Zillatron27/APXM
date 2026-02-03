@@ -5,7 +5,10 @@ export default defineConfig({
   manifest: {
     name: 'APXM — Mobile PrUn Interface',
     permissions: ['storage'],
-    host_permissions: ['https://apex.prosperousuniverse.com/*'],
+    host_permissions: [
+      'https://apex.prosperousuniverse.com/*',
+      'https://rest.fnar.net/*',
+    ],
     web_accessible_resources: [
       {
         resources: ['ws-interceptor.js'],

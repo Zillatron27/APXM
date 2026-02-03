@@ -462,3 +462,56 @@ export function createTestContract(
     ...overrides,
   };
 }
+
+// ============================================================================
+// Burn Calculation Helpers
+// ============================================================================
+
+/**
+ * Creates a storage with specific item contents for burn calculation tests.
+ */
+export function createStorageWithItems(
+  siteId: string,
+  items: Array<{ ticker: string; name?: string; amount: number }>,
+  type: PrunApi.StoreType = 'STORE'
+): PrunApi.Store {
+  return createTestStorage({
+    addressableId: siteId,
+    type,
+    items: items.map((item) =>
+      createStoreItem({
+        quantity: createMaterialAmountValue({
+          material: createMaterial({ ticker: item.ticker, name: item.name }),
+          amount: item.amount,
+        }),
+      })
+    ),
+  });
+}
+
+/**
+ * Creates a production order with specific inputs and outputs for burn calculation tests.
+ */
+export function createOrderWithIO(
+  inputs: Array<{ ticker: string; name?: string; amount: number }>,
+  outputs: Array<{ ticker: string; name?: string; amount: number }>,
+  durationMs: number,
+  recurring: boolean = false
+): PrunApi.ProductionOrder {
+  return createProductionOrder({
+    inputs: inputs.map((input) =>
+      createMaterialAmountValue({
+        material: createMaterial({ ticker: input.ticker, name: input.name }),
+        amount: input.amount,
+      })
+    ),
+    outputs: outputs.map((output) =>
+      createMaterialAmountValue({
+        material: createMaterial({ ticker: output.ticker, name: output.name }),
+        amount: output.amount,
+      })
+    ),
+    duration: createTimeSpan(durationMs),
+    recurring,
+  });
+}
