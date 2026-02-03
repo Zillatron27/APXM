@@ -105,7 +105,7 @@ export function ContractsMiniList() {
   return (
     <Card>
       <SectionHeader title="Contracts" onViewAll={() => setActiveTab('contracts')} />
-      <div className="space-y-2">
+      <div className="space-y-1">
         {topContracts.map((contract) => (
           <div key={contract.id} className="flex items-center justify-between min-h-touch">
             <div className="flex-1 min-w-0 mr-2">

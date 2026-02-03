@@ -1,3 +1,19 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Shadow DOM host - fixed fullscreen overlay */
+:host {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 999999 !important;
+  display: block !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+/* WXT container inside shadow root must fill the host */
+:host > * {
+  width: 100% !important;
+  height: 100% !important;
+}

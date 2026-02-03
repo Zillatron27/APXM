@@ -323,6 +323,25 @@ describe('burn.ts', () => {
       expect(inventory.size).toBe(0);
     });
 
+    it('excludes WAREHOUSE_STORE when combined with STORE', () => {
+      // STORE has 100 RAT, WAREHOUSE_STORE has 1000 RAT
+      // Only the STORE's 100 should count for burn calculations
+      const baseStore = createStorageWithItems(
+        'site-1',
+        [{ ticker: 'RAT', amount: 100 }],
+        'STORE'
+      );
+      const warehouseStore = createStorageWithItems(
+        'site-1',
+        [{ ticker: 'RAT', amount: 1000 }],
+        'WAREHOUSE_STORE'
+      );
+
+      const inventory = getInventoryFromStores([baseStore, warehouseStore]);
+
+      expect(inventory.get('RAT')).toBe(100);
+    });
+
     it('accumulates from multiple base stores', () => {
       const store1 = createStorageWithItems(
         'site-1',
@@ -549,6 +568,113 @@ describe('burn.ts', () => {
 
       const result = findMostUrgent(burns);
       expect(result?.materialTicker).toBe('H2O');
+    });
+  });
+
+  // ==========================================================================
+  // NaN Invariant Tests
+  // ==========================================================================
+
+  describe('NaN invariant (daysRemaining is never NaN)', () => {
+    it('handles zero-duration order gracefully', () => {
+      // Zero duration should not produce NaN - calculateProductionRates
+      // guards against this by continuing when totalDurationMs === 0
+      const order = createOrderWithIO(
+        [{ ticker: 'H2O', amount: 4 }],
+        [{ ticker: 'RAT', amount: 10 }],
+        0 // zero duration
+      );
+      const line = createTestProductionLine({ orders: [order] });
+
+      const rates = calculateProductionRates([line]);
+
+      // Should have no rates (guarded by zero duration check)
+      expect(rates.size).toBe(0);
+    });
+
+    it('handles zero unitsPerInterval workforce need gracefully', () => {
+      // Zero consumption is valid - worker doesn't need that material
+      const workforce = createWorkforce({
+        needs: [
+          createNeed({
+            material: createMaterial({ ticker: 'RAT' }),
+            unitsPerInterval: 0,
+          }),
+        ],
+      });
+
+      const rates = calculateWorkforceConsumption([workforce]);
+
+      const ratRate = rates.get('RAT');
+      expect(ratRate?.consumption).toBe(0);
+      expect(Number.isFinite(ratRate?.consumption)).toBe(true);
+    });
+
+    it('handles zero inventory for consumed material (returns 0, not NaN)', () => {
+      // When inventory is 0 and consuming, daysRemaining should be 0
+      const workforce = createWorkforce({
+        needs: [
+          createNeed({
+            material: createMaterial({ ticker: 'RAT' }),
+            unitsPerInterval: 10,
+          }),
+        ],
+      });
+
+      const wfRates = calculateWorkforceConsumption([workforce]);
+      const inventory = new Map<string, number>();
+      // No RAT in inventory
+
+      const consumption = wfRates.get('RAT')?.consumption ?? 0;
+      const dailyAmount = -consumption;
+      const inventoryAmount = inventory.get('RAT') ?? 0;
+
+      // Replicate daysRemaining calculation from calculateSiteBurn
+      const daysRemaining =
+        dailyAmount >= 0
+          ? Infinity
+          : inventoryAmount === 0
+            ? 0
+            : inventoryAmount / Math.abs(dailyAmount);
+
+      expect(Number.isNaN(daysRemaining)).toBe(false);
+      expect(daysRemaining).toBe(0);
+    });
+
+    it('all burn calculations return finite or Infinity daysRemaining, never NaN', () => {
+      // Set up a site with workforce consuming materials with zero inventory
+      const siteId = 'nan-test-site';
+      const site = createTestSite({
+        siteId,
+        address: createAddress({ planetName: 'Test' }),
+      });
+      useSitesStore.getState().setOne(site);
+
+      const workforce: WorkforceEntity = {
+        siteId,
+        address: createAddress({ planetName: 'Test' }),
+        workforces: [
+          createWorkforce({
+            needs: [
+              createNeed({
+                material: createMaterial({ ticker: 'RAT' }),
+                unitsPerInterval: 10,
+              }),
+            ],
+          }),
+        ],
+      };
+      useWorkforceStore.getState().setOne(workforce);
+
+      // No storage → zero inventory
+      const result = calculateSiteBurn(siteId);
+
+      for (const burn of result.burns) {
+        expect(Number.isNaN(burn.daysRemaining)).toBe(false);
+        expect(
+          burn.daysRemaining === Infinity || Number.isFinite(burn.daysRemaining)
+        ).toBe(true);
+      }
     });
   });
 
@@ -883,6 +1009,93 @@ describe('burn.ts', () => {
 
       const ratBurn = result.burns.find((b) => b.materialTicker === 'RAT');
       expect(ratBurn?.need).toBe(30);
+    });
+
+    it('handles missing workforce gracefully (production burns only)', () => {
+      // Site with production but no workforce entry
+      const order = createOrderWithIO(
+        [{ ticker: 'H2O', amount: 4 }],
+        [{ ticker: 'RAT', amount: 10 }],
+        MS_PER_DAY
+      );
+      const prodLine = createTestProductionLine({
+        siteId,
+        orders: [order],
+        capacity: 1,
+      });
+      useProductionStore.getState().setOne(prodLine);
+
+      const store = createStorageWithItems(siteId, [{ ticker: 'H2O', amount: 40 }]);
+      useStorageStore.getState().setOne(store);
+
+      // No workforce set for this site
+      const result = calculateSiteBurn(siteId);
+
+      // Should have production burns without crashing
+      expect(result.burns.length).toBeGreaterThan(0);
+      const h2oBurn = result.burns.find((b) => b.materialTicker === 'H2O');
+      expect(h2oBurn?.productionInput).toBe(4);
+      expect(h2oBurn?.workforceConsumption).toBe(0);
+    });
+
+    it('handles missing production gracefully (workforce burns only)', () => {
+      // Site with workforce but no production entry
+      const workforce: WorkforceEntity = {
+        siteId,
+        address: createAddress({ planetName: 'Montem' }),
+        workforces: [
+          createWorkforce({
+            needs: [
+              createNeed({
+                material: createMaterial({ ticker: 'RAT' }),
+                unitsPerInterval: 4,
+              }),
+            ],
+          }),
+        ],
+      };
+      useWorkforceStore.getState().setOne(workforce);
+
+      const store = createStorageWithItems(siteId, [{ ticker: 'RAT', amount: 20 }]);
+      useStorageStore.getState().setOne(store);
+
+      // No production set for this site
+      const result = calculateSiteBurn(siteId);
+
+      // Should have workforce burns without crashing
+      expect(result.burns.length).toBeGreaterThan(0);
+      const ratBurn = result.burns.find((b) => b.materialTicker === 'RAT');
+      expect(ratBurn?.workforceConsumption).toBe(4);
+      expect(ratBurn?.productionInput).toBe(0);
+      expect(ratBurn?.productionOutput).toBe(0);
+    });
+
+    it('handles missing storage gracefully (inventory treated as 0)', () => {
+      // Site with workforce but no storage entry
+      const workforce: WorkforceEntity = {
+        siteId,
+        address: createAddress({ planetName: 'Montem' }),
+        workforces: [
+          createWorkforce({
+            needs: [
+              createNeed({
+                material: createMaterial({ ticker: 'RAT' }),
+                unitsPerInterval: 4,
+              }),
+            ],
+          }),
+        ],
+      };
+      useWorkforceStore.getState().setOne(workforce);
+
+      // No storage set for this site
+      const result = calculateSiteBurn(siteId);
+
+      // Should calculate burns with inventory = 0
+      const ratBurn = result.burns.find((b) => b.materialTicker === 'RAT');
+      expect(ratBurn?.inventoryAmount).toBe(0);
+      expect(ratBurn?.daysRemaining).toBe(0);
+      expect(ratBurn?.urgency).toBe('critical');
     });
 
     it('identifies mostUrgent correctly', () => {

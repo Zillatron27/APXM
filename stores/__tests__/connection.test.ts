@@ -8,6 +8,8 @@ describe('connection store', () => {
       lastMessageTimestamp: null,
       messageCount: 0,
       reconnectCount: 0,
+      discardedMessages: 0,
+      unknownMessageTypes: [],
     });
   });
 
@@ -26,6 +28,14 @@ describe('connection store', () => {
 
     it('starts with zero reconnectCount', () => {
       expect(useConnectionStore.getState().reconnectCount).toBe(0);
+    });
+
+    it('starts with zero discardedMessages', () => {
+      expect(useConnectionStore.getState().discardedMessages).toBe(0);
+    });
+
+    it('starts with empty unknownMessageTypes', () => {
+      expect(useConnectionStore.getState().unknownMessageTypes).toEqual([]);
     });
   });
 
@@ -67,6 +77,40 @@ describe('connection store', () => {
     });
   });
 
+  describe('incrementDiscarded', () => {
+    it('tracks discarded message count', () => {
+      useConnectionStore.getState().incrementDiscarded();
+      expect(useConnectionStore.getState().discardedMessages).toBe(1);
+
+      useConnectionStore.getState().incrementDiscarded();
+      expect(useConnectionStore.getState().discardedMessages).toBe(2);
+    });
+  });
+
+  describe('addUnknownMessageType', () => {
+    it('tracks unknown message types with deduplication', () => {
+      useConnectionStore.getState().addUnknownMessageType('UNKNOWN_FOO');
+      useConnectionStore.getState().addUnknownMessageType('UNKNOWN_BAR');
+      useConnectionStore.getState().addUnknownMessageType('UNKNOWN_FOO'); // duplicate
+
+      const types = useConnectionStore.getState().unknownMessageTypes;
+      expect(types).toHaveLength(2);
+      expect(types).toContain('UNKNOWN_FOO');
+      expect(types).toContain('UNKNOWN_BAR');
+    });
+
+    it('caps unknown message types at 20', () => {
+      for (let i = 0; i < 25; i++) {
+        useConnectionStore.getState().addUnknownMessageType(`TYPE_${i}`);
+      }
+
+      expect(useConnectionStore.getState().unknownMessageTypes).toHaveLength(20);
+      expect(useConnectionStore.getState().unknownMessageTypes).toContain('TYPE_0');
+      expect(useConnectionStore.getState().unknownMessageTypes).toContain('TYPE_19');
+      expect(useConnectionStore.getState().unknownMessageTypes).not.toContain('TYPE_20');
+    });
+  });
+
   describe('reset', () => {
     it('resets all state to initial values', () => {
       useConnectionStore.getState().setConnected(true);
@@ -80,6 +124,21 @@ describe('connection store', () => {
       expect(useConnectionStore.getState().lastMessageTimestamp).toBeNull();
       expect(useConnectionStore.getState().messageCount).toBe(0);
       expect(useConnectionStore.getState().reconnectCount).toBe(0);
+    });
+
+    it('resets diagnostic counters on reconnect', () => {
+      useConnectionStore.getState().incrementDiscarded();
+      useConnectionStore.getState().incrementDiscarded();
+      useConnectionStore.getState().addUnknownMessageType('UNKNOWN_FOO');
+      useConnectionStore.getState().addUnknownMessageType('UNKNOWN_BAR');
+
+      expect(useConnectionStore.getState().discardedMessages).toBe(2);
+      expect(useConnectionStore.getState().unknownMessageTypes).toHaveLength(2);
+
+      useConnectionStore.getState().reset();
+
+      expect(useConnectionStore.getState().discardedMessages).toBe(0);
+      expect(useConnectionStore.getState().unknownMessageTypes).toEqual([]);
     });
   });
 });

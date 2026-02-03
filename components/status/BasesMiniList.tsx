@@ -24,7 +24,7 @@ export function BasesMiniList() {
   return (
     <Card>
       <SectionHeader title="Bases" onViewAll={() => setActiveTab('bases')} />
-      <div className="space-y-2">
+      <div className="space-y-1">
         {topBases.map((site) => (
           <div key={site.siteId} className="flex items-center justify-between min-h-touch">
             <span className="text-sm text-apxm-text truncate flex-1 mr-2">{site.siteName}</span>

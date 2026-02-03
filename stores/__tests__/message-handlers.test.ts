@@ -67,6 +67,8 @@ describe('message-handlers', () => {
       lastMessageTimestamp: null,
       messageCount: 0,
       reconnectCount: 0,
+      discardedMessages: 0,
+      unknownMessageTypes: [],
     });
   });
 
@@ -351,6 +353,34 @@ describe('message-handlers', () => {
       dispatchMessage('CONTRACTS_CONTRACTS', { contracts });
 
       expect(useContractsStore.getState().entities.size).toBe(2);
+    });
+  });
+
+  describe('malformed payload handling', () => {
+    beforeEach(() => {
+      initMessageHandlers();
+    });
+
+    it('increments discardedMessages on malformed SITE_SITE payload', () => {
+      expect(useConnectionStore.getState().discardedMessages).toBe(0);
+
+      // Dispatch with missing siteId
+      dispatchMessage('SITE_SITE', { name: 'no-site-id' });
+
+      expect(useConnectionStore.getState().discardedMessages).toBe(1);
+    });
+
+    it('logs warning on malformed payload', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      dispatchMessage('SITE_SITE', { name: 'no-site-id' });
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[APXM] SITE_SITE: unexpected payload structure',
+        expect.anything()
+      );
+
+      warnSpy.mockRestore();
     });
   });
 });

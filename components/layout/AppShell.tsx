@@ -30,9 +30,9 @@ export function AppShell() {
   }
 
   return (
-    <div className="fixed inset-0 z-[999999] flex flex-col bg-apxm-bg text-apxm-text" style={{ height: '100dvh' }}>
+    <div className="w-full h-screen flex flex-col bg-apxm-bg text-apxm-text overflow-hidden">
       <Header />
-      <main className="flex-1 overflow-y-auto p-4">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 min-w-0">
         <ViewContent />
       </main>
       <TabBar />

@@ -39,6 +39,9 @@ function processInnerMessage(messageType: string, payload: unknown): void {
       if (Array.isArray(sites)) {
         useSitesStore.getState().setAll(sites);
         useSitesStore.getState().setFetched('websocket');
+      } else {
+        console.warn('[APXM] SITE_SITES (inner): unexpected payload structure', payload);
+        useConnectionStore.getState().incrementDiscarded();
       }
       break;
     }
@@ -49,6 +52,9 @@ function processInnerMessage(messageType: string, payload: unknown): void {
       if (Array.isArray(stores)) {
         useStorageStore.getState().setMany(stores);
         useStorageStore.getState().setFetched('websocket');
+      } else {
+        console.warn('[APXM] STORAGE_STORAGES (inner): unexpected payload structure', payload);
+        useConnectionStore.getState().incrementDiscarded();
       }
       break;
     }
@@ -58,6 +64,9 @@ function processInnerMessage(messageType: string, payload: unknown): void {
       const storages = data?.storages as PrunApi.Store[] | undefined;
       if (Array.isArray(storages)) {
         useStorageStore.getState().setMany(storages);
+      } else {
+        console.warn('[APXM] WAREHOUSE_STORAGES (inner): unexpected payload structure', payload);
+        useConnectionStore.getState().incrementDiscarded();
       }
       break;
     }
@@ -68,6 +77,9 @@ function processInnerMessage(messageType: string, payload: unknown): void {
       if (wfData?.siteId) {
         useWorkforceStore.getState().setOne(wfData);
         useWorkforceStore.getState().setFetched('websocket');
+      } else {
+        console.warn('[APXM] WORKFORCE_WORKFORCES (inner): unexpected payload structure', payload);
+        useConnectionStore.getState().incrementDiscarded();
       }
       break;
     }
@@ -78,6 +90,9 @@ function processInnerMessage(messageType: string, payload: unknown): void {
       if (Array.isArray(lines)) {
         useProductionStore.getState().setMany(lines);
         useProductionStore.getState().setFetched('websocket');
+      } else {
+        console.warn('[APXM] PRODUCTION_SITE_PRODUCTION_LINES (inner): unexpected payload structure', payload);
+        useConnectionStore.getState().incrementDiscarded();
       }
       break;
     }
@@ -88,6 +103,9 @@ function processInnerMessage(messageType: string, payload: unknown): void {
       if (Array.isArray(ships)) {
         useShipsStore.getState().setAll(ships);
         useShipsStore.getState().setFetched('websocket');
+      } else {
+        console.warn('[APXM] SHIP_SHIPS (inner): unexpected payload structure', payload);
+        useConnectionStore.getState().incrementDiscarded();
       }
       break;
     }
@@ -98,6 +116,9 @@ function processInnerMessage(messageType: string, payload: unknown): void {
       if (Array.isArray(flights)) {
         useFlightsStore.getState().setAll(flights);
         useFlightsStore.getState().setFetched('websocket');
+      } else {
+        console.warn('[APXM] SHIP_FLIGHT_FLIGHTS (inner): unexpected payload structure', payload);
+        useConnectionStore.getState().incrementDiscarded();
       }
       break;
     }
@@ -108,6 +129,9 @@ function processInnerMessage(messageType: string, payload: unknown): void {
       if (Array.isArray(contracts)) {
         useContractsStore.getState().setAll(contracts);
         useContractsStore.getState().setFetched('websocket');
+      } else {
+        console.warn('[APXM] CONTRACTS_CONTRACTS (inner): unexpected payload structure', payload);
+        useConnectionStore.getState().incrementDiscarded();
       }
       break;
     }
@@ -176,6 +200,9 @@ export function initMessageHandlers(): (() => void)[] {
       const site = extractPayload(msg) as PrunApi.Site;
       if (site?.siteId) {
         useSitesStore.getState().setOne(site);
+      } else {
+        console.warn('[APXM] SITE_SITE: unexpected payload structure', site);
+        useConnectionStore.getState().incrementDiscarded();
       }
     })
   );
@@ -183,16 +210,22 @@ export function initMessageHandlers(): (() => void)[] {
   // Platform updates (construction, demolition)
   unsubscribers.push(
     onMessageType('SITE_PLATFORM_BUILT', (msg: ProcessedMessage) => {
-      const { siteId, platform } = extractPayload(msg) as {
-        siteId: string;
-        platform: PrunApi.Platform;
+      const payload = extractPayload(msg) as {
+        siteId?: string;
+        platform?: PrunApi.Platform;
       };
-      const site = useSitesStore.getState().getById(siteId);
-      if (site) {
-        useSitesStore.getState().setOne({
-          ...site,
-          platforms: [...site.platforms, platform],
-        });
+      const { siteId, platform } = payload;
+      if (siteId && platform) {
+        const site = useSitesStore.getState().getById(siteId);
+        if (site) {
+          useSitesStore.getState().setOne({
+            ...site,
+            platforms: [...site.platforms, platform],
+          });
+        }
+      } else {
+        console.warn('[APXM] SITE_PLATFORM_BUILT: unexpected payload structure', payload);
+        useConnectionStore.getState().incrementDiscarded();
       }
     })
   );
@@ -218,6 +251,9 @@ export function initMessageHandlers(): (() => void)[] {
       const payload = extractPayload(msg) as { stores?: PrunApi.Store[] };
       if (Array.isArray(payload?.stores)) {
         useStorageStore.getState().setMany(payload.stores);
+      } else {
+        console.warn('[APXM] STORAGE_CHANGE: unexpected payload structure', payload);
+        useConnectionStore.getState().incrementDiscarded();
       }
     })
   );
@@ -230,6 +266,9 @@ export function initMessageHandlers(): (() => void)[] {
         for (const id of payload.storeIds) {
           store.removeOne(id);
         }
+      } else {
+        console.warn('[APXM] STORAGE_REMOVED: unexpected payload structure', payload);
+        useConnectionStore.getState().incrementDiscarded();
       }
     })
   );
@@ -256,6 +295,9 @@ export function initMessageHandlers(): (() => void)[] {
       const data = extractPayload(msg) as WorkforceEntity;
       if (data?.siteId) {
         useWorkforceStore.getState().setOne(data);
+      } else {
+        console.warn('[APXM] WORKFORCE_WORKFORCES_UPDATED: unexpected payload structure', data);
+        useConnectionStore.getState().incrementDiscarded();
       }
     })
   );
@@ -281,6 +323,9 @@ export function initMessageHandlers(): (() => void)[] {
       const productionLine = extractPayload(msg) as PrunApi.ProductionLine;
       if (productionLine?.id) {
         useProductionStore.getState().setOne(productionLine);
+      } else {
+        console.warn('[APXM] PRODUCTION_PRODUCTION_LINE: unexpected payload structure', productionLine);
+        useConnectionStore.getState().incrementDiscarded();
       }
     })
   );
@@ -290,54 +335,75 @@ export function initMessageHandlers(): (() => void)[] {
       const productionLine = extractPayload(msg) as PrunApi.ProductionLine;
       if (productionLine?.id) {
         useProductionStore.getState().setOne(productionLine);
+      } else {
+        console.warn('[APXM] PRODUCTION_PRODUCTION_LINE_UPDATED: unexpected payload structure', productionLine);
+        useConnectionStore.getState().incrementDiscarded();
       }
     })
   );
 
   unsubscribers.push(
     onMessageType('PRODUCTION_ORDER_ADDED', (msg: ProcessedMessage) => {
-      const { productionLineId, order } = extractPayload(msg) as {
-        productionLineId: string;
-        order: PrunApi.ProductionOrder;
+      const payload = extractPayload(msg) as {
+        productionLineId?: string;
+        order?: PrunApi.ProductionOrder;
       };
-      const line = useProductionStore.getState().getById(productionLineId);
-      if (line) {
-        useProductionStore.getState().setOne({
-          ...line,
-          orders: [...line.orders, order],
-        });
+      const { productionLineId, order } = payload;
+      if (productionLineId && order) {
+        const line = useProductionStore.getState().getById(productionLineId);
+        if (line) {
+          useProductionStore.getState().setOne({
+            ...line,
+            orders: [...line.orders, order],
+          });
+        }
+      } else {
+        console.warn('[APXM] PRODUCTION_ORDER_ADDED: unexpected payload structure', payload);
+        useConnectionStore.getState().incrementDiscarded();
       }
     })
   );
 
   unsubscribers.push(
     onMessageType('PRODUCTION_ORDER_REMOVED', (msg: ProcessedMessage) => {
-      const { productionLineId, orderId } = extractPayload(msg) as {
-        productionLineId: string;
-        orderId: string;
+      const payload = extractPayload(msg) as {
+        productionLineId?: string;
+        orderId?: string;
       };
-      const line = useProductionStore.getState().getById(productionLineId);
-      if (line) {
-        useProductionStore.getState().setOne({
-          ...line,
-          orders: line.orders.filter((o) => o.id !== orderId),
-        });
+      const { productionLineId, orderId } = payload;
+      if (productionLineId && orderId) {
+        const line = useProductionStore.getState().getById(productionLineId);
+        if (line) {
+          useProductionStore.getState().setOne({
+            ...line,
+            orders: line.orders.filter((o) => o.id !== orderId),
+          });
+        }
+      } else {
+        console.warn('[APXM] PRODUCTION_ORDER_REMOVED: unexpected payload structure', payload);
+        useConnectionStore.getState().incrementDiscarded();
       }
     })
   );
 
   unsubscribers.push(
     onMessageType('PRODUCTION_ORDER_UPDATED', (msg: ProcessedMessage) => {
-      const { productionLineId, order } = extractPayload(msg) as {
-        productionLineId: string;
-        order: PrunApi.ProductionOrder;
+      const payload = extractPayload(msg) as {
+        productionLineId?: string;
+        order?: PrunApi.ProductionOrder;
       };
-      const line = useProductionStore.getState().getById(productionLineId);
-      if (line) {
-        useProductionStore.getState().setOne({
-          ...line,
-          orders: line.orders.map((o) => (o.id === order.id ? order : o)),
-        });
+      const { productionLineId, order } = payload;
+      if (productionLineId && order) {
+        const line = useProductionStore.getState().getById(productionLineId);
+        if (line) {
+          useProductionStore.getState().setOne({
+            ...line,
+            orders: line.orders.map((o) => (o.id === order.id ? order : o)),
+          });
+        }
+      } else {
+        console.warn('[APXM] PRODUCTION_ORDER_UPDATED: unexpected payload structure', payload);
+        useConnectionStore.getState().incrementDiscarded();
       }
     })
   );
@@ -363,6 +429,9 @@ export function initMessageHandlers(): (() => void)[] {
       const ship = extractPayload(msg) as PrunApi.Ship;
       if (ship?.id) {
         useShipsStore.getState().setOne(ship);
+      } else {
+        console.warn('[APXM] SHIP_DATA: unexpected payload structure', ship);
+        useConnectionStore.getState().incrementDiscarded();
       }
     })
   );
@@ -388,31 +457,43 @@ export function initMessageHandlers(): (() => void)[] {
       const flight = extractPayload(msg) as PrunApi.Flight;
       if (flight?.id) {
         useFlightsStore.getState().setOne(flight);
+      } else {
+        console.warn('[APXM] SHIP_FLIGHT_STARTED: unexpected payload structure', flight);
+        useConnectionStore.getState().incrementDiscarded();
       }
     })
   );
 
   unsubscribers.push(
     onMessageType('SHIP_FLIGHT_ENDED', (msg: ProcessedMessage) => {
-      const { flightId } = extractPayload(msg) as { flightId: string };
-      if (flightId) {
-        useFlightsStore.getState().removeOne(flightId);
+      const payload = extractPayload(msg) as { flightId?: string };
+      if (payload?.flightId) {
+        useFlightsStore.getState().removeOne(payload.flightId);
+      } else {
+        console.warn('[APXM] SHIP_FLIGHT_ENDED: unexpected payload structure', payload);
+        useConnectionStore.getState().incrementDiscarded();
       }
     })
   );
 
   unsubscribers.push(
     onMessageType('SHIP_FLIGHT_SEGMENT', (msg: ProcessedMessage) => {
-      const { flightId, currentSegmentIndex } = extractPayload(msg) as {
-        flightId: string;
-        currentSegmentIndex: number;
+      const payload = extractPayload(msg) as {
+        flightId?: string;
+        currentSegmentIndex?: number;
       };
-      const flight = useFlightsStore.getState().getById(flightId);
-      if (flight) {
-        useFlightsStore.getState().setOne({
-          ...flight,
-          currentSegmentIndex,
-        });
+      const { flightId, currentSegmentIndex } = payload;
+      if (flightId && currentSegmentIndex !== undefined) {
+        const flight = useFlightsStore.getState().getById(flightId);
+        if (flight) {
+          useFlightsStore.getState().setOne({
+            ...flight,
+            currentSegmentIndex,
+          });
+        }
+      } else {
+        console.warn('[APXM] SHIP_FLIGHT_SEGMENT: unexpected payload structure', payload);
+        useConnectionStore.getState().incrementDiscarded();
       }
     })
   );
@@ -438,6 +519,9 @@ export function initMessageHandlers(): (() => void)[] {
       const contract = extractPayload(msg) as PrunApi.Contract;
       if (contract?.id) {
         useContractsStore.getState().setOne(contract);
+      } else {
+        console.warn('[APXM] CONTRACTS_CONTRACT: unexpected payload structure', contract);
+        useConnectionStore.getState().incrementDiscarded();
       }
     })
   );

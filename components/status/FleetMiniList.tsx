@@ -119,7 +119,7 @@ export function FleetMiniList() {
   return (
     <Card>
       <SectionHeader title="Fleet" onViewAll={() => setActiveTab('fleet')} />
-      <div className="space-y-2">
+      <div className="space-y-1">
         {topShips.map((ship) => (
           <div key={ship.id} className="flex items-center justify-between min-h-touch">
             <div className="flex-1 min-w-0 mr-2">
