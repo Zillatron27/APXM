@@ -29,19 +29,19 @@ describe('material-colors', () => {
     describe('rprun theme', () => {
       const theme: MaterialTheme = 'rprun';
 
-      it('returns correct colors for agricultural-products', () => {
+      it('returns rPrUn override color for agricultural-products (green)', () => {
         const colors = getCategoryColors('agricultural-products', theme);
         expect(colors.bg).toBe('#003800');
         expect(colors.text).toBe('#8bb37b');
       });
 
-      it('returns correct colors for metals', () => {
+      it('returns stock color for metals (not overridden by rPrUn)', () => {
         const colors = getCategoryColors('metals', theme);
-        expect(colors.bg).toBe('#444444');
-        expect(colors.text).toBe('#a8a8a8');
+        expect(colors.bg).toBe('#505050');
+        expect(colors.text).toBe('#a0a0a0');
       });
 
-      it('returns correct colors for fuels', () => {
+      it('returns rPrUn override color for fuels (olive)', () => {
         const colors = getCategoryColors('fuels', theme);
         expect(colors.bg).toBe('#548d22');
         expect(colors.text).toBe('#cbfaa3');
@@ -62,21 +62,27 @@ describe('material-colors', () => {
     describe('prun theme', () => {
       const theme: MaterialTheme = 'prun';
 
-      it('returns correct colors for agricultural-products', () => {
+      it('returns stock color for agricultural-products (red)', () => {
         const colors = getCategoryColors('agricultural-products', theme);
-        expect(colors.bg).toBe('#c83030');
-        expect(colors.text).toBe('#e86060');
+        expect(colors.bg).toBe('#8b1a1a');
+        expect(colors.text).toBe('#e54a4a');
       });
 
-      it('returns correct colors for fuels', () => {
+      it('returns stock color for fuels (lime green)', () => {
         const colors = getCategoryColors('fuels', theme);
-        expect(colors.bg).toBe('#40a040');
-        expect(colors.text).toBe('#80d080');
+        expect(colors.bg).toBe('#28a028');
+        expect(colors.text).toBe('#68ff68');
       });
 
-      it('returns default colors for category not in prun theme', () => {
-        // metals is not in the stock PrUn theme
+      it('returns stock color for metals (gray)', () => {
+        // metals HAS a stock color in PrUn (dim gray)
         const colors = getCategoryColors('metals', theme);
+        expect(colors.bg).toBe('#505050');
+        expect(colors.text).toBe('#a0a0a0');
+      });
+
+      it('returns default colors for unknown category', () => {
+        const colors = getCategoryColors('unknown-category', theme);
         expect(colors.bg).toBe('#2a2a3c');
         expect(colors.text).toBe('#808080');
       });
