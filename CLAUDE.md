@@ -62,6 +62,13 @@ Files involved:
 - `lib/message-bus/content-bridge.ts` — receives messages (runs in content script)
 - `lib/message-bus/types.ts` — shared type definitions
 
+### APEX DOM Structure
+
+APEX's root element is `#container`, NOT `#app`. When manipulating APEX visibility or layout:
+- Target `document.getElementById('container')`
+- APEX uses `position: relative` layout, not `position: fixed` — simple margin/padding offsets work
+- The FloatingReturn bar adds `marginTop: 2.75rem` to push APEX below the bar
+
 ## Key Constraints
 
 - Target platforms: iOS (Orion by Kagi), Android (Firefox/Kiwi), Desktop (Chrome/Firefox). Orion has ~70% WebExtension API coverage — main-world content script execution is the critical unknown validated in Phase 0.
