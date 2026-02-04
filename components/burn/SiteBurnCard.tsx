@@ -98,6 +98,16 @@ export function SiteBurnCard({ summary, defaultExpanded = false }: SiteBurnCardP
             <p className="text-sm text-apxm-text/50 py-2">No active burns</p>
           ) : (
             <div className="divide-y divide-apxm-bg/50">
+              {/* Column headers */}
+              <div className="flex items-center justify-between gap-1 py-1 text-[10px] text-apxm-text/40 uppercase tracking-wide">
+                <span className="w-10">Mat</span>
+                <div className="flex items-center">
+                  <span className="w-12 text-right">Inv</span>
+                  <span className="w-20 text-right">Rate</span>
+                  <span className="w-14 text-right">Days</span>
+                  <span className="w-12 text-right">Need</span>
+                </div>
+              </div>
               {sortedBurns.map((burn) => (
                 <BurnRow key={burn.materialTicker} burn={burn} />
               ))}

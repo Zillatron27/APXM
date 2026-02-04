@@ -29,37 +29,30 @@ export function BurnRow({ burn, detailed = false }: BurnRowProps) {
   const dailyDisplay = dailyAmount >= 0 ? `+${dailyAmount.toFixed(1)}` : dailyAmount.toFixed(1);
 
   return (
-    <div className="flex items-center justify-between gap-2 py-1">
-      <div className="flex items-center gap-2">
-        {/* Ticker */}
-        <MaterialTile ticker={materialTicker} />
+    <div className="flex items-center justify-between gap-1 py-1">
+      {/* Ticker */}
+      <MaterialTile ticker={materialTicker} />
 
-        {/* Type indicator */}
-        <span className="text-xs text-apxm-text/50">
-          {type === 'input' ? 'IN' : type === 'output' ? 'OUT' : 'WF'}
-        </span>
-      </div>
-
-      <div className="flex items-center gap-3 text-right">
+      <div className="flex items-center">
         {/* Inventory */}
-        <span className="text-xs text-apxm-text/70">
+        <span className="w-12 text-right font-mono text-xs text-apxm-text/70">
           {Math.floor(inventoryAmount)}
         </span>
 
         {/* Daily rate */}
-        <span className={`font-mono text-xs ${isConsuming ? 'text-red-400' : 'text-green-400'}`}>
+        <span className={`w-20 text-right font-mono text-xs ${isConsuming ? 'text-red-400' : 'text-green-400'}`}>
           {dailyDisplay}/d
         </span>
 
         {/* Days remaining */}
-        <BurnBadge urgency={urgency} daysRemaining={daysRemaining} />
+        <span className="w-14 text-right">
+          <BurnBadge urgency={urgency} daysRemaining={daysRemaining} />
+        </span>
 
         {/* Need amount (only if consuming and has need) */}
-        {isConsuming && need > 0 && (
-          <span className="text-xs text-amber-400">
-            +{Math.ceil(need)}
-          </span>
-        )}
+        <span className="w-12 text-right text-xs text-amber-400">
+          {isConsuming && need > 0 ? `+${Math.ceil(need)}` : ''}
+        </span>
       </div>
     </div>
   );

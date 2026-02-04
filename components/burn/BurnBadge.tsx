@@ -38,8 +38,16 @@ export function BurnBadge({ urgency, daysRemaining, size = 'md' }: BurnBadgeProp
     );
   }
 
-  const displayDays =
-    daysRemaining === Infinity ? '+' : daysRemaining === 0 ? '0' : daysRemaining.toFixed(1);
+  // Infinity = surplus (∞), zero shows as 0d, otherwise X.Xd
+  if (daysRemaining === Infinity) {
+    return (
+      <span className={`font-mono text-sm ${urgencyTextColors[urgency]}`}>
+        ∞
+      </span>
+    );
+  }
+
+  const displayDays = daysRemaining === 0 ? '0' : daysRemaining.toFixed(1);
 
   return (
     <span className={`font-mono text-sm ${urgencyTextColors[urgency]}`}>
