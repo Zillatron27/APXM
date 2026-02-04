@@ -30,7 +30,7 @@ export function Header() {
           onClick={() => setApexVisible(true)}
           className="px-3 min-h-touch flex items-center text-xs text-apxm-muted hover:text-apxm-text border border-apxm-surface hover:border-prun-yellow/40"
         >
-          APEX
+          Show APEX
         </button>
       </div>
     </header>
