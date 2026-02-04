@@ -1,14 +1,28 @@
 import { useMemo } from 'react';
 import { useContractsStore } from '../../stores/entities/contracts';
-import { Card, SectionHeader } from '../shared';
+import { Card, SectionHeader, StateTile, type TileVariant } from '../shared';
 import { useGameState } from '../../stores/gameState';
 import type { PrunApi } from '../../types/prun-api';
 
 // Active statuses that need attention
 const ACTIVE_STATUSES: PrunApi.ContractStatus[] = ['OPEN', 'CLOSED', 'PARTIALLY_FULFILLED'];
 
+// Map contract status to StateTile props (3-letter abbreviations for STATUS screen)
+const statusTileConfig: Record<PrunApi.ContractStatus, { label: string; variant: TileVariant }> = {
+  OPEN: { label: 'OPN', variant: 'success' },
+  PARTIALLY_FULFILLED: { label: 'PAR', variant: 'warning' },
+  CLOSED: { label: 'CLS', variant: 'muted' },
+  FULFILLED: { label: 'FUL', variant: 'success' },
+  BREACHED: { label: 'BRH', variant: 'danger' },
+  DEADLINE_EXCEEDED: { label: 'LAT', variant: 'danger' },
+  REJECTED: { label: 'REJ', variant: 'danger' },
+  CANCELLED: { label: 'CNC', variant: 'muted' },
+  TERMINATED: { label: 'TRM', variant: 'danger' },
+};
+
 interface ContractSummary {
   id: string;
+  localId: string;
   partnerName: string;
   conditionType: string;
   dueDate: number | null;
@@ -69,6 +83,7 @@ export function ContractsMiniList() {
 
       return {
         id: contract.id,
+        localId: contract.localId,
         partnerName: contract.partner.name,
         conditionType: pendingCondition
           ? getConditionTypeLabel(pendingCondition.type)
@@ -106,17 +121,23 @@ export function ContractsMiniList() {
     <Card>
       <SectionHeader title="Contracts" onViewAll={() => setActiveTab('contracts')} />
       <div className="space-y-1">
-        {topContracts.map((contract) => (
-          <div key={contract.id} className="flex items-center justify-between min-h-touch">
-            <div className="flex-1 min-w-0 mr-2">
-              <div className="text-sm text-apxm-text truncate">{contract.partnerName}</div>
-              <div className="text-xs text-apxm-muted truncate">{contract.conditionType}</div>
+        {topContracts.map((contract) => {
+          const tileConfig = statusTileConfig[contract.status];
+          return (
+            <div key={contract.id} className="flex items-center justify-between min-h-touch">
+              <div className="flex-1 min-w-0 mr-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono text-apxm-text/70">{contract.localId}</span>
+                  <StateTile label={tileConfig.label} variant={tileConfig.variant} />
+                </div>
+                <div className="text-sm text-apxm-text truncate">{contract.partnerName}</div>
+              </div>
+              <span className={`text-xs whitespace-nowrap ${getDeadlineColor(contract.dueDate)}`}>
+                {contract.dueDate ? formatDeadline(contract.dueDate) : '--'}
+              </span>
             </div>
-            <span className={`text-xs whitespace-nowrap ${getDeadlineColor(contract.dueDate)}`}>
-              {contract.dueDate ? formatDeadline(contract.dueDate) : '--'}
-            </span>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </Card>
   );
