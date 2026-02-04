@@ -11,6 +11,7 @@
   box-sizing: border-box !important;
   overflow: hidden !important;
   pointer-events: none !important;
+  background-color: #0a0a1a !important; /* opaque dark bg - prevents APEX bleed-through */
 }
 
 /* WXT container inside shadow root must fill the host */

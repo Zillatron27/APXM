@@ -7,12 +7,42 @@ import { initMessageHandlers } from '../stores/message-handlers';
 import { populateStoresFromFio } from '../lib/fio';
 import '../assets/styles.css';
 
+/**
+ * Determine if APXM should inject on this device.
+ * APXM is mobile-only by default, but desktop can be enabled via storage override.
+ */
+async function shouldInject(): Promise<boolean> {
+  const isMobile =
+    window.matchMedia?.('(pointer: coarse)')?.matches ||
+    (!window.matchMedia && navigator.maxTouchPoints > 0);
+
+  if (isMobile) return true;
+
+  // Desktop — check for override
+  try {
+    const stored = await browser.storage.local.get('apxm_force_enable');
+    if (stored.apxm_force_enable === true) {
+      console.log('[APXM] Desktop detected but force-enable override is set');
+      return true;
+    }
+  } catch {
+    /* storage access failed */
+  }
+
+  console.log(
+    '[APXM] Desktop detected — APXM is designed for mobile devices.\n' +
+      'To override: browser.storage.local.set({ apxm_force_enable: true })'
+  );
+  return false;
+}
+
 export default defineContentScript({
   matches: ['https://apex.prosperousuniverse.com/*'],
   runAt: 'document_start',
   cssInjectionMode: 'ui',
 
   async main(ctx) {
+    if (!(await shouldInject())) return;
     // 1. Inject main-world interceptor (includes script blocker)
     // This blocks Prun scripts, installs proxies, then restores scripts
     injectScript('/ws-interceptor.js', { keepInDom: true });

@@ -1,9 +1,12 @@
 import { useEffect } from 'react';
 import { useGameState } from '../stores/gameState';
+import { useMaintenanceDetection } from '../hooks/useMaintenanceDetection';
 import { AppShell } from './layout';
+import { MaintenanceOverlay } from './MaintenanceOverlay';
 
 export function App() {
   const apexVisible = useGameState((s) => s.apexVisible);
+  const unavailable = useMaintenanceDetection();
 
   // Control APEX's #container element visibility and offset for FloatingReturn bar
   useEffect(() => {
@@ -18,6 +21,10 @@ export function App() {
       apexRoot.style.marginTop = '';
     }
   }, [apexVisible]);
+
+  if (unavailable) {
+    return <MaintenanceOverlay />;
+  }
 
   return <AppShell />;
 }
