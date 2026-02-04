@@ -34,7 +34,7 @@ const RPRUN_COLORS: Record<string, CategoryColors> = {
   'energy-systems': { bg: '#1c5838', text: '#70d0a0' },
   'fuels': { bg: '#548d22', text: '#cbfaa3' },
   'gases': { bg: '#008888', text: '#60f8f8' },
-  'liquids': { bg: '#4080a8', text: '#f1ffff' },
+  'liquids': { bg: '#67a8da', text: '#f1ffff' },
   'metals': { bg: '#444444', text: '#a8a8a8' },
   'minerals': { bg: '#907858', text: '#e8d0b0' },
   'ores': { bg: '#585c68', text: '#b8c0d0' },

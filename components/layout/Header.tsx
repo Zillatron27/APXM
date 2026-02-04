@@ -4,7 +4,7 @@ import { useGameState } from '../../stores/gameState';
 import { StatusDot, type ConnectionStatus } from '../shared';
 
 // Increment this on each build for easy verification
-const BUILD_VERSION = 'b14';
+const BUILD_VERSION = 'b19';
 
 function useConnectionStatus(): ConnectionStatus {
   const connected = useConnectionStore((s) => s.connected);

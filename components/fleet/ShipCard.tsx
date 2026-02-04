@@ -10,11 +10,11 @@ interface ShipCardProps {
 
 // Flight states are all neutral/grey - informational only
 const stateLabels: Record<FlightState, string> = {
-  IDL: 'IDL',
-  ARR: 'ARR',
-  TRN: 'TRN',
-  DEP: 'DEP',
-  ORB: 'ORB',
+  IDL: 'Idle',
+  ARR: 'Arriving',
+  TRN: 'Transit',
+  DEP: 'Departing',
+  ORB: 'Orbiting',
 };
 
 /**
@@ -27,7 +27,7 @@ export function ShipCard({ ship, defaultExpanded = false }: ShipCardProps) {
 
   const statusText =
     ship.state === 'IDL'
-      ? `At ${ship.location}`
+      ? ship.location
       : `${ship.location} → ${ship.destination}`;
 
   return (

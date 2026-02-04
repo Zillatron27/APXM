@@ -3,15 +3,17 @@ import { useShipsStore } from '../../stores/entities/ships';
 import { getFlightByShipId } from '../../stores/entities/flights';
 import { Card, SectionHeader, StateTile } from '../shared';
 import { useGameState } from '../../stores/gameState';
+import { formatEta } from '../../lib/fleet-utils';
+import { useTick } from '../../lib/use-tick';
 import type { PrunApi } from '../../types/prun-api';
 
 type FleetStatus = 'idle' | 'arriving-soon' | 'in-transit';
 
 // Map status to StateTile label (all neutral for fleet)
 const statusTileLabels: Record<FleetStatus, string> = {
-  idle: 'IDL',
-  'arriving-soon': 'ARR',
-  'in-transit': 'TRN',
+  idle: 'Idle',
+  'arriving-soon': 'Arriving',
+  'in-transit': 'Transit',
 };
 
 interface ShipSummary {
@@ -34,17 +36,12 @@ function getDestinationName(address: PrunApi.Address): string {
   return 'Unknown';
 }
 
-function formatEta(etaMs: number): string {
-  const hours = Math.floor(etaMs / (1000 * 60 * 60));
-  if (hours < 1) return '<1h';
-  if (hours < 24) return `${hours}h`;
-  const days = Math.floor(hours / 24);
-  return `${days}d`;
-}
 
 export function FleetMiniList() {
   const { setActiveTab } = useGameState();
   const shipsLastUpdated = useShipsStore((s) => s.lastUpdated);
+  // Tick every minute to update ETAs
+  const tick = useTick(60000);
 
   const topShips = useMemo(() => {
     const ships = useShipsStore.getState().getAll();
@@ -100,7 +97,7 @@ export function FleetMiniList() {
     });
 
     return summaries.slice(0, 5);
-  }, [shipsLastUpdated]);
+  }, [shipsLastUpdated, tick]);
 
   if (topShips.length === 0) {
     return (

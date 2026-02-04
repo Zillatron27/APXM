@@ -227,11 +227,15 @@ export function SettingsView() {
           </div>
 
           {/* Preview tiles */}
-          <div className="flex items-center gap-2 pt-1">
-            <span className="text-xs text-apxm-muted">Preview:</span>
+          <div className="flex flex-wrap items-center gap-1.5 pt-1">
+            <MaterialTile ticker="GRN" category="agricultural-products" size="sm" />
             <MaterialTile ticker="RAT" category="consumables-basic" size="sm" />
+            <MaterialTile ticker="FF" category="fuels" size="sm" />
             <MaterialTile ticker="H2O" category="liquids" size="sm" />
+            <MaterialTile ticker="PE" category="plastics" size="sm" />
             <MaterialTile ticker="FE" category="metals" size="sm" />
+            <MaterialTile ticker="MCG" category="construction-materials" size="sm" />
+            <MaterialTile ticker="SAR" category="electronic-devices" size="sm" />
           </div>
         </div>
       </Card>

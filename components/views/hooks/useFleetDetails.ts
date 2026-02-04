@@ -3,6 +3,7 @@ import { useShipsStore } from '../../../stores/entities/ships';
 import { useFlightsStore, getFlightByShipId } from '../../../stores/entities/flights';
 import { useStorageStore } from '../../../stores/entities/storage';
 import { getDestinationName, formatEta, getCurrentLocation } from '../../../lib/fleet-utils';
+import { useTick } from '../../../lib/use-tick';
 import type { PrunApi } from '../../../types/prun-api';
 
 export type FleetFilter = 'all' | 'idle' | 'in-transit';
@@ -109,6 +110,8 @@ export function useFleetDetails(filter: FleetFilter): FleetDetailsResult {
   const shipsLastUpdated = useShipsStore((s) => s.lastUpdated);
   const flightsLastUpdated = useFlightsStore((s) => s.lastUpdated);
   const storageLastUpdated = useStorageStore((s) => s.lastUpdated);
+  // Tick every minute to update ETAs
+  const tick = useTick(60000);
 
   return useMemo(() => {
     const ships = useShipsStore.getState().getAll();
@@ -170,5 +173,5 @@ export function useFleetDetails(filter: FleetFilter): FleetDetailsResult {
           : details.filter((s) => s.state !== 'IDL');
 
     return { ships: filtered, counts };
-  }, [shipsLastUpdated, flightsLastUpdated, storageLastUpdated, filter]);
+  }, [shipsLastUpdated, flightsLastUpdated, storageLastUpdated, filter, tick]);
 }
