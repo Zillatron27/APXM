@@ -1,11 +1,18 @@
 import { useMemo } from 'react';
 import { useShipsStore } from '../../stores/entities/ships';
 import { getFlightByShipId } from '../../stores/entities/flights';
-import { Card, SectionHeader } from '../shared';
+import { Card, SectionHeader, StateTile } from '../shared';
 import { useGameState } from '../../stores/gameState';
 import type { PrunApi } from '../../types/prun-api';
 
 type FleetStatus = 'idle' | 'arriving-soon' | 'in-transit';
+
+// Map status to StateTile label (all neutral for fleet)
+const statusTileLabels: Record<FleetStatus, string> = {
+  idle: 'IDL',
+  'arriving-soon': 'ARR',
+  'in-transit': 'TRN',
+};
 
 interface ShipSummary {
   id: string;
@@ -104,18 +111,6 @@ export function FleetMiniList() {
     );
   }
 
-  const statusColors: Record<FleetStatus, string> = {
-    idle: 'text-apxm-muted',
-    'arriving-soon': 'text-status-warning',
-    'in-transit': 'text-status-ok',
-  };
-
-  const statusLabels: Record<FleetStatus, string> = {
-    idle: 'Idle',
-    'arriving-soon': 'Arriving',
-    'in-transit': 'In Transit',
-  };
-
   return (
     <Card>
       <SectionHeader title="Fleet" onViewAll={() => setActiveTab('fleet')} />
@@ -128,10 +123,13 @@ export function FleetMiniList() {
                 <div className="text-xs text-apxm-muted truncate">{ship.destination}</div>
               )}
             </div>
-            <div className={`text-xs whitespace-nowrap ${statusColors[ship.status]}`}>
-              {ship.status === 'idle'
-                ? statusLabels.idle
-                : `${statusLabels[ship.status]} ${ship.etaMs !== null ? formatEta(ship.etaMs) : ''}`}
+            <div className="flex items-center gap-2">
+              <StateTile label={statusTileLabels[ship.status]} variant="neutral" />
+              {ship.etaMs !== null && (
+                <span className="text-xs text-apxm-text/70 font-mono">
+                  {formatEta(ship.etaMs)}
+                </span>
+              )}
             </div>
           </div>
         ))}
