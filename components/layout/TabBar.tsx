@@ -7,11 +7,11 @@ interface TabConfig {
 }
 
 const tabs: TabConfig[] = [
-  { id: 'status', label: 'Status' },
-  { id: 'bases', label: 'Burn' },
-  { id: 'fleet', label: 'Fleet' },
-  { id: 'contracts', label: 'Contracts' },
-  { id: 'settings', icon: '⚙' },
+  { id: 'status', label: 'STATUS' },
+  { id: 'bases', label: 'BURN' },
+  { id: 'fleet', label: 'FLEET' },
+  { id: 'contracts', label: 'CONTRACTS' },
+  { id: 'settings', label: 'SET' },
 ];
 
 export function TabBar() {

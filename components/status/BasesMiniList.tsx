@@ -24,9 +24,9 @@ export function BasesMiniList() {
   return (
     <Card>
       <SectionHeader title="Bases" onViewAll={() => setActiveTab('bases')} />
-      <div className="space-y-1">
+      <div className="space-y-0">
         {topBases.map((site) => (
-          <div key={site.siteId} className="flex items-center justify-between min-h-touch">
+          <div key={site.siteId} className="flex items-center justify-between py-1">
             <span className="text-sm text-apxm-text truncate flex-1 mr-2">{site.siteName}</span>
             {site.mostUrgent ? (
               <TimeBadge

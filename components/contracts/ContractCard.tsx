@@ -80,7 +80,7 @@ export function ContractCard({ contract, defaultExpanded = false }: ContractCard
       : 'text-apxm-text/70';
 
   return (
-    <div className="rounded-lg bg-apxm-surface overflow-hidden">
+    <div className="bg-apxm-surface overflow-hidden">
       {/* Header - clickable, two lines */}
       <button
         onClick={() => setExpanded(!expanded)}

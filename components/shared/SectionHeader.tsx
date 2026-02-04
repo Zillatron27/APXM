@@ -6,7 +6,7 @@ interface SectionHeaderProps {
 export function SectionHeader({ title, onViewAll }: SectionHeaderProps) {
   return (
     <div className="flex items-center justify-between mb-2">
-      <h3 className="text-sm font-semibold text-prun-yellow">{title}</h3>
+      <h3 className="text-sm font-semibold text-prun-yellow uppercase">{title}</h3>
       {onViewAll && (
         <button
           onClick={onViewAll}

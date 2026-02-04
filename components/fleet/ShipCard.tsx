@@ -31,7 +31,7 @@ export function ShipCard({ ship, defaultExpanded = false }: ShipCardProps) {
       : `${ship.location} → ${ship.destination}`;
 
   return (
-    <div className="rounded-lg bg-apxm-surface overflow-hidden">
+    <div className="bg-apxm-surface overflow-hidden">
       {/* Header - clickable */}
       <button
         onClick={() => setExpanded(!expanded)}

@@ -10,10 +10,19 @@ interface SiteBurnCardProps {
 }
 
 /**
+ * Filters out materials with no activity (0 stock, 0 burn, 0 need).
+ */
+function filterActiveBurns(burns: BurnRate[]): BurnRate[] {
+  return burns.filter(
+    (b) => b.inventoryAmount > 0 || b.dailyAmount !== 0 || b.need > 0
+  );
+}
+
+/**
  * Sorts burns: consuming items first (by days remaining), then surplus.
  */
 function sortBurns(burns: BurnRate[]): BurnRate[] {
-  return [...burns].sort((a, b) => {
+  return [...filterActiveBurns(burns)].sort((a, b) => {
     // Consuming items first
     const aConsuming = a.dailyAmount < 0;
     const bConsuming = b.dailyAmount < 0;
@@ -45,7 +54,7 @@ export function SiteBurnCard({ summary, defaultExpanded = false }: SiteBurnCardP
   const warningCount = burns.filter((b) => b.urgency === 'warning').length;
 
   return (
-    <div className="rounded-lg bg-apxm-surface overflow-hidden">
+    <div className="bg-apxm-surface overflow-hidden">
       {/* Header - always visible, clickable */}
       <button
         onClick={() => setExpanded(!expanded)}
@@ -62,12 +71,12 @@ export function SiteBurnCard({ summary, defaultExpanded = false }: SiteBurnCardP
 
           {/* Quick counts */}
           {criticalCount > 0 && (
-            <span className="text-xs px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">
+            <span className="text-xs px-1.5 py-0.5 bg-red-500/20 text-red-400">
               {criticalCount}
             </span>
           )}
           {warningCount > 0 && (
-            <span className="text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400">
+            <span className="text-xs px-1.5 py-0.5 bg-amber-500/20 text-amber-400">
               {warningCount}
             </span>
           )}

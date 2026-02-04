@@ -120,11 +120,11 @@ export function ContractsMiniList() {
   return (
     <Card>
       <SectionHeader title="Contracts" onViewAll={() => setActiveTab('contracts')} />
-      <div className="space-y-1">
+      <div className="space-y-0">
         {topContracts.map((contract) => {
           const tileConfig = statusTileConfig[contract.status];
           return (
-            <div key={contract.id} className="flex items-center justify-between min-h-touch">
+            <div key={contract.id} className="flex items-center justify-between py-1">
               <div className="flex-1 min-w-0 mr-2">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-mono text-apxm-text/70">{contract.localId}</span>

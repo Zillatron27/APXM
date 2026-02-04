@@ -28,9 +28,9 @@ export function Header() {
         <StatusDot status={status} />
         <button
           onClick={() => setApexVisible(true)}
-          className="px-3 min-h-touch flex items-center text-xs text-apxm-muted hover:text-apxm-text border border-apxm-surface hover:border-prun-yellow/40"
+          className="px-3 min-h-touch flex items-center text-xs font-medium text-apxm-text border border-apxm-surface hover:border-prun-yellow hover:text-prun-yellow"
         >
-          Show APEX
+          SHOW APEX
         </button>
       </div>
     </header>

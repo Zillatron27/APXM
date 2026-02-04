@@ -114,9 +114,9 @@ export function FleetMiniList() {
   return (
     <Card>
       <SectionHeader title="Fleet" onViewAll={() => setActiveTab('fleet')} />
-      <div className="space-y-1">
+      <div className="space-y-0">
         {topShips.map((ship) => (
-          <div key={ship.id} className="flex items-center justify-between min-h-touch">
+          <div key={ship.id} className="flex items-center justify-between py-1">
             <div className="flex-1 min-w-0 mr-2">
               <div className="text-sm text-apxm-text truncate">{ship.name}</div>
               {ship.destination && (
