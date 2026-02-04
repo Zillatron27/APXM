@@ -1,10 +1,17 @@
 import { useGameState, type TabId } from '../../stores/gameState';
 
-const tabs: { id: TabId; label: string }[] = [
+interface TabConfig {
+  id: TabId;
+  label?: string;
+  icon?: string;
+}
+
+const tabs: TabConfig[] = [
   { id: 'status', label: 'Status' },
   { id: 'bases', label: 'Burn' },
   { id: 'fleet', label: 'Fleet' },
   { id: 'contracts', label: 'Contracts' },
+  { id: 'settings', icon: '⚙' },
 ];
 
 export function TabBar() {
@@ -20,7 +27,7 @@ export function TabBar() {
             activeTab === tab.id ? 'text-prun-yellow' : 'text-apxm-muted hover:text-apxm-text'
           }`}
         >
-          {tab.label}
+          {tab.label ?? tab.icon}
           {activeTab === tab.id && (
             <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-prun-yellow" />
           )}

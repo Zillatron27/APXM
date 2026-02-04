@@ -6,6 +6,7 @@ import { StatusView } from '../views/StatusView';
 import { FleetView } from '../views/FleetView';
 import { BasesView } from '../views/BasesView';
 import { ContractsView } from '../views/ContractsView';
+import { SettingsView } from '../views/SettingsView';
 
 function ViewContent() {
   const activeTab = useGameState((s) => s.activeTab);
@@ -19,6 +20,8 @@ function ViewContent() {
       return <BasesView />;
     case 'contracts':
       return <ContractsView />;
+    case 'settings':
+      return <SettingsView />;
   }
 }
 

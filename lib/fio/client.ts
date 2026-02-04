@@ -12,7 +12,6 @@ import type {
   FioProductionLine,
   FioStorage,
   FioSite,
-  FioAllData,
 } from './types';
 
 const FIO_BASE_URL = 'https://rest.fnar.net';
@@ -102,17 +101,21 @@ export async function fetchSites(
 }
 
 /**
- * Fetches all FIO data in parallel.
+ * Tests API connection by making a lightweight request.
  *
- * Returns individual results for each endpoint so partial success can be handled.
+ * Uses /sites/{username} endpoint - returns unauthorized on bad key,
+ * or the sites data on success.
  */
-export async function fetchAllFioData(config: FioConfig): Promise<FioAllData> {
-  const [workforce, production, storage, sites] = await Promise.all([
-    fetchWorkforce(config),
-    fetchProduction(config),
-    fetchStorage(config),
-    fetchSites(config),
-  ]);
-
-  return { workforce, production, storage, sites };
+export async function testConnection(
+  config: FioConfig
+): Promise<FioResult<true>> {
+  const result = await fioFetch<FioSite[]>(
+    `/sites/${config.username}`,
+    config.apiKey
+  );
+  if (result.ok) {
+    return { ok: true, data: true };
+  }
+  return { ok: false, error: result.error };
 }
+

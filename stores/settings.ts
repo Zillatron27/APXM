@@ -67,6 +67,12 @@ const browserStorage: StateStorage = {
   },
 };
 
+// Hydration tracking
+let resolveHydration: () => void;
+const hydrationPromise = new Promise<void>((resolve) => {
+  resolveHydration = resolve;
+});
+
 export const useSettingsStore = create<SettingsStore>()(
   persist(
     (set) => ({
@@ -92,6 +98,16 @@ export const useSettingsStore = create<SettingsStore>()(
     {
       name: 'apxm-settings',
       storage: createJSONStorage(() => browserStorage),
+      onRehydrateStorage: () => () => {
+        resolveHydration();
+      },
     }
   )
 );
+
+/**
+ * Returns a promise that resolves when settings have been loaded from storage.
+ */
+export function waitForSettingsHydration(): Promise<void> {
+  return hydrationPromise;
+}

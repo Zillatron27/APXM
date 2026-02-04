@@ -2,7 +2,9 @@ import { createRoot } from 'react-dom/client';
 import { App } from '../components/App';
 import { initMessageBridge, onMessage, onMessageType } from '../lib/message-bus/content-bridge';
 import { useConnectionStore } from '../stores/connection';
+import { useSettingsStore, waitForSettingsHydration } from '../stores/settings';
 import { initMessageHandlers } from '../stores/message-handlers';
+import { populateStoresFromFio } from '../lib/fio';
 import '../assets/styles.css';
 
 export default defineContentScript({
@@ -38,7 +40,22 @@ export default defineContentScript({
       useConnectionStore.getState().setConnected(true);
     });
 
-    // 5. Mount React overlay in Shadow DOM
+    // 5. Auto-fetch FIO data if credentials are saved (after settings hydrate)
+    waitForSettingsHydration().then(() => {
+      const settings = useSettingsStore.getState();
+      if (settings.fio.apiKey && settings.fio.username) {
+        populateStoresFromFio({
+          apiKey: settings.fio.apiKey,
+          username: settings.fio.username,
+        }).then((result) => {
+          if (result.success) {
+            useSettingsStore.getState().setFioLastFetch(Date.now());
+          }
+        });
+      }
+    });
+
+    // 6. Mount React overlay in Shadow DOM
     const ui = await createShadowRootUi(ctx, {
       name: 'apxm-overlay',
       position: 'inline',

@@ -6,7 +6,7 @@ import { create } from 'zustand';
  * Entity data is in stores/entities/*.ts.
  */
 
-export type TabId = 'status' | 'fleet' | 'bases' | 'contracts';
+export type TabId = 'status' | 'fleet' | 'bases' | 'contracts' | 'settings';
 
 interface GameState {
   overlayVisible: boolean;
