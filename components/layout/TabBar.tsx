@@ -2,8 +2,8 @@ import { useGameState, type TabId } from '../../stores/gameState';
 
 const tabs: { id: TabId; label: string }[] = [
   { id: 'status', label: 'Status' },
+  { id: 'bases', label: 'Burn' },
   { id: 'fleet', label: 'Fleet' },
-  { id: 'bases', label: 'Bases' },
   { id: 'contracts', label: 'Contracts' },
 ];
 
