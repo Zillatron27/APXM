@@ -13,15 +13,19 @@ export interface FioConfig {
   lastFetch: number | null;
 }
 
+export type MaterialTheme = 'rprun' | 'prun';
+
 interface SettingsState {
   burnThresholds: BurnThresholds;
   fio: FioConfig;
+  materialTheme: MaterialTheme;
 }
 
 interface SettingsActions {
   setBurnThresholds: (thresholds: Partial<BurnThresholds>) => void;
   setFioConfig: (config: Partial<FioConfig>) => void;
   setFioLastFetch: (timestamp: number) => void;
+  setMaterialTheme: (theme: MaterialTheme) => void;
   reset: () => void;
 }
 
@@ -38,6 +42,7 @@ const DEFAULT_FIO_CONFIG: FioConfig = {
 const initialState: SettingsState = {
   burnThresholds: DEFAULT_THRESHOLDS,
   fio: DEFAULT_FIO_CONFIG,
+  materialTheme: 'rprun',
 };
 
 // Check if browser storage API is available
@@ -92,6 +97,8 @@ export const useSettingsStore = create<SettingsStore>()(
         set((state) => ({
           fio: { ...state.fio, lastFetch: timestamp },
         })),
+
+      setMaterialTheme: (theme) => set({ materialTheme: theme }),
 
       reset: () => set(initialState),
     }),

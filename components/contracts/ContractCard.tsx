@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { StateTile, type TileVariant } from '../shared';
-import type { ContractDetail, ContractStateLabel } from '../views/hooks';
+import { StateTile, MaterialTile, type TileVariant } from '../shared';
+import type { ContractDetail, ContractStateLabel, ConditionPart } from '../views/hooks';
 
 interface ContractCardProps {
   contract: ContractDetail;
@@ -63,6 +63,23 @@ function formatCreated(createdMs: number): string {
     return hours < 1 ? '<1h ago' : `${hours}h ago`;
   }
   return `${days}d ago`;
+}
+
+/**
+ * Renders a condition part with appropriate styling.
+ */
+function ConditionPartDisplay({ part }: { part: ConditionPart }) {
+  switch (part.type) {
+    case 'material':
+      // Don't pass category - it's a hash ID from FIO, let MaterialTile use static lookup
+      return <MaterialTile ticker={part.value} size="sm" />;
+    case 'amount':
+      return <span className="text-apxm-text">{part.value}</span>;
+    case 'destination':
+      return <span className="text-apxm-muted">→ {part.value}</span>;
+    default:
+      return <span>{part.value}</span>;
+  }
 }
 
 /**
@@ -164,9 +181,11 @@ export function ContractCard({ contract, defaultExpanded = false }: ContractCard
                   {cond.party === 'self' ? 'Self' : cond.partnerName}
                 </span>
 
-                {/* Description */}
-                <span className="flex-1 text-apxm-text/70 truncate">
-                  {cond.description}
+                {/* Description with material tiles */}
+                <span className="flex-1 flex items-center gap-1 truncate">
+                  {cond.descriptionParts.map((part, i) => (
+                    <ConditionPartDisplay key={i} part={part} />
+                  ))}
                 </span>
 
                 {/* Deadline if not fulfilled */}

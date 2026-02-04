@@ -3,6 +3,9 @@ import { useSettingsStore } from '../../stores/settings';
 import { useGameState } from '../../stores/gameState';
 import { StatusDot, type ConnectionStatus } from '../shared';
 
+// Increment this on each build for easy verification
+const BUILD_VERSION = 'b10';
+
 function useConnectionStatus(): ConnectionStatus {
   const connected = useConnectionStore((s) => s.connected);
   const lastMessageTimestamp = useConnectionStore((s) => s.lastMessageTimestamp);
@@ -23,7 +26,10 @@ export function Header() {
 
   return (
     <header className="flex items-center justify-between px-4 h-12 bg-apxm-bg border-b border-apxm-surface">
-      <span className="text-base font-bold text-prun-yellow">APXM</span>
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-base font-bold text-prun-yellow">APXM</span>
+        <span className="text-xs text-apxm-muted">{BUILD_VERSION}</span>
+      </div>
       <div className="flex items-center gap-3">
         <StatusDot status={status} />
         <button

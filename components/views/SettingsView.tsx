@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Card } from '../shared/Card';
-import { useSettingsStore } from '../../stores/settings';
+import { Card, MaterialTile } from '../shared';
+import { useSettingsStore, type MaterialTheme } from '../../stores/settings';
 import { testConnection, populateStoresFromFio, type FioProgressStep } from '../../lib/fio';
 
 type ConnectionStatus = 'untested' | 'testing' | 'valid' | 'invalid';
@@ -21,7 +21,7 @@ function formatRelativeTime(timestamp: number): string {
 }
 
 export function SettingsView() {
-  const { fio, setFioConfig, setFioLastFetch } = useSettingsStore();
+  const { fio, setFioConfig, setFioLastFetch, materialTheme, setMaterialTheme } = useSettingsStore();
 
   const [username, setUsername] = useState('');
   const [apiKey, setApiKey] = useState('');
@@ -195,6 +195,44 @@ export function SettingsView() {
           {refreshError && (
             <div className="text-sm text-status-critical">{refreshError}</div>
           )}
+        </div>
+      </Card>
+
+      {/* Material Theme Section */}
+      <Card>
+        <h2 className="text-prun-yellow text-sm font-semibold mb-3">Material Theme</h2>
+
+        <div className="space-y-3">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setMaterialTheme('rprun')}
+              className={`flex-1 min-h-touch px-4 py-2 text-sm rounded font-semibold ${
+                materialTheme === 'rprun'
+                  ? 'bg-prun-yellow text-apxm-bg'
+                  : 'border border-apxm-accent text-apxm-muted'
+              }`}
+            >
+              rPrUn
+            </button>
+            <button
+              onClick={() => setMaterialTheme('prun')}
+              className={`flex-1 min-h-touch px-4 py-2 text-sm rounded font-semibold ${
+                materialTheme === 'prun'
+                  ? 'bg-prun-yellow text-apxm-bg'
+                  : 'border border-apxm-accent text-apxm-muted'
+              }`}
+            >
+              PrUn
+            </button>
+          </div>
+
+          {/* Preview tiles */}
+          <div className="flex items-center gap-2 pt-1">
+            <span className="text-xs text-apxm-muted">Preview:</span>
+            <MaterialTile ticker="RAT" category="consumables-basic" size="sm" />
+            <MaterialTile ticker="H2O" category="liquids" size="sm" />
+            <MaterialTile ticker="FE" category="metals" size="sm" />
+          </div>
         </div>
       </Card>
     </div>

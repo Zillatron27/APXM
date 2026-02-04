@@ -12,12 +12,19 @@ const FULFILLED_STATUSES: PrunApi.ContractStatus[] = ['FULFILLED'];
 
 export type ContractStateLabel = 'open' | 'partial' | 'closed' | 'fulfilled' | 'breached' | 'rejected';
 
+export interface ConditionPart {
+  type: 'text' | 'material' | 'amount' | 'destination';
+  value: string;
+  category?: string;
+}
+
 export interface ContractConditionDetail {
   index: number;
   party: 'self' | 'partner';
   partnerName: string;
   type: string;
   description: string;
+  descriptionParts: ConditionPart[];
   fulfilled: boolean;
   breached: boolean;
   deadline: string | null;
@@ -77,35 +84,53 @@ function formatConditionType(type: PrunApi.ContractConditionType): string {
   return labels[type] ?? type.toLowerCase().replace(/_/g, ' ');
 }
 
+interface ConditionDescriptionResult {
+  description: string;
+  parts: ConditionPart[];
+}
+
 /**
- * Builds a description string for a condition.
+ * Builds a description string and structured parts for a condition.
  */
-function buildConditionDescription(condition: PrunApi.ContractCondition): string {
+function buildConditionDescription(condition: PrunApi.ContractCondition): ConditionDescriptionResult {
   const type = formatConditionType(condition.type);
+  const parts: ConditionPart[] = [];
 
   // Payment condition
   if (condition.amount) {
-    return `${type} ${condition.amount.amount.toLocaleString()} ${condition.amount.currency}`;
+    const description = `${type} ${condition.amount.amount.toLocaleString()} ${condition.amount.currency}`;
+    parts.push({ type: 'text', value: type });
+    parts.push({ type: 'amount', value: `${condition.amount.amount.toLocaleString()} ${condition.amount.currency}` });
+    return { description, parts };
   }
 
   // Delivery condition with material
   if (condition.quantity) {
     const ticker = condition.quantity.material.ticker;
+    const category = condition.quantity.material.category;
     const amount = condition.quantity.amount;
-    // Get destination if available
+
+    parts.push({ type: 'text', value: type });
+    parts.push({ type: 'material', value: ticker, category });
+    parts.push({ type: 'amount', value: String(amount) });
+
     let dest = '';
     if (condition.destination) {
       for (const line of condition.destination.lines) {
         if ((line.type === 'PLANET' || line.type === 'STATION') && line.entity) {
-          dest = ` → ${line.entity.name || line.entity.naturalId}`;
+          dest = line.entity.name || line.entity.naturalId;
+          parts.push({ type: 'destination', value: dest });
           break;
         }
       }
     }
-    return `${type} [${ticker}] ${amount}${dest}`;
+
+    const description = `${type} [${ticker}] ${amount}${dest ? ` → ${dest}` : ''}`;
+    return { description, parts };
   }
 
-  return type;
+  parts.push({ type: 'text', value: type });
+  return { description: type, parts };
 }
 
 /**
@@ -147,16 +172,20 @@ export function useContractDetails(filter: ContractFilter): ContractDetailsResul
     const contracts = useContractsStore.getState().getAll();
 
     const details: ContractDetail[] = contracts.map((contract) => {
-      const conditions: ContractConditionDetail[] = contract.conditions.map((cond) => ({
-        index: cond.index,
-        party: cond.party === 'CUSTOMER' ? 'self' : 'partner',
-        partnerName: contract.partner.name,
-        type: formatConditionType(cond.type),
-        description: buildConditionDescription(cond),
-        fulfilled: cond.status === 'FULFILLED',
-        breached: cond.status === 'VIOLATED',
-        deadline: cond.deadline ? formatRelativeTime(cond.deadline.timestamp) : null,
-      }));
+      const conditions: ContractConditionDetail[] = contract.conditions.map((cond) => {
+        const { description, parts } = buildConditionDescription(cond);
+        return {
+          index: cond.index,
+          party: cond.party === 'CUSTOMER' ? 'self' : 'partner',
+          partnerName: contract.partner.name,
+          type: formatConditionType(cond.type),
+          description,
+          descriptionParts: parts,
+          fulfilled: cond.status === 'FULFILLED',
+          breached: cond.status === 'VIOLATED',
+          deadline: cond.deadline ? formatRelativeTime(cond.deadline.timestamp) : null,
+        };
+      });
 
       // Sort conditions by index
       conditions.sort((a, b) => a.index - b.index);

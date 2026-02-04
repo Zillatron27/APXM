@@ -13,4 +13,5 @@ export {
   type ContractDetail,
   type ContractConditionDetail,
   type ContractStateLabel,
+  type ConditionPart,
 } from './useContractDetails';

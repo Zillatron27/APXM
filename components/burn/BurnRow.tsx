@@ -1,5 +1,6 @@
 import type { BurnRate } from '../../core/burn';
-import { BurnBadge, getUrgencyTextColor } from './BurnBadge';
+import { BurnBadge } from './BurnBadge';
+import { MaterialTile } from '../shared';
 
 interface BurnRowProps {
   burn: BurnRate;
@@ -31,9 +32,7 @@ export function BurnRow({ burn, detailed = false }: BurnRowProps) {
     <div className="flex items-center justify-between gap-2 py-1">
       <div className="flex items-center gap-2">
         {/* Ticker */}
-        <span className={`font-mono font-semibold ${getUrgencyTextColor(urgency)}`}>
-          {materialTicker}
-        </span>
+        <MaterialTile ticker={materialTicker} />
 
         {/* Type indicator */}
         <span className="text-xs text-apxm-text/50">
@@ -72,9 +71,7 @@ export function BurnRow({ burn, detailed = false }: BurnRowProps) {
 export function BurnRowCompact({ burn }: { burn: BurnRate }) {
   return (
     <div className="flex items-center gap-2">
-      <span className={`font-mono text-sm ${getUrgencyTextColor(burn.urgency)}`}>
-        {burn.materialTicker}
-      </span>
+      <MaterialTile ticker={burn.materialTicker} size="sm" />
       <BurnBadge urgency={burn.urgency} daysRemaining={burn.daysRemaining} size="sm" />
     </div>
   );
