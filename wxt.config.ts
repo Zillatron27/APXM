@@ -15,6 +15,15 @@ export default defineConfig({
         matches: ['https://apex.prosperousuniverse.com/*'],
       },
     ],
+    browser_specific_settings: {
+      gecko: {
+        id: 'apxm@27bit.dev',
+        strict_min_version: '109.0',
+        data_collection_permissions: {
+          data_collection: false,
+        },
+      },
+    },
   },
   vite: () => ({
     build: {
