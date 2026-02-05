@@ -2,24 +2,24 @@
 
 Mobile-optimized interface for [Prosperous Universe](https://prosperousuniverse.com) (apex.prosperousuniverse.com).
 
-## Development
+## Requirements
 
-```bash
-# Chrome
-pnpm dev
-
-# Firefox
-pnpm dev:firefox
-```
+- Node.js 22+
+- pnpm 10+
 
 ## Build
 
 ```bash
-# Chrome
-pnpm build
+pnpm install
+pnpm build           # Chrome → .output/chrome-mv3/
+pnpm build:firefox   # Firefox → .output/firefox-mv2/
+```
 
-# Firefox
-pnpm build:firefox
+## Development
+
+```bash
+pnpm dev             # Chrome with hot reload
+pnpm dev:firefox     # Firefox with hot reload
 ```
 
 ## Package

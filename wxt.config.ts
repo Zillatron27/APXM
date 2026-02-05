@@ -18,11 +18,13 @@ export default defineConfig({
     browser_specific_settings: {
       gecko: {
         id: 'apxm@27bit.dev',
-        strict_min_version: '109.0',
+        strict_min_version: '140.0',
         data_collection_permissions: {
-          data_collection: false,
+          required: ['none'],
+          optional: [],
         },
       },
+      gecko_android: {},
     },
   },
   vite: () => ({
