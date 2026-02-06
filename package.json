@@ -18,7 +18,7 @@
   "license": "ISC",
   "packageManager": "pnpm@10.28.2",
   "dependencies": {
-    "@prun/link": "file:../apex-link",
+    "@prun/link": "git+ssh://git@github.com/Zillatron27/APEX_-Link.git#v1.0.0",
     "@wxt-dev/module-react": "^1.1.5",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
