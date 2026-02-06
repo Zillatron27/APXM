@@ -1,5 +1,15 @@
 # APXM Changelog
 
+## 0.1.0 — Pre-release (b25)
+
+### Orion Validation (b24–b25)
+
+- Fix interceptor race condition — polling for interceptor readiness now runs unconditionally, not just in debug mode (caused silent failure on Orion)
+- Improve empty state messaging — show "Awaiting data..." instead of misleading "All supplies OK" / "No active burns" when stores are unpopulated
+- First confirmed working build on Orion (iOS)
+
+---
+
 ## 0.1.0 — Pre-release (b23)
 
 First build submitted to Firefox AMO. Mobile-optimized overlay for Prosperous Universe that reads game state via WebSocket interception + FIO REST API.
