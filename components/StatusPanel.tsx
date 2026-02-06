@@ -88,7 +88,7 @@ export function StatusPanel() {
     <div className="fixed bottom-4 right-4 z-[999999] flex flex-col gap-2 rounded-lg bg-apxm-bg p-4 text-apxm-text shadow-lg max-w-sm max-h-[80vh] overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
-        <span className="text-sm font-semibold">APXM v0.1.0-b25</span>
+        <span className="text-sm font-semibold">APXM v0.1.0-b24</span>
         <div className="flex items-center gap-1">
           <span
             className={`h-2 w-2 rounded-full ${connected ? 'bg-green-500' : 'bg-red-500'}`}

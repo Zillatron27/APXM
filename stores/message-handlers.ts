@@ -1,5 +1,5 @@
-import { onMessageType, dispatchToTypeHandlers } from '../lib/message-bus/content-bridge';
-import type { ProcessedMessage } from '../lib/socket-io/types';
+import { onMessageType, dispatchToTypeHandlers } from '@prun/link/message-bus/content-bridge';
+import type { ProcessedMessage } from '@prun/link';
 import type { PrunApi } from '../types/prun-api';
 import { useConnectionStore } from './connection';
 import {
@@ -203,6 +203,18 @@ export function initMessageHandlers(): (() => void)[] {
   // ============================================================================
   // Production
   // ============================================================================
+
+  unsubscribers.push(
+    onMessageType('PRODUCTION_PRODUCTION_LINES', (msg: ProcessedMessage) => {
+      const payload = extractPayload(msg) as { productionLines?: PrunApi.ProductionLine[] };
+      if (Array.isArray(payload?.productionLines)) {
+        useProductionStore.getState().setAll(payload.productionLines);
+        useProductionStore.getState().setFetched('websocket');
+      } else {
+        console.warn('[APXM] PRODUCTION_PRODUCTION_LINES: unexpected payload structure', payload);
+      }
+    })
+  );
 
   unsubscribers.push(
     onMessageType('PRODUCTION_SITE_PRODUCTION_LINES', (msg: ProcessedMessage) => {

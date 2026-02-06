@@ -8,21 +8,18 @@ importers:
 
   .:
     dependencies:
+      '@prun/link':
+        specifier: file:../apex-link
+        version: file:../apex-link(@types/node@25.1.0)(jiti@1.21.7)(rollup@4.57.1)
       '@wxt-dev/module-react':
         specifier: ^1.1.5
         version: 1.1.5(vite@7.3.1(@types/node@25.1.0)(jiti@1.21.7))(wxt@0.20.13(@types/node@25.1.0)(jiti@1.21.7)(rollup@4.57.1))
-      engine.io-parser:
-        specifier: 5.2.3
-        version: 5.2.3
       react:
         specifier: ^19.2.4
         version: 19.2.4
       react-dom:
         specifier: ^19.2.4
         version: 19.2.4(react@19.2.4)
-      socket.io-parser:
-        specifier: 4.2.4
-        version: 4.2.4
       wxt:
         specifier: ^0.20.13
         version: 0.20.13(@types/node@25.1.0)(jiti@1.21.7)(rollup@4.57.1)
@@ -432,6 +429,9 @@ packages:
   '@pnpm/npm-conf@3.0.2':
     resolution: {integrity: sha512-h104Kh26rR8tm+a3Qkc5S4VLYint3FE48as7+/5oCEcKR2idC/pF1G6AhIXKI+eHPJa/3J9i5z0Al47IeGHPkA==}
     engines: {node: '>=12'}
+
+  '@prun/link@file:../apex-link':
+    resolution: {directory: ../apex-link, type: directory}
 
   '@rolldown/pluginutils@1.0.0-beta.53':
     resolution: {integrity: sha512-vENRlFU4YbrwVqNDZ7fLvy+JR1CRkyr01jhSiDpE1u6py3OMzQfztQU2jxykW3ALNxO4kSlqIDeYyD0Y9RcQeQ==}
@@ -2680,6 +2680,27 @@ snapshots:
       '@pnpm/config.env-replace': 1.1.0
       '@pnpm/network.ca-file': 1.0.2
       config-chain: 1.1.13
+
+  '@prun/link@file:../apex-link(@types/node@25.1.0)(jiti@1.21.7)(rollup@4.57.1)':
+    dependencies:
+      engine.io-parser: 5.2.3
+      socket.io-parser: 4.2.4
+      wxt: 0.20.13(@types/node@25.1.0)(jiti@1.21.7)(rollup@4.57.1)
+    transitivePeerDependencies:
+      - '@types/node'
+      - canvas
+      - jiti
+      - less
+      - lightningcss
+      - rollup
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - supports-color
+      - terser
+      - tsx
+      - yaml
 
   '@rolldown/pluginutils@1.0.0-beta.53': {}
 

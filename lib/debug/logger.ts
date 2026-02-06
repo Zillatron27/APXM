@@ -2,7 +2,13 @@
  * Conditional debug logging for APXM
  */
 
-import type { ProcessedMessage } from '../socket-io/types';
+import type { ProcessedMessage } from '@prun/link';
+
+declare global {
+  interface Window {
+    __APXM_DEBUG__?: boolean;
+  }
+}
 
 /**
  * Log a processed message with direction indicator

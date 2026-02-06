@@ -1,6 +1,6 @@
 import { createRoot } from 'react-dom/client';
 import { App } from '../components/App';
-import { initMessageBridge, onMessage, onMessageType } from '../lib/message-bus/content-bridge';
+import { initMessageBridge, onMessage, onMessageType } from '@prun/link/message-bus/content-bridge';
 import { useConnectionStore } from '../stores/connection';
 import { useSettingsStore, waitForSettingsHydration } from '../stores/settings';
 import { initMessageHandlers } from '../stores/message-handlers';
@@ -64,7 +64,7 @@ export default defineContentScript({
     // 2. Poll for interceptor readiness via shared DOM attribute
     //    Always poll — not just in debug mode. Without this wait, the bridge
     //    initializes before the interceptor is ready (race condition on Orion).
-    const interceptorReady = await pollForAttribute('apxmInterceptor', 'ready', 3000);
+    const interceptorReady = await pollForAttribute('prunLinkInterceptor', 'ready', 3000);
     if (debug) markStep(4, interceptorReady ? 'ok' : 'fail');
     if (!interceptorReady) {
       if (debug) markFailed(4, 'timeout (3s)');

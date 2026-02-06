@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import type { ProcessedMessage } from '../../lib/socket-io/types';
+import type { ProcessedMessage } from '@prun/link';
 import { initMessageHandlers } from '../message-handlers';
 import { useConnectionStore } from '../connection';
 import {
@@ -26,7 +26,7 @@ import {
 // Mock the message bus
 const mockHandlers = new Map<string, ((msg: ProcessedMessage) => void)[]>();
 
-vi.mock('../../lib/message-bus/content-bridge', () => ({
+vi.mock('@prun/link/message-bus/content-bridge', () => ({
   onMessageType: (type: string, handler: (msg: ProcessedMessage) => void) => {
     if (!mockHandlers.has(type)) {
       mockHandlers.set(type, []);

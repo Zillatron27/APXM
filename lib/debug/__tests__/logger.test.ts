@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { logMessage } from '../logger';
-import type { ProcessedMessage } from '../../socket-io/types';
+import type { ProcessedMessage } from '@prun/link';
 
 function createMockMessage(overrides: Partial<ProcessedMessage> = {}): ProcessedMessage {
   return {
