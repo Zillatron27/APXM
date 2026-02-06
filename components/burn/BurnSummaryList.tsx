@@ -74,8 +74,8 @@ export function BurnSummaryCompact() {
 
   if (urgentItems.length === 0) {
     return (
-      <div className="text-xs text-green-500">
-        All supplies OK
+      <div className={`text-xs ${sorted.length === 0 ? 'text-apxm-text/50' : 'text-green-500'}`}>
+        {sorted.length === 0 ? 'Awaiting data...' : 'All supplies OK'}
       </div>
     );
   }

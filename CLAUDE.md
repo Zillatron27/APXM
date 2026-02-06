@@ -27,6 +27,13 @@ rm -rf ~/Downloads/apxm-firefox && cp -r .output/firefox-mv2 ~/Downloads/apxm-fi
 ```
 Then load from `~/Downloads/apxm-firefox` in `about:debugging`.
 
+**AMO Upload:** To build and prepare both files needed for AMO submission:
+```bash
+pnpm run zip:firefox
+cp .output/apxm-*-firefox.zip .output/apxm-*-sources.zip ~/Downloads/
+```
+AMO requires both the extension zip and the sources zip. Note: Firefox manifest versions must be dot-separated integers only (e.g., `0.1.0.23`), not semver pre-release tags (e.g., `0.1.0-b23`). The human-readable version in `StatusPanel.tsx` can use any format.
+
 ## Architecture
 
 ### Data Flow
