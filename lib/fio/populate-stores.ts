@@ -48,7 +48,7 @@ function formatError(endpoint: string, error: FioError): string {
  *
  * Sequential fetches to avoid rate limiting.
  * Returns partial success if some endpoints fail.
- * FIO data replaces (not merges with) existing data.
+ * Skips any store already populated by websocket (checked before AND after fetch).
  */
 export async function populateStoresFromFio(
   config: FioConfig,
@@ -66,12 +66,12 @@ export async function populateStoresFromFio(
   onProgress?.('sites');
   if (useSitesStore.getState().dataSource !== 'websocket') {
     const sitesData = await fetchSites(config);
-    if (sitesData.ok) {
+    if (sitesData.ok && useSitesStore.getState().dataSource !== 'websocket') {
       const sites = transformAllSites(sitesData.data);
       useSitesStore.getState().setAll(sites);
       useSitesStore.getState().setFetched('fio');
       result.populated.sites = sites.length;
-    } else {
+    } else if (!sitesData.ok) {
       result.success = false;
       result.errors.push(formatError('Sites', sitesData.error));
     }
@@ -81,12 +81,12 @@ export async function populateStoresFromFio(
   onProgress?.('workforce');
   if (useWorkforceStore.getState().dataSource !== 'websocket') {
     const workforceData = await fetchWorkforce(config);
-    if (workforceData.ok) {
+    if (workforceData.ok && useWorkforceStore.getState().dataSource !== 'websocket') {
       const workforce = transformAllWorkforce(workforceData.data);
       useWorkforceStore.getState().setAll(workforce);
       useWorkforceStore.getState().setFetched('fio');
       result.populated.workforce = workforce.length;
-    } else {
+    } else if (!workforceData.ok) {
       result.success = false;
       result.errors.push(formatError('Workforce', workforceData.error));
     }
@@ -96,12 +96,12 @@ export async function populateStoresFromFio(
   onProgress?.('storage');
   if (useStorageStore.getState().dataSource !== 'websocket') {
     const storageData = await fetchStorage(config);
-    if (storageData.ok) {
+    if (storageData.ok && useStorageStore.getState().dataSource !== 'websocket') {
       const storage = transformAllStorage(storageData.data);
       useStorageStore.getState().setAll(storage);
       useStorageStore.getState().setFetched('fio');
       result.populated.storage = storage.length;
-    } else {
+    } else if (!storageData.ok) {
       result.success = false;
       result.errors.push(formatError('Storage', storageData.error));
     }
@@ -111,12 +111,12 @@ export async function populateStoresFromFio(
   onProgress?.('production');
   if (useProductionStore.getState().dataSource !== 'websocket') {
     const productionData = await fetchProduction(config);
-    if (productionData.ok) {
+    if (productionData.ok && useProductionStore.getState().dataSource !== 'websocket') {
       const production = transformAllProduction(productionData.data);
       useProductionStore.getState().setAll(production);
       useProductionStore.getState().setFetched('fio');
       result.populated.production = production.length;
-    } else {
+    } else if (!productionData.ok) {
       result.success = false;
       result.errors.push(formatError('Production', productionData.error));
     }

@@ -300,6 +300,54 @@ describe('message-handlers', () => {
 
       expect(useProductionStore.getState().entities.size).toBe(2);
     });
+
+    it('removes stale lines for the same site before adding new ones', () => {
+      // FIO loads 3 lines for site-A (including a stale smelter line)
+      dispatchMessage('PRODUCTION_SITE_PRODUCTION_LINES', {
+        productionLines: [
+          createTestProductionLine({ id: 'stale-smelter', siteId: 'site-A' }),
+          createTestProductionLine({ id: 'stale-refinery', siteId: 'site-A' }),
+          createTestProductionLine({ id: 'current-line', siteId: 'site-A' }),
+        ],
+      });
+      expect(useProductionStore.getState().entities.size).toBe(3);
+
+      // Websocket sends current data for site-A (smelter was demolished)
+      dispatchMessage('PRODUCTION_SITE_PRODUCTION_LINES', {
+        productionLines: [
+          createTestProductionLine({ id: 'current-line', siteId: 'site-A' }),
+        ],
+      });
+
+      // Only the current line should remain — stale lines removed
+      expect(useProductionStore.getState().entities.size).toBe(1);
+      expect(useProductionStore.getState().getById('current-line')).toBeDefined();
+      expect(useProductionStore.getState().getById('stale-smelter')).toBeUndefined();
+    });
+
+    it('does not remove lines for other sites', () => {
+      // Lines for two different sites
+      dispatchMessage('PRODUCTION_SITE_PRODUCTION_LINES', {
+        productionLines: [
+          createTestProductionLine({ id: 'line-A', siteId: 'site-A' }),
+          createTestProductionLine({ id: 'line-B', siteId: 'site-B' }),
+        ],
+      });
+      expect(useProductionStore.getState().entities.size).toBe(2);
+
+      // Websocket updates only site-A
+      dispatchMessage('PRODUCTION_SITE_PRODUCTION_LINES', {
+        productionLines: [
+          createTestProductionLine({ id: 'line-A-new', siteId: 'site-A' }),
+        ],
+      });
+
+      // site-A replaced, site-B untouched
+      expect(useProductionStore.getState().entities.size).toBe(2);
+      expect(useProductionStore.getState().getById('line-A')).toBeUndefined();
+      expect(useProductionStore.getState().getById('line-A-new')).toBeDefined();
+      expect(useProductionStore.getState().getById('line-B')).toBeDefined();
+    });
   });
 
   describe('PRODUCTION_ORDER_ADDED', () => {
@@ -331,7 +379,7 @@ describe('message-handlers', () => {
       const line = createTestProductionLine({ id: 'prod-1', orders: [order1, order2] });
       dispatchMessage('PRODUCTION_SITE_PRODUCTION_LINES', { productionLines: [line] });
 
-      dispatchMessage('PRODUCTION_ORDER_REMOVED', createProductionOrder({ id: 'order-1', productionLineId: 'prod-1' }));
+      dispatchMessage('PRODUCTION_ORDER_REMOVED', { orderId: 'order-1', productionLineId: 'prod-1' });
 
       const updatedLine = useProductionStore.getState().getById('prod-1');
       expect(updatedLine?.orders).toHaveLength(1);

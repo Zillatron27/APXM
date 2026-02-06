@@ -208,6 +208,19 @@ export function initMessageHandlers(): (() => void)[] {
     onMessageType('PRODUCTION_SITE_PRODUCTION_LINES', (msg: ProcessedMessage) => {
       const payload = extractPayload(msg) as { productionLines?: PrunApi.ProductionLine[] };
       if (Array.isArray(payload?.productionLines)) {
+        // This is a per-site message — replace ALL lines for this site.
+        // setMany only merges, so stale lines from FIO would linger.
+        // Extract siteId from incoming lines, remove old lines for that site, then add new.
+        const siteIds = new Set(payload.productionLines.map((l) => l.siteId).filter(Boolean));
+        if (siteIds.size > 0) {
+          const store = useProductionStore.getState();
+          const staleIds = store.getAll()
+            .filter((line) => siteIds.has(line.siteId))
+            .map((line) => line.id);
+          for (const id of staleIds) {
+            useProductionStore.getState().removeOne(id);
+          }
+        }
         useProductionStore.getState().setMany(payload.productionLines);
         useProductionStore.getState().setFetched('websocket');
       } else {
@@ -262,17 +275,20 @@ export function initMessageHandlers(): (() => void)[] {
 
   unsubscribers.push(
     onMessageType('PRODUCTION_ORDER_REMOVED', (msg: ProcessedMessage) => {
-      const order = extractPayload(msg) as PrunApi.ProductionOrder;
-      if (order?.id && order?.productionLineId) {
-        const line = useProductionStore.getState().getById(order.productionLineId);
+      // Removal messages send { orderId, productionLineId }, not a full order object
+      const payload = extractPayload(msg) as { orderId?: string; productionLineId?: string };
+      const orderId = payload?.orderId;
+      const lineId = payload?.productionLineId;
+      if (orderId && lineId) {
+        const line = useProductionStore.getState().getById(lineId);
         if (line) {
           useProductionStore.getState().setOne({
             ...line,
-            orders: line.orders.filter((o) => o.id !== order.id),
+            orders: line.orders.filter((o) => o.id !== orderId),
           });
         }
       } else {
-        console.warn('[APXM] PRODUCTION_ORDER_REMOVED: unexpected payload structure', order);
+        console.warn('[APXM] PRODUCTION_ORDER_REMOVED: unexpected payload structure', payload);
         useConnectionStore.getState().incrementDiscarded();
       }
     })
