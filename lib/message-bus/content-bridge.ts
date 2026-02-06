@@ -44,6 +44,24 @@ export function onMessageType(type: string, handler: MessageHandler): () => void
 }
 
 /**
+ * Dispatch a message to type-specific handlers only (skips onMessage handlers).
+ * Used by ACTION_COMPLETED to route inner messages through the same handler
+ * registry without double-counting in connection stats.
+ */
+export function dispatchToTypeHandlers(message: ProcessedMessage): void {
+  const handlers = typeHandlers.get(message.messageType);
+  if (handlers) {
+    for (const handler of handlers) {
+      try {
+        handler(message);
+      } catch (error) {
+        console.error('[APXM] Content bridge handler error:', error);
+      }
+    }
+  }
+}
+
+/**
  * Dispatch a message to registered handlers
  */
 function dispatchToHandlers(message: ProcessedMessage): void {

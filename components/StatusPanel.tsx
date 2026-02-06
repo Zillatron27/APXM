@@ -23,8 +23,10 @@ export function StatusPanel() {
   const [fioError, setFioError] = useState<string | null>(null);
   const [fioResult, setFioResult] = useState<PopulateResult | null>(null);
 
-  const { overlayVisible, setOverlayVisible } = useGameState();
-  const { connected, messageCount } = useConnectionStore();
+  const overlayVisible = useGameState((s) => s.overlayVisible);
+  const setOverlayVisible = useGameState((s) => s.setOverlayVisible);
+  const connected = useConnectionStore((s) => s.connected);
+  const messageCount = useConnectionStore((s) => s.messageCount);
 
   // FIO config from settings
   const fioConfig = useSettingsStore((s) => s.fio);

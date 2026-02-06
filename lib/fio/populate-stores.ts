@@ -62,56 +62,64 @@ export async function populateStoresFromFio(
 
   const onProgress = options?.onProgress;
 
-  // Fetch and process sites
+  // Fetch and process sites — skip if websocket already populated
   onProgress?.('sites');
-  const sitesData = await fetchSites(config);
-  if (sitesData.ok) {
-    const sites = transformAllSites(sitesData.data);
-    useSitesStore.getState().setAll(sites);
-    useSitesStore.getState().setFetched('fio');
-    result.populated.sites = sites.length;
-  } else {
-    result.success = false;
-    result.errors.push(formatError('Sites', sitesData.error));
+  if (useSitesStore.getState().dataSource !== 'websocket') {
+    const sitesData = await fetchSites(config);
+    if (sitesData.ok) {
+      const sites = transformAllSites(sitesData.data);
+      useSitesStore.getState().setAll(sites);
+      useSitesStore.getState().setFetched('fio');
+      result.populated.sites = sites.length;
+    } else {
+      result.success = false;
+      result.errors.push(formatError('Sites', sitesData.error));
+    }
   }
 
-  // Fetch and process workforce
+  // Fetch and process workforce — skip if websocket already populated
   onProgress?.('workforce');
-  const workforceData = await fetchWorkforce(config);
-  if (workforceData.ok) {
-    const workforce = transformAllWorkforce(workforceData.data);
-    useWorkforceStore.getState().setAll(workforce);
-    useWorkforceStore.getState().setFetched('fio');
-    result.populated.workforce = workforce.length;
-  } else {
-    result.success = false;
-    result.errors.push(formatError('Workforce', workforceData.error));
+  if (useWorkforceStore.getState().dataSource !== 'websocket') {
+    const workforceData = await fetchWorkforce(config);
+    if (workforceData.ok) {
+      const workforce = transformAllWorkforce(workforceData.data);
+      useWorkforceStore.getState().setAll(workforce);
+      useWorkforceStore.getState().setFetched('fio');
+      result.populated.workforce = workforce.length;
+    } else {
+      result.success = false;
+      result.errors.push(formatError('Workforce', workforceData.error));
+    }
   }
 
-  // Fetch and process storage
+  // Fetch and process storage — skip if websocket already populated
   onProgress?.('storage');
-  const storageData = await fetchStorage(config);
-  if (storageData.ok) {
-    const storage = transformAllStorage(storageData.data);
-    useStorageStore.getState().setAll(storage);
-    useStorageStore.getState().setFetched('fio');
-    result.populated.storage = storage.length;
-  } else {
-    result.success = false;
-    result.errors.push(formatError('Storage', storageData.error));
+  if (useStorageStore.getState().dataSource !== 'websocket') {
+    const storageData = await fetchStorage(config);
+    if (storageData.ok) {
+      const storage = transformAllStorage(storageData.data);
+      useStorageStore.getState().setAll(storage);
+      useStorageStore.getState().setFetched('fio');
+      result.populated.storage = storage.length;
+    } else {
+      result.success = false;
+      result.errors.push(formatError('Storage', storageData.error));
+    }
   }
 
-  // Fetch and process production
+  // Fetch and process production — skip if websocket already populated
   onProgress?.('production');
-  const productionData = await fetchProduction(config);
-  if (productionData.ok) {
-    const production = transformAllProduction(productionData.data);
-    useProductionStore.getState().setAll(production);
-    useProductionStore.getState().setFetched('fio');
-    result.populated.production = production.length;
-  } else {
-    result.success = false;
-    result.errors.push(formatError('Production', productionData.error));
+  if (useProductionStore.getState().dataSource !== 'websocket') {
+    const productionData = await fetchProduction(config);
+    if (productionData.ok) {
+      const production = transformAllProduction(productionData.data);
+      useProductionStore.getState().setAll(production);
+      useProductionStore.getState().setFetched('fio');
+      result.populated.production = production.length;
+    } else {
+      result.success = false;
+      result.errors.push(formatError('Production', productionData.error));
+    }
   }
 
   return result;

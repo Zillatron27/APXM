@@ -40,6 +40,14 @@ vi.mock('../../lib/message-bus/content-bridge', () => ({
       }
     };
   },
+  dispatchToTypeHandlers: (msg: ProcessedMessage) => {
+    const handlers = mockHandlers.get(msg.messageType);
+    if (handlers) {
+      for (const handler of handlers) {
+        handler(msg);
+      }
+    }
+  },
 }));
 
 function dispatchMessage(messageType: string, payload: unknown): void {
@@ -124,6 +132,44 @@ describe('message-handlers', () => {
       dispatchMessage('CLIENT_CONNECTION_OPENED', {});
 
       expect(useConnectionStore.getState().connected).toBe(true);
+    });
+  });
+
+  describe('ACTION_COMPLETED', () => {
+    beforeEach(() => {
+      initMessageHandlers();
+    });
+
+    it('routes inner messages to type handlers', () => {
+      const sites = [
+        createTestSite({ siteId: 'site-1' }),
+        createTestSite({ siteId: 'site-2' }),
+      ];
+
+      // ACTION_COMPLETED wraps the inner message in { message: { messageType, payload } }
+      dispatchMessage('ACTION_COMPLETED', {
+        actionId: 'action-1',
+        status: 'COMPLETED',
+        message: { messageType: 'SITE_SITES', payload: { sites } },
+      });
+
+      expect(useSitesStore.getState().entities.size).toBe(2);
+    });
+
+    it('routes incremental updates through ACTION_COMPLETED', () => {
+      // First populate via direct message
+      const store1 = createTestStorage({ id: 'store-1', weightLoad: 100 });
+      dispatchMessage('STORAGE_STORAGES', { stores: [store1] });
+
+      // Then update via ACTION_COMPLETED with STORAGE_CHANGE
+      const updatedStore = { ...store1, weightLoad: 200 };
+      dispatchMessage('ACTION_COMPLETED', {
+        actionId: 'action-2',
+        status: 'COMPLETED',
+        message: { messageType: 'STORAGE_CHANGE', payload: { stores: [updatedStore] } },
+      });
+
+      expect(useStorageStore.getState().getById('store-1')?.weightLoad).toBe(200);
     });
   });
 
@@ -266,7 +312,7 @@ describe('message-handlers', () => {
       dispatchMessage('PRODUCTION_SITE_PRODUCTION_LINES', { productionLines: [line] });
 
       const order = createProductionOrder({ id: 'order-1', productionLineId: 'prod-1' });
-      dispatchMessage('PRODUCTION_ORDER_ADDED', { productionLineId: 'prod-1', order });
+      dispatchMessage('PRODUCTION_ORDER_ADDED', order);
 
       const updatedLine = useProductionStore.getState().getById('prod-1');
       expect(updatedLine?.orders).toHaveLength(1);
@@ -285,7 +331,7 @@ describe('message-handlers', () => {
       const line = createTestProductionLine({ id: 'prod-1', orders: [order1, order2] });
       dispatchMessage('PRODUCTION_SITE_PRODUCTION_LINES', { productionLines: [line] });
 
-      dispatchMessage('PRODUCTION_ORDER_REMOVED', { productionLineId: 'prod-1', orderId: 'order-1' });
+      dispatchMessage('PRODUCTION_ORDER_REMOVED', createProductionOrder({ id: 'order-1', productionLineId: 'prod-1' }));
 
       const updatedLine = useProductionStore.getState().getById('prod-1');
       expect(updatedLine?.orders).toHaveLength(1);

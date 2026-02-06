@@ -5,6 +5,7 @@ import { useConnectionStore } from '../stores/connection';
 import { useSettingsStore, waitForSettingsHydration } from '../stores/settings';
 import { initMessageHandlers } from '../stores/message-handlers';
 import { populateStoresFromFio } from '../lib/fio';
+import { isDebugEnabled, createOverlay, markStep, markFailed, pollForAttribute } from '../lib/diagnostics';
 import '../assets/styles.css';
 
 /**
@@ -42,35 +43,64 @@ export default defineContentScript({
   cssInjectionMode: 'ui',
 
   async main(ctx) {
-    if (!(await shouldInject())) return;
+    const debug = isDebugEnabled();
+
+    if (debug) {
+      createOverlay();
+      markStep(1, 'ok');
+    }
+
+    // Mobile detection — debug mode bypasses but still reports the result
+    const mobile = await shouldInject();
+    if (debug) {
+      markStep(2, mobile ? 'ok' : 'fail', mobile ? 'mobile detected' : 'not mobile');
+    }
+    if (!mobile && !debug) return;
+
     // 1. Inject main-world interceptor (includes script blocker)
-    // This blocks Prun scripts, installs proxies, then restores scripts
     injectScript('/ws-interceptor.js', { keepInDom: true });
+    if (debug) markStep(3, 'ok');
 
-    // 2. Init message bridge (handler registry)
+    // 2. Poll for interceptor readiness via shared DOM attribute
+    if (debug) {
+      const interceptorReady = await pollForAttribute('apxmInterceptor', 'ready', 3000);
+      if (interceptorReady) {
+        markStep(4, 'ok');
+      } else {
+        markFailed(4, 'timeout (3s)');
+      }
+    }
+
+    // 3. Init message bridge (handler registry)
     initMessageBridge();
+    if (debug) markStep(5, 'ok');
 
-    // 3. Register entity store handlers
+    // 4. Register entity store handlers
     initMessageHandlers();
 
-    // 4. Register connection state handlers
-    onMessage((msg) => {
-      const state = useConnectionStore.getState();
-      state.incrementMessageCount();
-      state.setLastMessageTimestamp(msg.timestamp);
+    // 5. Register connection state handlers
+    let firstMessageSeen = false;
 
-      // Fallback connection detection: if we receive any message, we're connected
-      if (!state.connected) {
-        state.setConnected(true);
+    onMessage((msg) => {
+      if (debug && !firstMessageSeen) {
+        firstMessageSeen = true;
+        markStep(6, 'ok', msg.messageType);
       }
+
+      // Single batched set() to avoid cascading React re-renders during
+      // PrUn's login burst (dozens of messages in rapid succession).
+      useConnectionStore.setState((s) => ({
+        messageCount: s.messageCount + 1,
+        lastMessageTimestamp: msg.timestamp,
+        ...(s.connected ? {} : { connected: true }),
+      }));
     });
 
-    // Also detect explicit connection message
     onMessageType('CLIENT_CONNECTION_OPENED', () => {
       useConnectionStore.getState().setConnected(true);
     });
 
-    // 5. Auto-fetch FIO data if credentials are saved (after settings hydrate)
+    // 6. Auto-fetch FIO data if credentials are saved (after settings hydrate)
     waitForSettingsHydration().then(() => {
       const settings = useSettingsStore.getState();
       if (settings.fio.apiKey && settings.fio.username) {
@@ -85,7 +115,7 @@ export default defineContentScript({
       }
     });
 
-    // 6. Mount React overlay in Shadow DOM
+    // 7. Mount React overlay in Shadow DOM
     const ui = await createShadowRootUi(ctx, {
       name: 'apxm-overlay',
       position: 'inline',
@@ -102,5 +132,6 @@ export default defineContentScript({
     });
 
     ui.mount();
+    if (debug) markStep(7, 'ok');
   },
 });

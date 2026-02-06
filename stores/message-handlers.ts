@@ -1,4 +1,4 @@
-import { onMessageType } from '../lib/message-bus/content-bridge';
+import { onMessageType, dispatchToTypeHandlers } from '../lib/message-bus/content-bridge';
 import type { ProcessedMessage } from '../lib/socket-io/types';
 import type { PrunApi } from '../types/prun-api';
 import { useConnectionStore } from './connection';
@@ -26,119 +26,6 @@ function extractPayload(msg: ProcessedMessage): unknown {
 }
 
 /**
- * Process an inner message extracted from ACTION_COMPLETED.
- * Routes the message to the appropriate entity store.
- */
-function processInnerMessage(messageType: string, payload: unknown): void {
-  const data = payload as Record<string, unknown>;
-
-  switch (messageType) {
-    // Sites
-    case 'SITE_SITES': {
-      const sites = data?.sites as PrunApi.Site[] | undefined;
-      if (Array.isArray(sites)) {
-        useSitesStore.getState().setAll(sites);
-        useSitesStore.getState().setFetched('websocket');
-      } else {
-        console.warn('[APXM] SITE_SITES (inner): unexpected payload structure', payload);
-        useConnectionStore.getState().incrementDiscarded();
-      }
-      break;
-    }
-
-    // Storage
-    case 'STORAGE_STORAGES': {
-      const stores = data?.stores as PrunApi.Store[] | undefined;
-      if (Array.isArray(stores)) {
-        useStorageStore.getState().setMany(stores);
-        useStorageStore.getState().setFetched('websocket');
-      } else {
-        console.warn('[APXM] STORAGE_STORAGES (inner): unexpected payload structure', payload);
-        useConnectionStore.getState().incrementDiscarded();
-      }
-      break;
-    }
-
-    // Warehouse storage (separate from regular storage)
-    case 'WAREHOUSE_STORAGES': {
-      const storages = data?.storages as PrunApi.Store[] | undefined;
-      if (Array.isArray(storages)) {
-        useStorageStore.getState().setMany(storages);
-      } else {
-        console.warn('[APXM] WAREHOUSE_STORAGES (inner): unexpected payload structure', payload);
-        useConnectionStore.getState().incrementDiscarded();
-      }
-      break;
-    }
-
-    // Workforce
-    case 'WORKFORCE_WORKFORCES': {
-      const wfData = data as unknown as WorkforceEntity | undefined;
-      if (wfData?.siteId) {
-        useWorkforceStore.getState().setOne(wfData);
-        useWorkforceStore.getState().setFetched('websocket');
-      } else {
-        console.warn('[APXM] WORKFORCE_WORKFORCES (inner): unexpected payload structure', payload);
-        useConnectionStore.getState().incrementDiscarded();
-      }
-      break;
-    }
-
-    // Production
-    case 'PRODUCTION_SITE_PRODUCTION_LINES': {
-      const lines = data?.productionLines as PrunApi.ProductionLine[] | undefined;
-      if (Array.isArray(lines)) {
-        useProductionStore.getState().setMany(lines);
-        useProductionStore.getState().setFetched('websocket');
-      } else {
-        console.warn('[APXM] PRODUCTION_SITE_PRODUCTION_LINES (inner): unexpected payload structure', payload);
-        useConnectionStore.getState().incrementDiscarded();
-      }
-      break;
-    }
-
-    // Ships
-    case 'SHIP_SHIPS': {
-      const ships = data?.ships as PrunApi.Ship[] | undefined;
-      if (Array.isArray(ships)) {
-        useShipsStore.getState().setAll(ships);
-        useShipsStore.getState().setFetched('websocket');
-      } else {
-        console.warn('[APXM] SHIP_SHIPS (inner): unexpected payload structure', payload);
-        useConnectionStore.getState().incrementDiscarded();
-      }
-      break;
-    }
-
-    // Flights
-    case 'SHIP_FLIGHT_FLIGHTS': {
-      const flights = data?.flights as PrunApi.Flight[] | undefined;
-      if (Array.isArray(flights)) {
-        useFlightsStore.getState().setAll(flights);
-        useFlightsStore.getState().setFetched('websocket');
-      } else {
-        console.warn('[APXM] SHIP_FLIGHT_FLIGHTS (inner): unexpected payload structure', payload);
-        useConnectionStore.getState().incrementDiscarded();
-      }
-      break;
-    }
-
-    // Contracts
-    case 'CONTRACTS_CONTRACTS': {
-      const contracts = data?.contracts as PrunApi.Contract[] | undefined;
-      if (Array.isArray(contracts)) {
-        useContractsStore.getState().setAll(contracts);
-        useContractsStore.getState().setFetched('websocket');
-      } else {
-        console.warn('[APXM] CONTRACTS_CONTRACTS (inner): unexpected payload structure', payload);
-        useConnectionStore.getState().incrementDiscarded();
-      }
-      break;
-    }
-  }
-}
-
-/**
  * Initialize all message handlers for populating entity stores.
  * Call this once after initMessageBridge() in the content script.
  *
@@ -147,8 +34,11 @@ function processInnerMessage(messageType: string, payload: unknown): void {
 export function initMessageHandlers(): (() => void)[] {
   const unsubscribers: (() => void)[] = [];
 
-  // ACTION_COMPLETED wraps bulk data in { actionId, status, message }
-  // The 'message' field contains the actual game data
+  // ACTION_COMPLETED wraps game data in { actionId, status, message }.
+  // The inner message can be ANY type (SITE_SITES, STORAGE_CHANGE, etc.).
+  // Instead of duplicating handler logic, dispatch the inner message through
+  // the same type handler registry so all handlers work uniformly regardless
+  // of whether the message arrives as a top-level event or inside ACTION_COMPLETED.
   unsubscribers.push(
     onMessageType('ACTION_COMPLETED', (msg: ProcessedMessage) => {
       const payload = extractPayload(msg) as {
@@ -159,8 +49,16 @@ export function initMessageHandlers(): (() => void)[] {
 
       const inner = payload?.message;
       if (inner?.messageType) {
-        // Process the inner message - route to appropriate handlers
-        processInnerMessage(inner.messageType, inner.payload);
+        // Create a synthetic ProcessedMessage matching the wire format the
+        // type handlers expect: { messageType, payload: { messageType, payload: data } }
+        const syntheticMsg: ProcessedMessage = {
+          messageType: inner.messageType,
+          payload: inner,
+          timestamp: msg.timestamp,
+          direction: msg.direction,
+          rawSize: msg.rawSize,
+        };
+        dispatchToTypeHandlers(syntheticMsg);
       }
     })
   );
@@ -342,15 +240,13 @@ export function initMessageHandlers(): (() => void)[] {
     })
   );
 
+  // Production order messages send the order object directly as the payload,
+  // with productionLineId as a field on the order (not a sibling wrapper).
   unsubscribers.push(
     onMessageType('PRODUCTION_ORDER_ADDED', (msg: ProcessedMessage) => {
-      const payload = extractPayload(msg) as {
-        productionLineId?: string;
-        order?: PrunApi.ProductionOrder;
-      };
-      const { productionLineId, order } = payload;
-      if (productionLineId && order) {
-        const line = useProductionStore.getState().getById(productionLineId);
+      const order = extractPayload(msg) as PrunApi.ProductionOrder;
+      if (order?.id && order?.productionLineId) {
+        const line = useProductionStore.getState().getById(order.productionLineId);
         if (line) {
           useProductionStore.getState().setOne({
             ...line,
@@ -358,7 +254,7 @@ export function initMessageHandlers(): (() => void)[] {
           });
         }
       } else {
-        console.warn('[APXM] PRODUCTION_ORDER_ADDED: unexpected payload structure', payload);
+        console.warn('[APXM] PRODUCTION_ORDER_ADDED: unexpected payload structure', order);
         useConnectionStore.getState().incrementDiscarded();
       }
     })
@@ -366,21 +262,17 @@ export function initMessageHandlers(): (() => void)[] {
 
   unsubscribers.push(
     onMessageType('PRODUCTION_ORDER_REMOVED', (msg: ProcessedMessage) => {
-      const payload = extractPayload(msg) as {
-        productionLineId?: string;
-        orderId?: string;
-      };
-      const { productionLineId, orderId } = payload;
-      if (productionLineId && orderId) {
-        const line = useProductionStore.getState().getById(productionLineId);
+      const order = extractPayload(msg) as PrunApi.ProductionOrder;
+      if (order?.id && order?.productionLineId) {
+        const line = useProductionStore.getState().getById(order.productionLineId);
         if (line) {
           useProductionStore.getState().setOne({
             ...line,
-            orders: line.orders.filter((o) => o.id !== orderId),
+            orders: line.orders.filter((o) => o.id !== order.id),
           });
         }
       } else {
-        console.warn('[APXM] PRODUCTION_ORDER_REMOVED: unexpected payload structure', payload);
+        console.warn('[APXM] PRODUCTION_ORDER_REMOVED: unexpected payload structure', order);
         useConnectionStore.getState().incrementDiscarded();
       }
     })
@@ -388,13 +280,9 @@ export function initMessageHandlers(): (() => void)[] {
 
   unsubscribers.push(
     onMessageType('PRODUCTION_ORDER_UPDATED', (msg: ProcessedMessage) => {
-      const payload = extractPayload(msg) as {
-        productionLineId?: string;
-        order?: PrunApi.ProductionOrder;
-      };
-      const { productionLineId, order } = payload;
-      if (productionLineId && order) {
-        const line = useProductionStore.getState().getById(productionLineId);
+      const order = extractPayload(msg) as PrunApi.ProductionOrder;
+      if (order?.id && order?.productionLineId) {
+        const line = useProductionStore.getState().getById(order.productionLineId);
         if (line) {
           useProductionStore.getState().setOne({
             ...line,
@@ -402,7 +290,7 @@ export function initMessageHandlers(): (() => void)[] {
           });
         }
       } else {
-        console.warn('[APXM] PRODUCTION_ORDER_UPDATED: unexpected payload structure', payload);
+        console.warn('[APXM] PRODUCTION_ORDER_UPDATED: unexpected payload structure', order);
         useConnectionStore.getState().incrementDiscarded();
       }
     })

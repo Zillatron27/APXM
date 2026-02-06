@@ -133,5 +133,8 @@ export default defineUnlistedScript(() => {
   // 5. Restore blocked scripts (they now load through proxied WebSocket)
   restoreBlockedScripts();
 
+  // Signal readiness to content script via shared DOM attribute
+  document.documentElement.dataset.apxmInterceptor = 'ready';
+
   console.log('[APXM] Interceptor ready');
 });
