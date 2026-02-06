@@ -62,13 +62,14 @@ export default defineContentScript({
     if (debug) markStep(3, 'ok');
 
     // 2. Poll for interceptor readiness via shared DOM attribute
-    if (debug) {
-      const interceptorReady = await pollForAttribute('apxmInterceptor', 'ready', 3000);
-      if (interceptorReady) {
-        markStep(4, 'ok');
-      } else {
-        markFailed(4, 'timeout (3s)');
-      }
+    //    Always poll — not just in debug mode. Without this wait, the bridge
+    //    initializes before the interceptor is ready (race condition on Orion).
+    const interceptorReady = await pollForAttribute('apxmInterceptor', 'ready', 3000);
+    if (debug) markStep(4, interceptorReady ? 'ok' : 'fail');
+    if (!interceptorReady) {
+      if (debug) markFailed(4, 'timeout (3s)');
+      console.warn('[APXM] Interceptor failed to initialize within 3s — aborting');
+      return;
     }
 
     // 3. Init message bridge (handler registry)
