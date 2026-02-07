@@ -9,7 +9,7 @@ import { installWebSocketProxy, installXHRProxy, setMessageCallback } from '@pru
 import { emitMessage } from '@prun/link/message-bus/main-world';
 import { installScriptBlocker, restoreBlockedScripts } from '@prun/link/script-control';
 import type { ProcessedMessage } from '@prun/link';
-import { logMessage } from '../lib/debug/logger';
+import { log, logMessage } from '../lib/debug/logger';
 
 /**
  * Handle processed messages
@@ -20,7 +20,7 @@ function handleMessage(message: ProcessedMessage): void {
 }
 
 export default defineUnlistedScript(() => {
-  console.log('[APXM] Installing interceptor...');
+  log('Installing interceptor...');
 
   // 1. Install script blocker FIRST (blocks Prun from loading)
   installScriptBlocker();
@@ -40,5 +40,5 @@ export default defineUnlistedScript(() => {
   // Signal readiness to content script via shared DOM attribute
   document.documentElement.dataset.prunLinkInterceptor = 'ready';
 
-  console.log('[APXM] Interceptor ready');
+  log('Interceptor ready');
 });

@@ -1,5 +1,6 @@
 import type { ProcessedMessage } from '@prun/link';
 import type { PrunApi } from '../types/prun-api';
+import { warn } from '../lib/debug/logger';
 import { useConnectionStore } from './connection';
 import {
   useSitesStore,
@@ -98,7 +99,7 @@ export function initMessageHandlers(): void {
       useSitesStore.getState().setAll(payload.sites);
       useSitesStore.getState().setFetched('websocket');
     } else {
-      console.warn('[APXM] SITE_SITES: unexpected payload structure', payload);
+      warn('SITE_SITES: unexpected payload structure', payload);
     }
   });
 
@@ -108,7 +109,7 @@ export function initMessageHandlers(): void {
     if (site?.siteId) {
       useSitesStore.getState().setOne(site);
     } else {
-      console.warn('[APXM] SITE_SITE: unexpected payload structure', site);
+      warn('SITE_SITE: unexpected payload structure', site);
       useConnectionStore.getState().incrementDiscarded();
     }
   });
@@ -129,7 +130,7 @@ export function initMessageHandlers(): void {
         });
       }
     } else {
-      console.warn('[APXM] SITE_PLATFORM_BUILT: unexpected payload structure', payload);
+      warn('SITE_PLATFORM_BUILT: unexpected payload structure', payload);
       useConnectionStore.getState().incrementDiscarded();
     }
   });
@@ -144,7 +145,7 @@ export function initMessageHandlers(): void {
       useStorageStore.getState().setMany(payload.stores);
       useStorageStore.getState().setFetched('websocket');
     } else {
-      console.warn('[APXM] STORAGE_STORAGES: unexpected payload structure', payload);
+      warn('STORAGE_STORAGES: unexpected payload structure', payload);
     }
   });
 
@@ -153,7 +154,7 @@ export function initMessageHandlers(): void {
     if (Array.isArray(payload?.stores)) {
       useStorageStore.getState().setMany(payload.stores);
     } else {
-      console.warn('[APXM] STORAGE_CHANGE: unexpected payload structure', payload);
+      warn('STORAGE_CHANGE: unexpected payload structure', payload);
       useConnectionStore.getState().incrementDiscarded();
     }
   });
@@ -166,7 +167,7 @@ export function initMessageHandlers(): void {
         store.removeOne(id);
       }
     } else {
-      console.warn('[APXM] STORAGE_REMOVED: unexpected payload structure', payload);
+      warn('STORAGE_REMOVED: unexpected payload structure', payload);
       useConnectionStore.getState().incrementDiscarded();
     }
   });
@@ -182,7 +183,7 @@ export function initMessageHandlers(): void {
       useWorkforceStore.getState().setOne(data);
       useWorkforceStore.getState().setFetched('websocket');
     } else {
-      console.warn('[APXM] WORKFORCE_WORKFORCES: unexpected payload structure', data);
+      warn('WORKFORCE_WORKFORCES: unexpected payload structure', data);
     }
   });
 
@@ -191,7 +192,7 @@ export function initMessageHandlers(): void {
     if (data?.siteId) {
       useWorkforceStore.getState().setOne(data);
     } else {
-      console.warn('[APXM] WORKFORCE_WORKFORCES_UPDATED: unexpected payload structure', data);
+      warn('WORKFORCE_WORKFORCES_UPDATED: unexpected payload structure', data);
       useConnectionStore.getState().incrementDiscarded();
     }
   });
@@ -206,7 +207,7 @@ export function initMessageHandlers(): void {
       useProductionStore.getState().setAll(payload.productionLines);
       useProductionStore.getState().setFetched('websocket');
     } else {
-      console.warn('[APXM] PRODUCTION_PRODUCTION_LINES: unexpected payload structure', payload);
+      warn('PRODUCTION_PRODUCTION_LINES: unexpected payload structure', payload);
     }
   });
 
@@ -229,7 +230,7 @@ export function initMessageHandlers(): void {
       useProductionStore.getState().setMany(payload.productionLines);
       useProductionStore.getState().setFetched('websocket');
     } else {
-      console.warn('[APXM] PRODUCTION_SITE_PRODUCTION_LINES: unexpected payload structure', payload);
+      warn('PRODUCTION_SITE_PRODUCTION_LINES: unexpected payload structure', payload);
     }
   });
 
@@ -238,7 +239,7 @@ export function initMessageHandlers(): void {
     if (productionLine?.id) {
       useProductionStore.getState().setOne(productionLine);
     } else {
-      console.warn('[APXM] PRODUCTION_PRODUCTION_LINE: unexpected payload structure', productionLine);
+      warn('PRODUCTION_PRODUCTION_LINE: unexpected payload structure', productionLine);
       useConnectionStore.getState().incrementDiscarded();
     }
   });
@@ -248,7 +249,7 @@ export function initMessageHandlers(): void {
     if (productionLine?.id) {
       useProductionStore.getState().setOne(productionLine);
     } else {
-      console.warn('[APXM] PRODUCTION_PRODUCTION_LINE_UPDATED: unexpected payload structure', productionLine);
+      warn('PRODUCTION_PRODUCTION_LINE_UPDATED: unexpected payload structure', productionLine);
       useConnectionStore.getState().incrementDiscarded();
     }
   });
@@ -266,7 +267,7 @@ export function initMessageHandlers(): void {
         });
       }
     } else {
-      console.warn('[APXM] PRODUCTION_ORDER_ADDED: unexpected payload structure', order);
+      warn('PRODUCTION_ORDER_ADDED: unexpected payload structure', order);
       useConnectionStore.getState().incrementDiscarded();
     }
   });
@@ -285,7 +286,7 @@ export function initMessageHandlers(): void {
         });
       }
     } else {
-      console.warn('[APXM] PRODUCTION_ORDER_REMOVED: unexpected payload structure', payload);
+      warn('PRODUCTION_ORDER_REMOVED: unexpected payload structure', payload);
       useConnectionStore.getState().incrementDiscarded();
     }
   });
@@ -301,7 +302,7 @@ export function initMessageHandlers(): void {
         });
       }
     } else {
-      console.warn('[APXM] PRODUCTION_ORDER_UPDATED: unexpected payload structure', order);
+      warn('PRODUCTION_ORDER_UPDATED: unexpected payload structure', order);
       useConnectionStore.getState().incrementDiscarded();
     }
   });
@@ -316,7 +317,7 @@ export function initMessageHandlers(): void {
       useShipsStore.getState().setAll(payload.ships);
       useShipsStore.getState().setFetched('websocket');
     } else {
-      console.warn('[APXM] SHIP_SHIPS: unexpected payload structure', payload);
+      warn('SHIP_SHIPS: unexpected payload structure', payload);
     }
   });
 
@@ -325,7 +326,7 @@ export function initMessageHandlers(): void {
     if (ship?.id) {
       useShipsStore.getState().setOne(ship);
     } else {
-      console.warn('[APXM] SHIP_DATA: unexpected payload structure', ship);
+      warn('SHIP_DATA: unexpected payload structure', ship);
       useConnectionStore.getState().incrementDiscarded();
     }
   });
@@ -340,7 +341,7 @@ export function initMessageHandlers(): void {
       useFlightsStore.getState().setAll(payload.flights);
       useFlightsStore.getState().setFetched('websocket');
     } else {
-      console.warn('[APXM] SHIP_FLIGHT_FLIGHTS: unexpected payload structure', payload);
+      warn('SHIP_FLIGHT_FLIGHTS: unexpected payload structure', payload);
     }
   });
 
@@ -349,7 +350,7 @@ export function initMessageHandlers(): void {
     if (flight?.id) {
       useFlightsStore.getState().setOne(flight);
     } else {
-      console.warn('[APXM] SHIP_FLIGHT_STARTED: unexpected payload structure', flight);
+      warn('SHIP_FLIGHT_STARTED: unexpected payload structure', flight);
       useConnectionStore.getState().incrementDiscarded();
     }
   });
@@ -359,7 +360,7 @@ export function initMessageHandlers(): void {
     if (payload?.flightId) {
       useFlightsStore.getState().removeOne(payload.flightId);
     } else {
-      console.warn('[APXM] SHIP_FLIGHT_ENDED: unexpected payload structure', payload);
+      warn('SHIP_FLIGHT_ENDED: unexpected payload structure', payload);
       useConnectionStore.getState().incrementDiscarded();
     }
   });
@@ -379,7 +380,7 @@ export function initMessageHandlers(): void {
         });
       }
     } else {
-      console.warn('[APXM] SHIP_FLIGHT_SEGMENT: unexpected payload structure', payload);
+      warn('SHIP_FLIGHT_SEGMENT: unexpected payload structure', payload);
       useConnectionStore.getState().incrementDiscarded();
     }
   });
@@ -394,7 +395,7 @@ export function initMessageHandlers(): void {
       useContractsStore.getState().setAll(payload.contracts);
       useContractsStore.getState().setFetched('websocket');
     } else {
-      console.warn('[APXM] CONTRACTS_CONTRACTS: unexpected payload structure', payload);
+      warn('CONTRACTS_CONTRACTS: unexpected payload structure', payload);
     }
   });
 
@@ -403,7 +404,7 @@ export function initMessageHandlers(): void {
     if (contract?.id) {
       useContractsStore.getState().setOne(contract);
     } else {
-      console.warn('[APXM] CONTRACTS_CONTRACT: unexpected payload structure', contract);
+      warn('CONTRACTS_CONTRACT: unexpected payload structure', contract);
       useConnectionStore.getState().incrementDiscarded();
     }
   });

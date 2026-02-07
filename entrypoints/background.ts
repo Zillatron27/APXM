@@ -1,4 +1,5 @@
+import { log } from '../lib/debug/logger';
+
 export default defineBackground(() => {
-  console.log('APXM background script started');
-  // Future: badge updates, message handling
+  log('Background script started');
 });

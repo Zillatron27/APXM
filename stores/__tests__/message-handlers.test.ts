@@ -374,7 +374,8 @@ describe('message-handlers', () => {
       dispatchMessage('SITE_SITE', { name: 'no-site-id' });
 
       expect(warnSpy).toHaveBeenCalledWith(
-        '[APXM] SITE_SITE: unexpected payload structure',
+        '[APXM]',
+        'SITE_SITE: unexpected payload structure',
         expect.anything()
       );
 

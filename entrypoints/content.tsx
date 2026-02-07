@@ -7,37 +7,9 @@ import { useSettingsStore, waitForSettingsHydration } from '../stores/settings';
 import { initMessageHandlers, processMessage } from '../stores/message-handlers';
 import { beginEntityBatch, endEntityBatch } from '../stores/entities';
 import { populateStoresFromFio } from '../lib/fio';
+import { warn, error as logError } from '../lib/debug/logger';
 import { isDebugEnabled, createOverlay, markStep, markFailed, pollForAttribute, ensureDiagnosticsVisible } from '../lib/diagnostics';
 import '../assets/styles.css';
-
-/**
- * Determine if APXM should inject on this device.
- * APXM is mobile-only by default, but desktop can be enabled via storage override.
- */
-async function shouldInject(): Promise<boolean> {
-  const isMobile =
-    window.matchMedia?.('(pointer: coarse)')?.matches ||
-    (!window.matchMedia && navigator.maxTouchPoints > 0);
-
-  if (isMobile) return true;
-
-  // Desktop — check for override
-  try {
-    const stored = await browser.storage.local.get('apxm_force_enable');
-    if (stored.apxm_force_enable === true) {
-      console.log('[APXM] Desktop detected but force-enable override is set');
-      return true;
-    }
-  } catch {
-    /* storage access failed */
-  }
-
-  console.log(
-    '[APXM] Desktop detected — APXM is designed for mobile devices.\n' +
-      'To override: browser.storage.local.set({ apxm_force_enable: true })'
-  );
-  return false;
-}
 
 export default defineContentScript({
   matches: ['https://apex.prosperousuniverse.com/*'],
@@ -54,19 +26,23 @@ export default defineContentScript({
       }
     });
 
+    // Desktop detection — bail before doing anything on non-touch devices.
+    // Zero footprint: no script blocker, no interceptor, no React mount.
+    const isMobile = window.matchMedia('(pointer: coarse)').matches;
+    const forceEnabled = new URLSearchParams(window.location.search).has('apxm_force');
+
+    if (!isMobile && !forceEnabled) {
+      console.log('[APXM] Desktop detected (pointer: fine) — not activating. Use ?apxm_force to override.');
+      return;
+    }
+
     const debug = isDebugEnabled();
 
     if (debug) {
       createOverlay();
       markStep(1, 'ok');
+      markStep(2, 'ok', isMobile ? 'mobile detected' : 'forced via ?apxm_force');
     }
-
-    // Mobile detection — debug mode bypasses but still reports the result
-    const mobile = await shouldInject();
-    if (debug) {
-      markStep(2, mobile ? 'ok' : 'fail', mobile ? 'mobile detected' : 'not mobile');
-    }
-    if (!mobile && !debug) return;
 
     // 1. Inject main-world interceptor (includes script blocker)
     injectScript('/ws-interceptor.js', { keepInDom: true });
@@ -79,7 +55,7 @@ export default defineContentScript({
     if (debug) markStep(4, interceptorReady ? 'ok' : 'fail');
     if (!interceptorReady) {
       if (debug) markFailed(4, 'timeout (3s)');
-      console.warn('[APXM] Interceptor failed to initialize within 3s — aborting');
+      warn('Interceptor failed to initialize within 3s — aborting');
       return;
     }
 
@@ -132,8 +108,8 @@ export default defineContentScript({
             for (const m of batch) {
               try {
                 processMessage(m);
-              } catch (error) {
-                console.error('[APXM] Message handler error:', error);
+              } catch (err) {
+                logError('Message handler error:', err);
               }
             }
           } finally {

@@ -28,6 +28,9 @@ export default defineConfig({
     },
   },
   vite: () => ({
+    define: {
+      __DEV__: JSON.stringify(process.env.NODE_ENV !== 'production'),
+    },
     build: {
       // Ensure compatibility with Firefox ESR
       target: 'es2020',
