@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import type { ProcessedMessage } from '@prun/link';
-import { initMessageHandlers } from '../message-handlers';
+import { initMessageHandlers, processMessage } from '../message-handlers';
 import { useConnectionStore } from '../connection';
 import {
   useSitesStore,
@@ -23,52 +23,19 @@ import {
   createProductionOrder,
 } from '../../__tests__/fixtures/factories';
 
-// Mock the message bus
-const mockHandlers = new Map<string, ((msg: ProcessedMessage) => void)[]>();
-
-vi.mock('@prun/link/message-bus/content-bridge', () => ({
-  onMessageType: (type: string, handler: (msg: ProcessedMessage) => void) => {
-    if (!mockHandlers.has(type)) {
-      mockHandlers.set(type, []);
-    }
-    mockHandlers.get(type)!.push(handler);
-    return () => {
-      const handlers = mockHandlers.get(type);
-      if (handlers) {
-        const idx = handlers.indexOf(handler);
-        if (idx >= 0) handlers.splice(idx, 1);
-      }
-    };
-  },
-  dispatchToTypeHandlers: (msg: ProcessedMessage) => {
-    const handlers = mockHandlers.get(msg.messageType);
-    if (handlers) {
-      for (const handler of handlers) {
-        handler(msg);
-      }
-    }
-  },
-}));
-
 function dispatchMessage(messageType: string, payload: unknown): void {
-  const handlers = mockHandlers.get(messageType);
-  if (handlers) {
-    const msg: ProcessedMessage = {
-      messageType,
-      payload,
-      timestamp: Date.now(),
-      direction: 'inbound',
-      rawSize: 100,
-    };
-    for (const handler of handlers) {
-      handler(msg);
-    }
-  }
+  const msg: ProcessedMessage = {
+    messageType,
+    payload,
+    timestamp: Date.now(),
+    direction: 'inbound',
+    rawSize: 100,
+  };
+  processMessage(msg);
 }
 
 describe('message-handlers', () => {
   beforeEach(() => {
-    mockHandlers.clear();
     clearAllEntityStores();
     useConnectionStore.setState({
       connected: false,
@@ -78,6 +45,7 @@ describe('message-handlers', () => {
       discardedMessages: 0,
       unknownMessageTypes: [],
     });
+    initMessageHandlers();
   });
 
   afterEach(() => {
@@ -85,19 +53,15 @@ describe('message-handlers', () => {
   });
 
   describe('initialization', () => {
-    it('registers handlers and returns unsubscribe functions', () => {
-      const unsubscribers = initMessageHandlers();
-
-      expect(unsubscribers.length).toBeGreaterThan(0);
-      expect(mockHandlers.size).toBeGreaterThan(0);
+    it('registers handlers that processMessage can dispatch to', () => {
+      // Verify a known message type is handled
+      const sites = [createTestSite({ siteId: 'site-1' })];
+      dispatchMessage('SITE_SITES', { sites });
+      expect(useSitesStore.getState().entities.size).toBe(1);
     });
   });
 
   describe('CLIENT_CONNECTION_OPENED', () => {
-    beforeEach(() => {
-      initMessageHandlers();
-    });
-
     it('clears all entity stores on reconnect', () => {
       // Populate stores with data
       useSitesStore.getState().setAll([createTestSite()]);
@@ -136,10 +100,6 @@ describe('message-handlers', () => {
   });
 
   describe('ACTION_COMPLETED', () => {
-    beforeEach(() => {
-      initMessageHandlers();
-    });
-
     it('routes inner messages to type handlers', () => {
       const sites = [
         createTestSite({ siteId: 'site-1' }),
@@ -174,10 +134,6 @@ describe('message-handlers', () => {
   });
 
   describe('SITE_SITES', () => {
-    beforeEach(() => {
-      initMessageHandlers();
-    });
-
     it('populates sites store', () => {
       const sites = [
         createTestSite({ siteId: 'site-1' }),
@@ -200,10 +156,6 @@ describe('message-handlers', () => {
   });
 
   describe('SITE_SITE', () => {
-    beforeEach(() => {
-      initMessageHandlers();
-    });
-
     it('updates a single site', () => {
       const site = createTestSite({ siteId: 'site-1' });
       dispatchMessage('SITE_SITES', { sites: [site] });
@@ -216,10 +168,6 @@ describe('message-handlers', () => {
   });
 
   describe('STORAGE_STORAGES', () => {
-    beforeEach(() => {
-      initMessageHandlers();
-    });
-
     it('populates storage store', () => {
       const stores = [
         createTestStorage({ id: 'store-1' }),
@@ -233,10 +181,6 @@ describe('message-handlers', () => {
   });
 
   describe('STORAGE_CHANGE', () => {
-    beforeEach(() => {
-      initMessageHandlers();
-    });
-
     it('updates existing storages without clearing', () => {
       const store1 = createTestStorage({ id: 'store-1', weightLoad: 100 });
       const store2 = createTestStorage({ id: 'store-2' });
@@ -251,10 +195,6 @@ describe('message-handlers', () => {
   });
 
   describe('STORAGE_REMOVED', () => {
-    beforeEach(() => {
-      initMessageHandlers();
-    });
-
     it('removes storages by id', () => {
       const stores = [
         createTestStorage({ id: 'store-1' }),
@@ -271,10 +211,6 @@ describe('message-handlers', () => {
   });
 
   describe('WORKFORCE_WORKFORCES', () => {
-    beforeEach(() => {
-      initMessageHandlers();
-    });
-
     it('stores workforce data by site', () => {
       const workforce = createTestWorkforce({ siteId: 'site-1' });
 
@@ -286,10 +222,6 @@ describe('message-handlers', () => {
   });
 
   describe('PRODUCTION_SITE_PRODUCTION_LINES', () => {
-    beforeEach(() => {
-      initMessageHandlers();
-    });
-
     it('populates production store', () => {
       const productionLines = [
         createTestProductionLine({ id: 'prod-1' }),
@@ -351,10 +283,6 @@ describe('message-handlers', () => {
   });
 
   describe('PRODUCTION_ORDER_ADDED', () => {
-    beforeEach(() => {
-      initMessageHandlers();
-    });
-
     it('adds order to existing production line', () => {
       const line = createTestProductionLine({ id: 'prod-1', orders: [] });
       dispatchMessage('PRODUCTION_SITE_PRODUCTION_LINES', { productionLines: [line] });
@@ -369,10 +297,6 @@ describe('message-handlers', () => {
   });
 
   describe('PRODUCTION_ORDER_REMOVED', () => {
-    beforeEach(() => {
-      initMessageHandlers();
-    });
-
     it('removes order from production line', () => {
       const order1 = createProductionOrder({ id: 'order-1' });
       const order2 = createProductionOrder({ id: 'order-2' });
@@ -388,10 +312,6 @@ describe('message-handlers', () => {
   });
 
   describe('SHIP_SHIPS', () => {
-    beforeEach(() => {
-      initMessageHandlers();
-    });
-
     it('populates ships store', () => {
       const ships = [
         createTestShip({ id: 'ship-1' }),
@@ -405,10 +325,6 @@ describe('message-handlers', () => {
   });
 
   describe('SHIP_FLIGHT_FLIGHTS', () => {
-    beforeEach(() => {
-      initMessageHandlers();
-    });
-
     it('populates flights store', () => {
       const flights = [createTestFlight({ id: 'flight-1' })];
 
@@ -419,10 +335,6 @@ describe('message-handlers', () => {
   });
 
   describe('SHIP_FLIGHT_ENDED', () => {
-    beforeEach(() => {
-      initMessageHandlers();
-    });
-
     it('removes flight on completion', () => {
       const flight = createTestFlight({ id: 'flight-1' });
       dispatchMessage('SHIP_FLIGHT_FLIGHTS', { flights: [flight] });
@@ -434,10 +346,6 @@ describe('message-handlers', () => {
   });
 
   describe('CONTRACTS_CONTRACTS', () => {
-    beforeEach(() => {
-      initMessageHandlers();
-    });
-
     it('populates contracts store', () => {
       const contracts = [
         createTestContract({ id: 'contract-1' }),
@@ -451,10 +359,6 @@ describe('message-handlers', () => {
   });
 
   describe('malformed payload handling', () => {
-    beforeEach(() => {
-      initMessageHandlers();
-    });
-
     it('increments discardedMessages on malformed SITE_SITE payload', () => {
       expect(useConnectionStore.getState().discardedMessages).toBe(0);
 

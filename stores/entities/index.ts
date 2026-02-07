@@ -49,3 +49,19 @@ export function clearAllEntityStores(): void {
   useFlightsStore.getState().clear();
   useContractsStore.getState().clear();
 }
+
+// Batch mode — suppresses Zustand listener notifications during bulk
+// message processing. Mutations accumulate in shadow state; one set()
+// per store at endEntityBatch() prevents React error #185.
+const allStores = [
+  useSitesStore, useStorageStore, useWorkforceStore,
+  useProductionStore, useShipsStore, useFlightsStore, useContractsStore,
+];
+
+export function beginEntityBatch(): void {
+  for (const store of allStores) store.beginBatch();
+}
+
+export function endEntityBatch(): void {
+  for (const store of allStores) store.endBatch();
+}

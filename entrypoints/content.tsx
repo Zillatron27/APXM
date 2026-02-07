@@ -1,9 +1,11 @@
 import { createRoot } from 'react-dom/client';
 import { App } from '../components/App';
-import { initMessageBridge, onMessage, onMessageType } from '@prun/link/message-bus/content-bridge';
+import type { ProcessedMessage } from '@prun/link';
+import { initMessageBridge, onMessage } from '@prun/link/message-bus/content-bridge';
 import { useConnectionStore } from '../stores/connection';
 import { useSettingsStore, waitForSettingsHydration } from '../stores/settings';
-import { initMessageHandlers } from '../stores/message-handlers';
+import { initMessageHandlers, processMessage } from '../stores/message-handlers';
+import { beginEntityBatch, endEntityBatch } from '../stores/entities';
 import { populateStoresFromFio } from '../lib/fio';
 import { isDebugEnabled, createOverlay, markStep, markFailed, pollForAttribute } from '../lib/diagnostics';
 import '../assets/styles.css';
@@ -76,11 +78,32 @@ export default defineContentScript({
     initMessageBridge();
     if (debug) markStep(5, 'ok');
 
-    // 4. Register entity store handlers
+    // 4. Build message handler map (local to APXM, not registered on bridge)
     initMessageHandlers();
 
-    // 5. Register connection state handlers
+    // 5. Batched message processor
+    //
+    // Messages are queued and processed in a setTimeout(0) callback with
+    // entity store shadow batching to prevent React error #185 (maximum
+    // update depth exceeded).
+    //
+    // Problem: During PrUn's login burst, dozens of messages arrive in
+    // rapid succession. Each Zustand setState synchronously notifies
+    // React 19 via useSyncExternalStore, which forces immediate render
+    // commits (bypasses all batching). React's nestedUpdateCount
+    // accumulates across commits within a single task and throws at 50.
+    //
+    // Two-layer defense:
+    // 1. setTimeout(0) — runs in a fresh macro task where React's
+    //    nestedUpdateCount is guaranteed to be 0. The ~4ms delay also
+    //    collects more messages per batch than queueMicrotask would.
+    // 2. Entity store shadow state — beginEntityBatch() redirects all
+    //    mutations to plain Maps (no Zustand set(), no listeners, no
+    //    renders). endEntityBatch() flushes each store's final state
+    //    with one set() call: max 7 renders instead of ~60.
     let firstMessageSeen = false;
+    const messageQueue: ProcessedMessage[] = [];
+    let batchScheduled = false;
 
     onMessage((msg) => {
       if (debug && !firstMessageSeen) {
@@ -88,17 +111,38 @@ export default defineContentScript({
         markStep(6, 'ok', msg.messageType);
       }
 
-      // Single batched set() to avoid cascading React re-renders during
-      // PrUn's login burst (dozens of messages in rapid succession).
-      useConnectionStore.setState((s) => ({
-        messageCount: s.messageCount + 1,
-        lastMessageTimestamp: msg.timestamp,
-        ...(s.connected ? {} : { connected: true }),
-      }));
-    });
+      messageQueue.push(msg);
+      if (!batchScheduled) {
+        batchScheduled = true;
+        setTimeout(() => {
+          const batch = messageQueue.splice(0);
+          batchScheduled = false;
 
-    onMessageType('CLIENT_CONNECTION_OPENED', () => {
-      useConnectionStore.getState().setConnected(true);
+          beginEntityBatch();
+          try {
+            for (const m of batch) {
+              try {
+                processMessage(m);
+              } catch (error) {
+                console.error('[APXM] Message handler error:', error);
+              }
+            }
+          } finally {
+            // Flush all entity stores — one set() per store, max 7 renders
+            endEntityBatch();
+          }
+
+          // Single connection store update for the entire batch
+          if (batch.length > 0) {
+            const last = batch[batch.length - 1];
+            useConnectionStore.setState((s) => ({
+              messageCount: s.messageCount + batch.length,
+              lastMessageTimestamp: last.timestamp,
+              ...(s.connected ? {} : { connected: true }),
+            }));
+          }
+        }, 0);
+      }
     });
 
     // 6. Auto-fetch FIO data if credentials are saved (after settings hydrate)

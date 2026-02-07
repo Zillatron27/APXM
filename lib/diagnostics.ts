@@ -67,10 +67,15 @@ export function createOverlay(): HTMLElement {
   // Append now (body may not exist yet at document_start)
   (document.body || document.documentElement).appendChild(panel);
 
-  // Re-append if removed — HTML parsing or app frameworks can displace it
+  // Move to body once it exists, re-append if removed.
+  // At document_start, body doesn't exist so the panel is appended to
+  // documentElement. document.contains() returns true for elements anywhere
+  // in the document tree, so the old check never moved it into body.
+  // Checking parentNode ensures the panel lands in body's stacking context
+  // where its z-index competes correctly with the APXM shadow host.
   function ensureAttached(): void {
-    if (!document.contains(panel)) {
-      (document.body || document.documentElement).appendChild(panel);
+    if (document.body && panel.parentNode !== document.body) {
+      document.body.appendChild(panel);
     }
   }
 

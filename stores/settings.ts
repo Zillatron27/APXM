@@ -54,21 +54,46 @@ const isBrowserStorageAvailable = (): boolean => {
   }
 };
 
+// Chrome MV3: service worker can tear down while the content script is still
+// running, making browser.storage.local inaccessible. The pre-check
+// (isBrowserStorageAvailable) passes because the object still exists, but the
+// async operation rejects with "Extension context invalidated". Wrapping every
+// storage call in try/catch handles this race — data persists on the next
+// successful write.
+function isContextInvalidated(error: unknown): boolean {
+  return String(error).includes('Extension context invalidated');
+}
+
 // Custom storage adapter for browser.storage.local
 // Falls back to no-op storage when browser API isn't available (tests)
 const browserStorage: StateStorage = {
   getItem: async (name: string): Promise<string | null> => {
     if (!isBrowserStorageAvailable()) return null;
-    const result = await browser.storage.local.get(name);
-    return result[name] ?? null;
+    try {
+      const result = await browser.storage.local.get(name);
+      return result[name] ?? null;
+    } catch (error) {
+      if (isContextInvalidated(error)) return null;
+      throw error;
+    }
   },
   setItem: async (name: string, value: string): Promise<void> => {
     if (!isBrowserStorageAvailable()) return;
-    await browser.storage.local.set({ [name]: value });
+    try {
+      await browser.storage.local.set({ [name]: value });
+    } catch (error) {
+      if (isContextInvalidated(error)) return;
+      throw error;
+    }
   },
   removeItem: async (name: string): Promise<void> => {
     if (!isBrowserStorageAvailable()) return;
-    await browser.storage.local.remove(name);
+    try {
+      await browser.storage.local.remove(name);
+    } catch (error) {
+      if (isContextInvalidated(error)) return;
+      throw error;
+    }
   },
 };
 
