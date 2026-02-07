@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@prun/link':
-        specifier: git+ssh://git@github.com/Zillatron27/APEX_-Link.git#v1.0.0
-        version: git+https://git@github.com:Zillatron27/APEX_-Link.git#680286a197b9e7f8faf494e38d44dc23a5198814(@types/node@25.1.0)(jiti@1.21.7)(rollup@4.57.1)
+        specifier: git+ssh://git@github.com/Zillatron27/PrUn-Link.git#v1.0.0
+        version: git+https://git@github.com:Zillatron27/PrUn-Link.git#680286a197b9e7f8faf494e38d44dc23a5198814(@types/node@25.1.0)(jiti@1.21.7)(rollup@4.57.1)
       '@wxt-dev/module-react':
         specifier: ^1.1.5
         version: 1.1.5(vite@7.3.1(@types/node@25.1.0)(jiti@1.21.7))(wxt@0.20.13(@types/node@25.1.0)(jiti@1.21.7)(rollup@4.57.1))
@@ -430,8 +430,8 @@ packages:
     resolution: {integrity: sha512-h104Kh26rR8tm+a3Qkc5S4VLYint3FE48as7+/5oCEcKR2idC/pF1G6AhIXKI+eHPJa/3J9i5z0Al47IeGHPkA==}
     engines: {node: '>=12'}
 
-  '@prun/link@git+https://git@github.com:Zillatron27/APEX_-Link.git#680286a197b9e7f8faf494e38d44dc23a5198814':
-    resolution: {commit: 680286a197b9e7f8faf494e38d44dc23a5198814, repo: git@github.com:Zillatron27/APEX_-Link.git, type: git}
+  '@prun/link@git+https://git@github.com:Zillatron27/PrUn-Link.git#680286a197b9e7f8faf494e38d44dc23a5198814':
+    resolution: {commit: 680286a197b9e7f8faf494e38d44dc23a5198814, repo: git@github.com:Zillatron27/PrUn-Link.git, type: git}
     version: 1.0.0
 
   '@rolldown/pluginutils@1.0.0-beta.53':
@@ -2682,7 +2682,7 @@ snapshots:
       '@pnpm/network.ca-file': 1.0.2
       config-chain: 1.1.13
 
-  '@prun/link@git+https://git@github.com:Zillatron27/APEX_-Link.git#680286a197b9e7f8faf494e38d44dc23a5198814(@types/node@25.1.0)(jiti@1.21.7)(rollup@4.57.1)':
+  '@prun/link@git+https://git@github.com:Zillatron27/PrUn-Link.git#680286a197b9e7f8faf494e38d44dc23a5198814(@types/node@25.1.0)(jiti@1.21.7)(rollup@4.57.1)':
     dependencies:
       engine.io-parser: 5.2.3
       socket.io-parser: 4.2.4
