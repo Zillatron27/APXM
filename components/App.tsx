@@ -11,17 +11,30 @@ export function App() {
   // Toggle shadow host between opaque fullscreen (APXM) and collapsed transparent
   // (APEX). The :host(.apex-visible) CSS rule in styles.css handles the visual
   // switch — we just toggle the class on the shadow host element.
+  // When showing APEX, make the shadow host semi-transparent so APEX shows through.
   useEffect(() => {
-    const host = document.querySelector('apxm-overlay');
+    const host = document.querySelector('apxm-overlay') as HTMLElement | null;
     if (host) {
       host.classList.toggle('apex-visible', apexVisible);
+      if (apexVisible) {
+        host.style.opacity = '0.3';
+        host.style.pointerEvents = 'none';
+      } else {
+        host.style.opacity = '';
+        host.style.pointerEvents = '';
+      }
     }
   }, [apexVisible]);
 
-  // Offset PrUn's #container below the FloatingReturn bar when APEX is visible.
+  // Manage #container visibility and offset when toggling APEX.
+  // When APEX visible: ensure display, offset below FloatingReturn bar.
+  // When APEX hidden: clear all inline styles (CSS overlay covers APEX).
+  // Uses different properties (display/margin) than the buffer refresh engine
+  // (visibility/position/left), so no conflict between the two.
   useEffect(() => {
     function apply(el: HTMLElement): void {
       if (apexVisible) {
+        el.style.display = '';
         el.style.marginTop = '2.75rem';
         el.style.height = 'calc(100vh - 2.75rem)';
         el.style.overflow = 'auto';
@@ -29,6 +42,7 @@ export function App() {
         el.style.marginTop = '';
         el.style.height = '';
         el.style.overflow = '';
+        el.style.display = '';
       }
     }
 
