@@ -1,5 +1,22 @@
 # APXM Changelog
 
+## 0.1.1 — Stability Fixes (b1–b4)
+
+### Bug Fixes
+
+- Fix React error #185 (maximum update depth exceeded) during login message burst — entity store shadow batching + macro task scheduling reduces ~60 setState calls to 7 per batch
+- Fix debug overlay (`?apxm_debug`) not appearing — replaced 15-second self-healing timer with persistent MutationObserver, re-append overlay after shadow host mount
+- Fix Chrome "Extension context invalidated" unhandled promise rejections after service worker teardown — global rejection handler suppresses leaks from WXT framework internals
+
+### Internal
+
+- Decouple message handlers from bridge registration (local Map instead of bridge-registered callbacks)
+- Add `[APXM Diag]` console breadcrumbs for overlay lifecycle debugging
+- Entity store batch API (`beginEntityBatch`/`endEntityBatch`) for bulk message processing without per-mutation renders
+- Browser storage adapter with context invalidation guard for graceful MV3 lifecycle handling
+
+---
+
 ## 0.1.0 — Pre-release (b25)
 
 ### Orion Validation (b24–b25)
