@@ -25,10 +25,13 @@ export function isDebugEnabled(): boolean {
   return location.search.includes('apxm_debug');
 }
 
+// Module-level reference so ensureDiagnosticsVisible() can access the panel
+let diagPanel: HTMLElement | null = null;
+
 /**
  * Create the fixed-position diagnostic overlay.
- * Self-healing: re-appends to body if removed (HTML parser foster-parents
- * elements from <html> into <body>, then app frameworks can wipe body content).
+ * Self-healing via MutationObserver: re-appends to body whenever removed
+ * (HTML parser foster-parents, app framework DOM wipes, shadow host mount).
  */
 export function createOverlay(): HTMLElement {
   const panel = document.createElement('div');
@@ -64,26 +67,61 @@ export function createOverlay(): HTMLElement {
     panel.appendChild(row);
   }
 
-  // Append now (body may not exist yet at document_start)
-  (document.body || document.documentElement).appendChild(panel);
+  diagPanel = panel;
 
-  // Move to body once it exists, re-append if removed.
-  // At document_start, body doesn't exist so the panel is appended to
-  // documentElement. document.contains() returns true for elements anywhere
-  // in the document tree, so the old check never moved it into body.
-  // Checking parentNode ensures the panel lands in body's stacking context
-  // where its z-index competes correctly with the APXM shadow host.
-  function ensureAttached(): void {
+  // Append now (body may not exist yet at document_start)
+  const target = document.body || document.documentElement;
+  target.appendChild(panel);
+  console.log('[APXM Diag] Overlay created, appended to', target.tagName);
+
+  // Move to body once it exists, and re-append if anything removes it.
+  // Uses MutationObserver instead of a timer so it persists for the full
+  // page lifetime — the old 15-second setInterval expired too early.
+  function ensureInBody(): void {
     if (document.body && panel.parentNode !== document.body) {
       document.body.appendChild(panel);
+      console.log('[APXM Diag] Panel moved/re-appended to body');
     }
   }
 
-  document.addEventListener('DOMContentLoaded', ensureAttached);
-  const interval = setInterval(ensureAttached, 500);
-  setTimeout(() => clearInterval(interval), 15_000);
+  document.addEventListener('DOMContentLoaded', ensureInBody);
+
+  const observer = new MutationObserver(() => {
+    if (!document.contains(panel)) {
+      ensureInBody();
+    }
+  });
+
+  // Start observing once body exists; if it doesn't yet, wait for DOMContentLoaded
+  function startObserver(): void {
+    if (document.body) {
+      observer.observe(document.body, { childList: true, subtree: true });
+    }
+  }
+
+  if (document.body) {
+    startObserver();
+  } else {
+    document.addEventListener('DOMContentLoaded', startObserver);
+  }
 
   return panel;
+}
+
+/**
+ * Force the diagnostic panel to the end of body.
+ * Call after shadow host mount to guarantee it renders on top.
+ */
+export function ensureDiagnosticsVisible(): void {
+  if (!diagPanel) return;
+  if (document.body && diagPanel.parentNode !== document.body) {
+    document.body.appendChild(diagPanel);
+    console.log('[APXM Diag] ensureDiagnosticsVisible: re-appended to body');
+  } else if (document.body) {
+    // Already in body — move to end so it's the last fixed-position sibling
+    document.body.appendChild(diagPanel);
+    console.log('[APXM Diag] ensureDiagnosticsVisible: moved to end of body');
+  }
 }
 
 /** Mark a step as OK or failed with a timestamp. */

@@ -7,7 +7,7 @@ import { useSettingsStore, waitForSettingsHydration } from '../stores/settings';
 import { initMessageHandlers, processMessage } from '../stores/message-handlers';
 import { beginEntityBatch, endEntityBatch } from '../stores/entities';
 import { populateStoresFromFio } from '../lib/fio';
-import { isDebugEnabled, createOverlay, markStep, markFailed, pollForAttribute } from '../lib/diagnostics';
+import { isDebugEnabled, createOverlay, markStep, markFailed, pollForAttribute, ensureDiagnosticsVisible } from '../lib/diagnostics';
 import '../assets/styles.css';
 
 /**
@@ -45,6 +45,15 @@ export default defineContentScript({
   cssInjectionMode: 'ui',
 
   async main(ctx) {
+    // Suppress Chrome MV3 "Extension context invalidated" rejections.
+    // Our storage adapter handles this per-call, but WXT framework internals
+    // or timing gaps can leak rejections we don't control.
+    window.addEventListener('unhandledrejection', (e) => {
+      if (String(e.reason).includes('Extension context invalidated')) {
+        e.preventDefault();
+      }
+    });
+
     const debug = isDebugEnabled();
 
     if (debug) {
@@ -177,6 +186,9 @@ export default defineContentScript({
     });
 
     ui.mount();
-    if (debug) markStep(7, 'ok');
+    if (debug) {
+      markStep(7, 'ok');
+      ensureDiagnosticsVisible();
+    }
   },
 });
