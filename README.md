@@ -33,15 +33,15 @@ APEX <-> Game Server (WebSocket/Socket.IO)
 | Platform | Browser | Status |
 |----------|---------|--------|
 | iOS / iPadOS | Orion (Kagi) | Validated |
-| Android | Firefox | Validated |
-| Android | Kiwi Browser | Expected to work |
+| Android | Firefox | TBA |
+| Android | Kiwi Browser | TBA |
 | Desktop | Chrome / Firefox | Works (mobile-only by default, use `?apxm_force` to override) |
 
 ## Install
 
-APXM is available on [Firefox Add-ons (AMO)](https://addons.mozilla.org/en-US/firefox/addon/apxm/).
+Firefox: [Firefox Add-ons (AMO)](https://addons.mozilla.org/en-US/firefox/addon/apxm/).
 
-For Chrome or manual installation, build from source (see below).
+Chrome: will be availble on the Chrome Web Store soon.
 
 ## Build From Source
 
