@@ -1,4 +1,4 @@
-export type ConnectionStatus = 'live' | 'fio' | 'connecting';
+import type { ConnectionStatus } from '../../hooks/useConnectionStatus';
 
 interface StatusDotProps {
   status: ConnectionStatus;

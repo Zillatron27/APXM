@@ -1,24 +1,9 @@
-import { useConnectionStore } from '../../stores/connection';
-import { useSettingsStore } from '../../stores/settings';
 import { useGameState } from '../../stores/gameState';
-import { StatusDot, type ConnectionStatus } from '../shared';
+import { useConnectionStatus } from '../../hooks/useConnectionStatus';
+import { StatusDot } from '../shared';
 
 // Increment this on each build for easy verification
-const BUILD_VERSION = 'v0.1.1-b5';
-
-function useConnectionStatus(): ConnectionStatus {
-  const connected = useConnectionStore((s) => s.connected);
-  const lastMessageTimestamp = useConnectionStore((s) => s.lastMessageTimestamp);
-  const fioLastFetch = useSettingsStore((s) => s.fio.lastFetch);
-
-  if (connected && lastMessageTimestamp && Date.now() - lastMessageTimestamp < 60000) {
-    return 'live';
-  }
-  if (fioLastFetch) {
-    return 'fio';
-  }
-  return 'connecting';
-}
+const BUILD_VERSION = 'v0.1.1-b6';
 
 export function Header() {
   const status = useConnectionStatus();
