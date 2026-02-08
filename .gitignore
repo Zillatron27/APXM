@@ -21,3 +21,6 @@ Thumbs.db
 # Environment
 .env
 .env.local
+
+# Claude Code config (lives in context/ repo, symlinked here)
+CLAUDE.md
