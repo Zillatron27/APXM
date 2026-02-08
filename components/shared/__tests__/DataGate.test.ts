@@ -9,20 +9,49 @@ describe('resolveGate', () => {
   describe('all stores fetched → ready', () => {
     it('returns ready when all stores are fetched', () => {
       const stores = [store('sites', true, true), store('ships', true, false)];
-      const result = resolveGate(stores, 'live', true, 10);
+      const result = resolveGate(stores, 'live', true, 10, false);
       expect(result.state).toBe('ready');
     });
 
     it('returns ready with empty store list', () => {
-      const result = resolveGate([], 'connecting', false, 0);
+      const result = resolveGate([], 'connecting', false, 0, false);
       expect(result.state).toBe('ready');
+    });
+  });
+
+  describe('unresponsive APEX', () => {
+    it('returns unresponsive when not connected, no messages, and timed out', () => {
+      const stores = [store('sites', false, true)];
+      const result = resolveGate(stores, 'connecting', false, 0, true);
+      expect(result).toEqual({
+        state: 'unresponsive',
+        message: "APEX isn't responding — try refreshing the page",
+        pulse: false,
+      });
+    });
+
+    it('does not return unresponsive when messages have been received', () => {
+      const stores = [store('sites', false, true)];
+      const result = resolveGate(stores, 'connecting', false, 5, true);
+      // Has messages, so falls through to loading — not unresponsive
+      expect(result.state).toBe('loading');
+    });
+
+    it('custom loadingMessage overrides unresponsive message', () => {
+      const stores = [store('sites', false, true)];
+      const result = resolveGate(stores, 'connecting', false, 0, true, 'Custom timeout');
+      expect(result).toEqual({
+        state: 'unresponsive',
+        message: 'Custom timeout',
+        pulse: false,
+      });
     });
   });
 
   describe('never connected → connecting', () => {
     it('shows connecting message when not connected and no messages received', () => {
       const stores = [store('sites', false, true)];
-      const result = resolveGate(stores, 'connecting', false, 0);
+      const result = resolveGate(stores, 'connecting', false, 0, false);
       expect(result).toEqual({
         state: 'connecting',
         message: 'Connecting to APEX...',
@@ -34,7 +63,7 @@ describe('resolveGate', () => {
   describe('FIO-only + non-FIO stores → waiting for APEX', () => {
     it('shows waiting message when FIO-only and unfetched stores cannot use FIO', () => {
       const stores = [store('ships', false, false)];
-      const result = resolveGate(stores, 'fio', false, 5);
+      const result = resolveGate(stores, 'fio', false, 5, false);
       expect(result).toEqual({
         state: 'waiting-for-apex',
         message: 'Waiting for APEX connection...',
@@ -44,13 +73,13 @@ describe('resolveGate', () => {
 
     it('shows waiting message for multiple non-FIO stores', () => {
       const stores = [store('ships', false, false), store('contracts', false, false)];
-      const result = resolveGate(stores, 'fio', false, 5);
+      const result = resolveGate(stores, 'fio', false, 5, false);
       expect(result.state).toBe('waiting-for-apex');
     });
 
     it('does NOT show waiting when some unfetched stores can use FIO', () => {
       const stores = [store('sites', false, true), store('ships', false, false)];
-      const result = resolveGate(stores, 'fio', false, 5);
+      const result = resolveGate(stores, 'fio', false, 5, false);
       // Mixed: some can FIO, so we show loading, not waiting
       expect(result.state).toBe('loading');
     });
@@ -58,7 +87,7 @@ describe('resolveGate', () => {
     it('ignores already-fetched non-FIO stores', () => {
       // ships already fetched, contracts not — only contracts matters
       const stores = [store('ships', true, false), store('contracts', false, false)];
-      const result = resolveGate(stores, 'fio', false, 5);
+      const result = resolveGate(stores, 'fio', false, 5, false);
       expect(result.state).toBe('waiting-for-apex');
     });
   });
@@ -66,7 +95,7 @@ describe('resolveGate', () => {
   describe('connected + stores loading → loading', () => {
     it('shows loading with specific store names', () => {
       const stores = [store('sites', false, true), store('fleet', false, false)];
-      const result = resolveGate(stores, 'live', true, 10);
+      const result = resolveGate(stores, 'live', true, 10, false);
       expect(result).toEqual({
         state: 'loading',
         message: 'Loading sites, fleet...',
@@ -76,7 +105,7 @@ describe('resolveGate', () => {
 
     it('shows loading for single unfetched store', () => {
       const stores = [store('sites', true, true), store('fleet', false, false)];
-      const result = resolveGate(stores, 'live', true, 10);
+      const result = resolveGate(stores, 'live', true, 10, false);
       expect(result).toEqual({
         state: 'loading',
         message: 'Loading fleet...',
@@ -87,7 +116,7 @@ describe('resolveGate', () => {
     it('shows loading when connecting status with messages received', () => {
       const stores = [store('sites', false, true)];
       // Not connected but has received messages before (reconnecting)
-      const result = resolveGate(stores, 'connecting', false, 5);
+      const result = resolveGate(stores, 'connecting', false, 5, false);
       expect(result.state).toBe('loading');
     });
   });
@@ -95,7 +124,7 @@ describe('resolveGate', () => {
   describe('custom loadingMessage override', () => {
     it('overrides connecting message', () => {
       const stores = [store('sites', false, true)];
-      const result = resolveGate(stores, 'connecting', false, 0, 'Please wait...');
+      const result = resolveGate(stores, 'connecting', false, 0, false, 'Please wait...');
       expect(result).toEqual({
         state: 'connecting',
         message: 'Please wait...',
@@ -105,7 +134,7 @@ describe('resolveGate', () => {
 
     it('overrides waiting-for-apex message', () => {
       const stores = [store('ships', false, false)];
-      const result = resolveGate(stores, 'fio', false, 5, 'Custom wait');
+      const result = resolveGate(stores, 'fio', false, 5, false, 'Custom wait');
       expect(result).toEqual({
         state: 'waiting-for-apex',
         message: 'Custom wait',
@@ -115,7 +144,7 @@ describe('resolveGate', () => {
 
     it('overrides loading message', () => {
       const stores = [store('sites', false, true)];
-      const result = resolveGate(stores, 'live', true, 10, 'Custom loading');
+      const result = resolveGate(stores, 'live', true, 10, false, 'Custom loading');
       expect(result).toEqual({
         state: 'loading',
         message: 'Custom loading',

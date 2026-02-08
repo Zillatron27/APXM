@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useContractsStore } from '../../stores/entities/contracts';
 import { Card, SectionHeader, StateTile, type TileVariant } from '../shared';
 import { useGameState } from '../../stores/gameState';
+import { useConnectionStore } from '../../stores/connection';
 import { useConnectionStatus } from '../../hooks/useConnectionStatus';
 import type { PrunApi } from '../../types/prun-api';
 
@@ -68,6 +69,7 @@ function getDeadlineColor(dueDate: number | null): string {
 
 export function ContractsMiniList() {
   const { setActiveTab } = useGameState();
+  const apexUnresponsive = useConnectionStore((s) => s.apexUnresponsive);
   const contractsLastUpdated = useContractsStore((s) => s.lastUpdated);
   const contractsFetched = useContractsStore((s) => s.fetched);
   const connectionStatus = useConnectionStatus();
@@ -113,16 +115,18 @@ export function ContractsMiniList() {
 
   // Determine loading state for empty-state message
   const emptyMessage = !contractsFetched
-    ? connectionStatus === 'fio'
-      ? { text: 'Waiting for APEX connection...', pulse: false }
-      : { text: 'Loading contracts...', pulse: true }
+    ? apexUnresponsive
+      ? { text: 'APEX not responding', pulse: false }
+      : connectionStatus === 'fio'
+        ? { text: 'Waiting for APEX connection...', pulse: false }
+        : { text: 'Loading contracts...', pulse: true }
     : { text: 'No active contracts', pulse: false };
 
   if (topContracts.length === 0) {
     return (
       <Card>
         <SectionHeader title="Contracts" onViewAll={() => setActiveTab('contracts')} />
-        <p className={`text-xs text-apxm-muted ${emptyMessage.pulse ? 'animate-pulse' : ''}`}>
+        <p className={`text-xs ${apexUnresponsive && !contractsFetched ? 'text-status-critical' : 'text-apxm-muted'} ${emptyMessage.pulse ? 'animate-pulse' : ''}`}>
           {emptyMessage.text}
         </p>
       </Card>

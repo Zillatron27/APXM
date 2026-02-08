@@ -3,6 +3,7 @@ import { useShipsStore } from '../../stores/entities/ships';
 import { getFlightByShipId } from '../../stores/entities/flights';
 import { Card, SectionHeader, StateTile } from '../shared';
 import { useGameState } from '../../stores/gameState';
+import { useConnectionStore } from '../../stores/connection';
 import { useConnectionStatus } from '../../hooks/useConnectionStatus';
 import { formatEta } from '../../lib/fleet-utils';
 import { useTick } from '../../lib/use-tick';
@@ -40,6 +41,7 @@ function getDestinationName(address: PrunApi.Address): string {
 
 export function FleetMiniList() {
   const { setActiveTab } = useGameState();
+  const apexUnresponsive = useConnectionStore((s) => s.apexUnresponsive);
   const shipsLastUpdated = useShipsStore((s) => s.lastUpdated);
   const shipsFetched = useShipsStore((s) => s.fetched);
   const connectionStatus = useConnectionStatus();
@@ -104,16 +106,18 @@ export function FleetMiniList() {
 
   // Determine loading state for empty-state message
   const emptyMessage = !shipsFetched
-    ? connectionStatus === 'fio'
-      ? { text: 'Waiting for APEX connection...', pulse: false }
-      : { text: 'Loading fleet...', pulse: true }
+    ? apexUnresponsive
+      ? { text: 'APEX not responding', pulse: false }
+      : connectionStatus === 'fio'
+        ? { text: 'Waiting for APEX connection...', pulse: false }
+        : { text: 'Loading fleet...', pulse: true }
     : { text: 'No ship data available', pulse: false };
 
   if (topShips.length === 0) {
     return (
       <Card>
         <SectionHeader title="Fleet" onViewAll={() => setActiveTab('fleet')} />
-        <p className={`text-xs text-apxm-muted ${emptyMessage.pulse ? 'animate-pulse' : ''}`}>
+        <p className={`text-xs ${apexUnresponsive && !shipsFetched ? 'text-status-critical' : 'text-apxm-muted'} ${emptyMessage.pulse ? 'animate-pulse' : ''}`}>
           {emptyMessage.text}
         </p>
       </Card>

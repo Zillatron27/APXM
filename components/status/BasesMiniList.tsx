@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useSiteBurns, sortByUrgency } from '../burn';
 import { Card, SectionHeader, TimeBadge } from '../shared';
 import { useGameState } from '../../stores/gameState';
+import { useConnectionStore } from '../../stores/connection';
 import { useSitesStore } from '../../stores/entities/sites';
 import { useWorkforceStore } from '../../stores/entities/workforce';
 import { useProductionStore } from '../../stores/entities/production';
@@ -11,6 +12,7 @@ export function BasesMiniList() {
   const { setActiveTab } = useGameState();
   const siteBurns = useSiteBurns();
 
+  const apexUnresponsive = useConnectionStore((s) => s.apexUnresponsive);
   const sitesFetched = useSitesStore((s) => s.fetched);
   const workforceFetched = useWorkforceStore((s) => s.fetched);
   const productionFetched = useProductionStore((s) => s.fetched);
@@ -22,17 +24,19 @@ export function BasesMiniList() {
   }, [siteBurns]);
 
   // Determine loading state for empty-state message
-  const emptyMessage = !sitesFetched
-    ? { text: 'Loading bases...', pulse: true }
-    : !(workforceFetched && productionFetched && storageFetched)
-      ? { text: 'Loading burn data...', pulse: true }
-      : { text: 'No base data available', pulse: false };
+  const emptyMessage = apexUnresponsive && !sitesFetched
+    ? { text: 'APEX not responding', pulse: false }
+    : !sitesFetched
+      ? { text: 'Loading bases...', pulse: true }
+      : !(workforceFetched && productionFetched && storageFetched)
+        ? { text: 'Loading burn data...', pulse: true }
+        : { text: 'No base data available', pulse: false };
 
   if (topBases.length === 0) {
     return (
       <Card>
         <SectionHeader title="Bases" onViewAll={() => setActiveTab('bases')} />
-        <p className={`text-xs text-apxm-muted ${emptyMessage.pulse ? 'animate-pulse' : ''}`}>
+        <p className={`text-xs ${apexUnresponsive && !sitesFetched ? 'text-status-critical' : 'text-apxm-muted'} ${emptyMessage.pulse ? 'animate-pulse' : ''}`}>
           {emptyMessage.text}
         </p>
       </Card>

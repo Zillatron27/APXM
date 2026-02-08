@@ -9,6 +9,8 @@ interface ConnectionState {
   discardedMessages: number;
   /** First 20 unique message types seen that have no registered handler */
   unknownMessageTypes: string[];
+  /** true if no WebSocket messages arrived within the startup timeout */
+  apexUnresponsive: boolean;
 }
 
 interface ConnectionActions {
@@ -18,6 +20,7 @@ interface ConnectionActions {
   incrementReconnectCount: () => void;
   incrementDiscarded: () => void;
   addUnknownMessageType: (type: string) => void;
+  setApexUnresponsive: (value: boolean) => void;
   reset: () => void;
 }
 
@@ -30,6 +33,7 @@ const initialState: ConnectionState = {
   reconnectCount: 0,
   discardedMessages: 0,
   unknownMessageTypes: [],
+  apexUnresponsive: false,
 };
 
 export const useConnectionStore = create<ConnectionStore>((set) => ({
@@ -54,6 +58,8 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
       if (state.unknownMessageTypes.length >= 20) return state;
       return { unknownMessageTypes: [...state.unknownMessageTypes, type] };
     }),
+
+  setApexUnresponsive: (apexUnresponsive) => set({ apexUnresponsive }),
 
   reset: () => set(initialState),
 }));

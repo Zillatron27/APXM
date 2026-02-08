@@ -10,6 +10,7 @@ describe('connection store', () => {
       reconnectCount: 0,
       discardedMessages: 0,
       unknownMessageTypes: [],
+      apexUnresponsive: false,
     });
   });
 
@@ -36,6 +37,10 @@ describe('connection store', () => {
 
     it('starts with empty unknownMessageTypes', () => {
       expect(useConnectionStore.getState().unknownMessageTypes).toEqual([]);
+    });
+
+    it('starts with apexUnresponsive false', () => {
+      expect(useConnectionStore.getState().apexUnresponsive).toBe(false);
     });
   });
 
@@ -111,12 +116,23 @@ describe('connection store', () => {
     });
   });
 
+  describe('setApexUnresponsive', () => {
+    it('updates apexUnresponsive state', () => {
+      useConnectionStore.getState().setApexUnresponsive(true);
+      expect(useConnectionStore.getState().apexUnresponsive).toBe(true);
+
+      useConnectionStore.getState().setApexUnresponsive(false);
+      expect(useConnectionStore.getState().apexUnresponsive).toBe(false);
+    });
+  });
+
   describe('reset', () => {
     it('resets all state to initial values', () => {
       useConnectionStore.getState().setConnected(true);
       useConnectionStore.getState().setLastMessageTimestamp(12345);
       useConnectionStore.getState().incrementMessageCount();
       useConnectionStore.getState().incrementReconnectCount();
+      useConnectionStore.getState().setApexUnresponsive(true);
 
       useConnectionStore.getState().reset();
 
@@ -124,6 +140,7 @@ describe('connection store', () => {
       expect(useConnectionStore.getState().lastMessageTimestamp).toBeNull();
       expect(useConnectionStore.getState().messageCount).toBe(0);
       expect(useConnectionStore.getState().reconnectCount).toBe(0);
+      expect(useConnectionStore.getState().apexUnresponsive).toBe(false);
     });
 
     it('resets diagnostic counters on reconnect', () => {

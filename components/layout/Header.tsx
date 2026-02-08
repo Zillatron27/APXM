@@ -3,7 +3,7 @@ import { useConnectionStatus } from '../../hooks/useConnectionStatus';
 import { StatusDot } from '../shared';
 
 // Increment this on each build for easy verification
-const BUILD_VERSION = 'v0.1.1-b6';
+const BUILD_VERSION = 'v0.1.1-b7';
 
 export function Header() {
   const status = useConnectionStatus();

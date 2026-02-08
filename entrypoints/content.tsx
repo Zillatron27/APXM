@@ -124,11 +124,20 @@ export default defineContentScript({
               messageCount: s.messageCount + batch.length,
               lastMessageTimestamp: last.timestamp,
               ...(s.connected ? {} : { connected: true }),
+              ...(s.apexUnresponsive ? { apexUnresponsive: false } : {}),
             }));
           }
         }, 0);
       }
     });
+
+    // 5b. Detect unresponsive APEX — if no messages arrive within 5s, flag it
+    const APEX_TIMEOUT_MS = 5000;
+    setTimeout(() => {
+      if (useConnectionStore.getState().messageCount === 0) {
+        useConnectionStore.getState().setApexUnresponsive(true);
+      }
+    }, APEX_TIMEOUT_MS);
 
     // 6. Auto-fetch FIO data if credentials are saved (after settings hydrate)
     waitForSettingsHydration().then(() => {

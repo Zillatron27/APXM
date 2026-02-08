@@ -17,6 +17,7 @@ interface DataGateProps {
 export type GateResult =
   | { state: 'ready' }
   | { state: 'connecting'; message: string; pulse: true }
+  | { state: 'unresponsive'; message: string; pulse: false }
   | { state: 'waiting-for-apex'; message: string; pulse: false }
   | { state: 'loading'; message: string; pulse: true };
 
@@ -29,10 +30,20 @@ export function resolveGate(
   connectionStatus: ConnectionStatus,
   connected: boolean,
   messageCount: number,
+  apexUnresponsive: boolean,
   loadingMessage?: string,
 ): GateResult {
   if (requiredStores.every((s) => s.fetched)) {
     return { state: 'ready' };
+  }
+
+  // APEX not responding — timed out waiting for initial WebSocket activity
+  if (!connected && messageCount === 0 && apexUnresponsive) {
+    return {
+      state: 'unresponsive',
+      message: loadingMessage ?? "APEX isn't responding — try refreshing the page",
+      pulse: false,
+    };
   }
 
   // Never connected — still establishing initial connection
@@ -71,11 +82,20 @@ export function DataGate({ requiredStores, children, loadingMessage }: DataGateP
   const connectionStatus = useConnectionStatus();
   const connected = useConnectionStore((s) => s.connected);
   const messageCount = useConnectionStore((s) => s.messageCount);
+  const apexUnresponsive = useConnectionStore((s) => s.apexUnresponsive);
 
-  const result = resolveGate(requiredStores, connectionStatus, connected, messageCount, loadingMessage);
+  const result = resolveGate(requiredStores, connectionStatus, connected, messageCount, apexUnresponsive, loadingMessage);
 
   if (result.state === 'ready') {
     return <>{children}</>;
+  }
+
+  if (result.state === 'unresponsive') {
+    return (
+      <p className="text-sm text-status-critical py-4 text-center">
+        {result.message}
+      </p>
+    );
   }
 
   return (
