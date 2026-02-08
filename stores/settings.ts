@@ -5,6 +5,7 @@ import { browser } from 'wxt/browser';
 export interface BurnThresholds {
   critical: number; // days — default 3
   warning: number; // days — default 5
+  resupply: number; // days — default 30 (how much to buy)
 }
 
 export interface FioConfig {
@@ -31,7 +32,7 @@ interface SettingsActions {
 
 type SettingsStore = SettingsState & SettingsActions;
 
-const DEFAULT_THRESHOLDS: BurnThresholds = { critical: 3, warning: 5 };
+export const DEFAULT_THRESHOLDS: BurnThresholds = { critical: 3, warning: 5, resupply: 30 };
 
 const DEFAULT_FIO_CONFIG: FioConfig = {
   apiKey: null,
@@ -130,6 +131,17 @@ export const useSettingsStore = create<SettingsStore>()(
     {
       name: 'apxm-settings',
       storage: createJSONStorage(() => browserStorage),
+      // Deep-merge nested objects so new fields (e.g. resupply) get their
+      // defaults even when rehydrating from storage that predates them.
+      merge: (persisted, current) => {
+        const state = persisted as Partial<SettingsState> | undefined;
+        return {
+          ...current,
+          ...state,
+          burnThresholds: { ...current.burnThresholds, ...state?.burnThresholds },
+          fio: { ...current.fio, ...state?.fio },
+        };
+      },
       onRehydrateStorage: () => () => {
         resolveHydration();
       },

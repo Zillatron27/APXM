@@ -3,11 +3,12 @@ import { useSitesStore } from '../../stores/entities/sites';
 import { useProductionStore } from '../../stores/entities/production';
 import { useWorkforceStore } from '../../stores/entities/workforce';
 import { useStorageStore } from '../../stores/entities/storage';
+import { useSettingsStore } from '../../stores/settings';
 import { calculateAllBurns, type SiteBurnSummary } from '../../core/burn';
 
 /**
  * Hook that calculates burn summaries for all sites.
- * Re-calculates when any relevant store data changes.
+ * Re-calculates when any relevant store data or settings change.
  */
 export function useSiteBurns(): SiteBurnSummary[] {
   // Subscribe to store updates to trigger recalculation
@@ -15,10 +16,11 @@ export function useSiteBurns(): SiteBurnSummary[] {
   const productionLastUpdated = useProductionStore((s) => s.lastUpdated);
   const workforceLastUpdated = useWorkforceStore((s) => s.lastUpdated);
   const storageLastUpdated = useStorageStore((s) => s.lastUpdated);
+  const burnThresholds = useSettingsStore((s) => s.burnThresholds);
 
   return useMemo(() => {
     return calculateAllBurns();
-  }, [sitesLastUpdated, productionLastUpdated, workforceLastUpdated, storageLastUpdated]);
+  }, [sitesLastUpdated, productionLastUpdated, workforceLastUpdated, storageLastUpdated, burnThresholds]);
 }
 
 /**

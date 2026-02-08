@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Card, MaterialTile } from '../shared';
-import { useSettingsStore, type MaterialTheme } from '../../stores/settings';
+import { useSettingsStore, DEFAULT_THRESHOLDS, type MaterialTheme } from '../../stores/settings';
 import { testConnection, populateStoresFromFio, type FioProgressStep } from '../../lib/fio';
 
 type ConnectionStatus = 'untested' | 'testing' | 'valid' | 'invalid';
@@ -20,8 +20,73 @@ function formatRelativeTime(timestamp: number): string {
   return `${Math.floor(seconds / 86400)} days ago`;
 }
 
+export function validateThresholds(
+  critical: number,
+  warning: number,
+  resupply: number
+): string | null {
+  if (critical <= 0 || warning <= 0 || resupply <= 0) {
+    return 'All values must be greater than 0';
+  }
+  if (critical >= warning) {
+    return 'Critical must be less than warning';
+  }
+  if (resupply < warning) {
+    return 'Resupply target must be at least the warning threshold';
+  }
+  return null;
+}
+
 export function SettingsView() {
-  const { fio, setFioConfig, setFioLastFetch, materialTheme, setMaterialTheme } = useSettingsStore();
+  const { fio, setFioConfig, setFioLastFetch, materialTheme, setMaterialTheme, burnThresholds, setBurnThresholds } = useSettingsStore();
+
+  // Burn threshold local state — strings for free-form editing, persist on valid input
+  const [critical, setCritical] = useState(String(burnThresholds.critical));
+  const [warning, setWarning] = useState(String(burnThresholds.warning));
+  const [resupply, setResupply] = useState(String(burnThresholds.resupply));
+  const [thresholdError, setThresholdError] = useState<string | null>(null);
+
+  // Sync local state when store changes (e.g. reset to defaults)
+  useEffect(() => {
+    setCritical(String(burnThresholds.critical));
+    setWarning(String(burnThresholds.warning));
+    setResupply(String(burnThresholds.resupply));
+  }, [burnThresholds.critical, burnThresholds.warning, burnThresholds.resupply]);
+
+  const handleThresholdChange = (
+    field: 'critical' | 'warning' | 'resupply',
+    value: string
+  ) => {
+    // Always update the display string so the user can type freely
+    if (field === 'critical') setCritical(value);
+    if (field === 'warning') setWarning(value);
+    if (field === 'resupply') setResupply(value);
+
+    const num = parseFloat(value);
+    if (isNaN(num) || value.trim() === '') {
+      setThresholdError(null);
+      return;
+    }
+
+    const current = {
+      critical: parseFloat(critical),
+      warning: parseFloat(warning),
+      resupply: parseFloat(resupply),
+      [field]: num,
+    };
+
+    const error = validateThresholds(current.critical, current.warning, current.resupply);
+    setThresholdError(error);
+
+    if (!error) {
+      setBurnThresholds({ [field]: num });
+    }
+  };
+
+  const handleResetThresholds = () => {
+    setBurnThresholds(DEFAULT_THRESHOLDS);
+    setThresholdError(null);
+  };
 
   const [username, setUsername] = useState('');
   const [apiKey, setApiKey] = useState('');
@@ -103,6 +168,59 @@ export function SettingsView() {
 
   return (
     <div className="space-y-4">
+      {/* Burn Thresholds Section */}
+      <Card>
+        <h2 className="text-prun-yellow text-sm font-semibold mb-1">Burn Thresholds</h2>
+        <p className="text-xs text-apxm-muted mb-3">All fields in days</p>
+
+        <div className="space-y-3">
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="block text-apxm-muted text-xs mb-1">Critical (red)</label>
+              <input
+                type="number"
+                value={critical}
+                onChange={(e) => handleThresholdChange('critical', e.target.value)}
+                className="w-full min-h-touch px-3 py-2 text-sm bg-apxm-bg border border-apxm-accent rounded text-apxm-text outline-none focus:border-prun-yellow"
+              />
+            </div>
+
+            <div className="flex-1">
+              <label className="block text-apxm-muted text-xs mb-1">Warning (yellow)</label>
+              <input
+                type="number"
+                value={warning}
+                onChange={(e) => handleThresholdChange('warning', e.target.value)}
+                className="w-full min-h-touch px-3 py-2 text-sm bg-apxm-bg border border-apxm-accent rounded text-apxm-text outline-none focus:border-prun-yellow"
+              />
+            </div>
+
+            <div className="flex-1">
+              <label className="block text-apxm-muted text-xs mb-1">Resupply</label>
+              <input
+                type="number"
+                value={resupply}
+                onChange={(e) => handleThresholdChange('resupply', e.target.value)}
+                className="w-full min-h-touch px-3 py-2 text-sm bg-apxm-bg border border-apxm-accent rounded text-apxm-text outline-none focus:border-prun-yellow"
+              />
+            </div>
+          </div>
+
+          <p className="text-xs text-apxm-muted">Resupply: target amount of supply for the burn 'Need' column</p>
+
+          {thresholdError && (
+            <p className="text-xs text-status-critical">{thresholdError}</p>
+          )}
+
+          <button
+            onClick={handleResetThresholds}
+            className="w-full min-h-touch px-4 py-2 text-sm rounded border border-apxm-accent text-apxm-muted font-semibold hover:border-prun-yellow hover:text-prun-yellow"
+          >
+            Reset to Defaults
+          </button>
+        </div>
+      </Card>
+
       {/* FIO API Key Section */}
       <Card>
         <h2 className="text-prun-yellow text-sm font-semibold mb-3">FIO API Key</h2>

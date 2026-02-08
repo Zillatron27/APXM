@@ -211,8 +211,8 @@ export function classifyUrgency(
 }
 
 /**
- * Calculates how much material needs to be purchased to reach the green threshold.
- * greenThreshold = warning threshold (inventory should last at least this many days)
+ * Calculates how much material needs to be purchased to reach the resupply target.
+ * greenThreshold = resupply target in days (how much inventory to buy up to)
  */
 export function calculateNeed(
   netDailyAmount: number,
@@ -337,7 +337,7 @@ export function calculateSiteBurn(siteId: string): SiteBurnSummary {
       workforceConsumption
     );
     const urgency = classifyUrgency(daysRemaining, dailyAmount, thresholds);
-    const need = calculateNeed(dailyAmount, inventoryAmount, thresholds.warning);
+    const need = calculateNeed(dailyAmount, inventoryAmount, thresholds.resupply);
 
     // Get material name from either source
     const materialName = production.name ?? workforce.name;

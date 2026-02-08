@@ -394,7 +394,7 @@ describe('burn.ts', () => {
   });
 
   describe('classifyUrgency', () => {
-    const thresholds: BurnThresholds = { critical: 3, warning: 5 };
+    const thresholds: BurnThresholds = { critical: 3, warning: 5, resupply: 30 };
 
     it('returns surplus when net positive', () => {
       expect(classifyUrgency(Infinity, 5, thresholds)).toBe('surplus');
@@ -984,7 +984,7 @@ describe('burn.ts', () => {
       expect(ratBurn?.productionOutput).toBe(5);
     });
 
-    it('calculates need correctly at various inventory levels', () => {
+    it('calculates need using resupply target (not warning threshold)', () => {
       const workforce: WorkforceEntity = {
         siteId,
         address: createAddress({ planetName: 'Montem' }),
@@ -1001,14 +1001,45 @@ describe('burn.ts', () => {
       };
       useWorkforceStore.getState().setOne(workforce);
 
-      // Test with 20 RAT (target = 5 × 10 = 50, need = 30)
+      // Default resupply = 30 days, consumption = 10/day
+      // target = 30 × 10 = 300, inventory = 20, need = 280
       const store = createStorageWithItems(siteId, [{ ticker: 'RAT', amount: 20 }]);
       useStorageStore.getState().setOne(store);
 
       const result = calculateSiteBurn(siteId);
 
       const ratBurn = result.burns.find((b) => b.materialTicker === 'RAT');
-      expect(ratBurn?.need).toBe(30);
+      expect(ratBurn?.need).toBe(280);
+    });
+
+    it('uses custom resupply threshold for need calculation', () => {
+      useSettingsStore.getState().setBurnThresholds({ resupply: 14 });
+
+      const workforce: WorkforceEntity = {
+        siteId,
+        address: createAddress({ planetName: 'Montem' }),
+        workforces: [
+          createWorkforce({
+            needs: [
+              createNeed({
+                material: createMaterial({ ticker: 'RAT' }),
+                unitsPerInterval: 10,
+              }),
+            ],
+          }),
+        ],
+      };
+      useWorkforceStore.getState().setOne(workforce);
+
+      // resupply = 14, consumption = 10/day
+      // target = 14 × 10 = 140, inventory = 20, need = 120
+      const store = createStorageWithItems(siteId, [{ ticker: 'RAT', amount: 20 }]);
+      useStorageStore.getState().setOne(store);
+
+      const result = calculateSiteBurn(siteId);
+
+      const ratBurn = result.burns.find((b) => b.materialTicker === 'RAT');
+      expect(ratBurn?.need).toBe(120);
     });
 
     it('handles missing workforce gracefully (production burns only)', () => {
@@ -1131,6 +1162,38 @@ describe('burn.ts', () => {
 
       expect(result.mostUrgent?.materialTicker).toBe('RAT');
       expect(result.mostUrgent?.daysRemaining).toBe(2);
+    });
+
+    it('changing thresholds changes urgency classification', () => {
+      const workforce: WorkforceEntity = {
+        siteId,
+        address: createAddress({ planetName: 'Montem' }),
+        workforces: [
+          createWorkforce({
+            needs: [
+              createNeed({
+                material: createMaterial({ ticker: 'RAT' }),
+                unitsPerInterval: 10,
+              }),
+            ],
+          }),
+        ],
+      };
+      useWorkforceStore.getState().setOne(workforce);
+
+      // 40 RAT / 10 per day = 4 days remaining
+      const store = createStorageWithItems(siteId, [{ ticker: 'RAT', amount: 40 }]);
+      useStorageStore.getState().setOne(store);
+
+      // Default thresholds: critical=3, warning=5
+      // 4 days → warning (between critical and warning)
+      const result1 = calculateSiteBurn(siteId);
+      expect(result1.burns.find((b) => b.materialTicker === 'RAT')?.urgency).toBe('warning');
+
+      // Raise warning to 3 (same as critical) — 4 days is now "ok"
+      useSettingsStore.getState().setBurnThresholds({ critical: 2, warning: 3 });
+      const result2 = calculateSiteBurn(siteId);
+      expect(result2.burns.find((b) => b.materialTicker === 'RAT')?.urgency).toBe('ok');
     });
   });
 
