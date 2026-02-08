@@ -1,19 +1,29 @@
 # APXM Changelog
 
-## 0.1.1 — Stability Fixes (b1–b4)
+## 0.1.1 — Loading States & Settings (b1–b7)
+
+### Features
+
+- **Unresponsive APEX detection** — 5-second timeout detects when APEX fails to load (maintenance, broken update, network issue). Shows red "APEX isn't responding" instead of indefinite "Connecting to APEX..." pulse. Clears automatically if APEX loads late.
+- **Connection-aware loading indicators** — DataGate component and inline mini-list checks distinguish "waiting for data" from "genuinely empty." FIO-only mode shows stable "Waiting for APEX connection..." for non-FIO stores instead of false empty states.
+- **Burn threshold settings** — configurable critical/warning/resupply day thresholds in Settings view. Need calculation uses resupply target instead of warning threshold. Validates critical < warning <= resupply.
+- **Desktop guard** — APXM only activates on touch devices (`pointer: coarse`). Use `?apxm_force` URL param to override for desktop testing.
 
 ### Bug Fixes
 
 - Fix React error #185 (maximum update depth exceeded) during login message burst — entity store shadow batching + macro task scheduling reduces ~60 setState calls to 7 per batch
 - Fix debug overlay (`?apxm_debug`) not appearing — replaced 15-second self-healing timer with persistent MutationObserver, re-append overlay after shadow host mount
 - Fix Chrome "Extension context invalidated" unhandled promise rejections after service worker teardown — global rejection handler suppresses leaks from WXT framework internals
+- Fix burn UI not updating when thresholds change (reactivity)
+- Fix settings rehydration dropping new fields — deep-merge persisted settings so new fields get defaults
 
 ### Internal
 
 - Decouple message handlers from bridge registration (local Map instead of bridge-registered callbacks)
-- Add `[APXM Diag]` console breadcrumbs for overlay lifecycle debugging
+- `__DEV__` build flag for production log stripping — all logging routed through `logger.ts`
 - Entity store batch API (`beginEntityBatch`/`endEntityBatch`) for bulk message processing without per-mutation renders
 - Browser storage adapter with context invalidation guard for graceful MV3 lifecycle handling
+- `useConnectionStatus` hook for consistent connection state derivation
 
 ---
 
