@@ -9,6 +9,9 @@ import { beginEntityBatch, endEntityBatch } from '../stores/entities';
 import { populateStoresFromFio } from '../lib/fio';
 import { warn, error as logError } from '../lib/debug/logger';
 import { isDebugEnabled, createOverlay, markStep, markFailed, pollForAttribute, ensureDiagnosticsVisible } from '../lib/diagnostics';
+import { initRefreshMode, isAutoRefreshEnabled } from '../lib/buffer-refresh';
+import { executeBatchRefresh } from '../lib/buffer-refresh';
+import { useSitesStore } from '../stores/entities';
 import '../assets/styles.css';
 
 export default defineContentScript({
@@ -186,6 +189,26 @@ export default defineContentScript({
     if (debug) {
       markStep(7, 'ok');
       ensureDiagnosticsVisible();
+    }
+
+    // 8. Initialize buffer refresh mode from URL param
+    initRefreshMode();
+
+    // 9. Auto-refresh: when mode is 'auto', wait for sites to load then
+    //    batch-refresh all bases. Uses Zustand subscribe() to react to
+    //    store state rather than a second onMessage listener.
+    if (isAutoRefreshEnabled()) {
+      const unsub = useSitesStore.subscribe((state) => {
+        if (state.fetched && state.getAll().length > 0) {
+          unsub();
+          // 2s delay ensures the full login burst completes before
+          // refresh begins — avoids competing with message processing
+          setTimeout(() => {
+            const siteIds = useSitesStore.getState().getAll().map((s) => s.siteId);
+            executeBatchRefresh({ siteIds });
+          }, 2000);
+        }
+      });
     }
   },
 });

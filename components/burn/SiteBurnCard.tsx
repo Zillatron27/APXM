@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import type { SiteBurnSummary, BurnRate } from '../../core/burn';
+import { useRefreshState } from '../../stores/refreshState';
+import { executeBufferRefresh, buildBufferCommand } from '../../lib/buffer-refresh';
 import { BurnBadge } from './BurnBadge';
 import { BurnRow } from './BurnRow';
 
@@ -46,12 +48,23 @@ function sortBurns(burns: BurnRate[]): BurnRate[] {
  */
 export function SiteBurnCard({ summary, defaultExpanded = false }: SiteBurnCardProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
-  const { siteName, burns, mostUrgent } = summary;
+  const { siteId, siteName, burns, mostUrgent } = summary;
+
+  const mode = useRefreshState((s) => s.mode);
+  const siteStatus = useRefreshState((s) => s.siteStatus.get(siteId));
 
   const sortedBurns = sortBurns(burns);
-  const consumingCount = burns.filter((b) => b.dailyAmount < 0).length;
   const criticalCount = burns.filter((b) => b.urgency === 'critical').length;
   const warningCount = burns.filter((b) => b.urgency === 'warning').length;
+
+  const showRefreshButton = mode === 'manual' || mode === 'batch';
+  const isLoading = siteStatus === 'loading';
+
+  function handleRefresh(e: React.MouseEvent): void {
+    e.stopPropagation();
+    if (isLoading) return;
+    executeBufferRefresh({ siteId, command: buildBufferCommand(siteId) });
+  }
 
   return (
     <div className="bg-apxm-surface overflow-hidden">
@@ -82,20 +95,52 @@ export function SiteBurnCard({ summary, defaultExpanded = false }: SiteBurnCardP
           )}
         </div>
 
-        {/* Most urgent item preview */}
-        {mostUrgent && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-apxm-text/70">{mostUrgent.materialTicker}</span>
-            <BurnBadge urgency={mostUrgent.urgency} daysRemaining={mostUrgent.daysRemaining} />
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Refresh button */}
+          {showRefreshButton && (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={handleRefresh}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleRefresh(e as unknown as React.MouseEvent); }}
+              className={`min-h-touch w-8 flex items-center justify-center text-sm ${
+                isLoading
+                  ? 'text-apxm-muted cursor-wait'
+                  : siteStatus === 'success'
+                    ? 'text-green-400'
+                    : siteStatus === 'error'
+                      ? 'text-red-400'
+                      : 'text-apxm-text/50 hover:text-prun-yellow'
+              }`}
+              aria-label={`Refresh ${siteName}`}
+            >
+              {isLoading ? (
+                <span className="animate-spin">↻</span>
+              ) : siteStatus === 'success' ? (
+                '✓'
+              ) : siteStatus === 'error' ? (
+                '✗'
+              ) : (
+                '↻'
+              )}
+            </span>
+          )}
+
+          {/* Most urgent item preview */}
+          {mostUrgent && (
+            <>
+              <span className="text-xs text-apxm-text/70">{mostUrgent.materialTicker}</span>
+              <BurnBadge urgency={mostUrgent.urgency} daysRemaining={mostUrgent.daysRemaining} />
+            </>
+          )}
+        </div>
       </button>
 
       {/* Expanded content */}
       {expanded && (
         <div className="px-3 pb-3 border-t border-apxm-bg">
           {sortedBurns.length === 0 ? (
-            <p className="text-sm text-apxm-text/50 py-2">Awaiting data — open BS buffers</p>
+            <p className="text-sm text-apxm-text/50 py-2">Awaiting data — tap refresh or open BS buffer in APEX</p>
           ) : (
             <div className="divide-y divide-apxm-bg/50">
               {/* Column headers */}
