@@ -1,6 +1,6 @@
 # APXM (APEX Mobile)
 
-Mobile-optimized browser extension for [Prosperous Universe](https://prosperousuniverse.com). Replaces the APEX web interface on phones with a touch-first UI while the underlying game client keeps running.
+A mobile browser extension for [Prosperous Universe](https://prosperousuniverse.com). Replaces the APEX web interface on phones with a touch-first UI while the underlying game client keeps running.
 
 **Read-only.** APXM observes WebSocket traffic and displays your empire status. It never sends messages to the game server or clicks anything on your behalf.
 
