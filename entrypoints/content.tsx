@@ -171,6 +171,18 @@ export default defineContentScript({
     });
 
     ui.mount();
+
+    // 8. Replace page favicon with APXM icon
+    const faviconUrl = browser.runtime.getURL('/icon-48.png');
+    let link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    link.type = 'image/png';
+    link.href = faviconUrl;
+
     if (debug) {
       markStep(7, 'ok');
       ensureDiagnosticsVisible();
