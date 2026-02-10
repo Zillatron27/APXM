@@ -140,7 +140,7 @@ export function SiteBurnCard({ summary, defaultExpanded = false }: SiteBurnCardP
       {expanded && (
         <div className="px-3 pb-3 border-t border-apxm-bg">
           {sortedBurns.length === 0 ? (
-            <p className="text-sm text-apxm-text/50 py-2">Awaiting data — open PRD and WF buffers</p>
+            <p className="text-sm text-apxm-text/50 py-2">Awaiting data — tap refresh or open BS buffer in APEX</p>
           ) : (
             <div className="divide-y divide-apxm-bg/50">
               {/* Column headers */}

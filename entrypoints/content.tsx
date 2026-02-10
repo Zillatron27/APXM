@@ -8,7 +8,7 @@ import { initMessageHandlers, processMessage } from '../stores/message-handlers'
 import { beginEntityBatch, endEntityBatch } from '../stores/entities';
 import { populateStoresFromFio } from '../lib/fio';
 import { isDebugEnabled, createOverlay, markStep, markFailed, pollForAttribute, ensureDiagnosticsVisible } from '../lib/diagnostics';
-import { initRefreshMode, isAutoRefreshEnabled, createDebugModeSelector } from '../lib/buffer-refresh';
+import { initRefreshMode, isAutoRefreshEnabled } from '../lib/buffer-refresh';
 import { executeBatchRefresh } from '../lib/buffer-refresh';
 import { useSitesStore } from '../stores/entities';
 import '../assets/styles.css';
@@ -196,14 +196,6 @@ export default defineContentScript({
 
     // 8. Initialize buffer refresh mode from URL param
     initRefreshMode();
-
-    // Append mode selector to diagnostics panel when debug is enabled
-    if (debug) {
-      const diagPanel = document.getElementById('apxm-diag');
-      if (diagPanel) {
-        createDebugModeSelector(diagPanel);
-      }
-    }
 
     // 9. Auto-refresh: when mode is 'auto', wait for sites to load then
     //    batch-refresh all bases. Uses Zustand subscribe() to react to
