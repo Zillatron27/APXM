@@ -1,6 +1,23 @@
 # APXM Changelog
 
-## 0.1.1 — Loading States & Settings (b1–b7)
+## 0.1.2 — Buffer Refresh (2026-02-11)
+
+### Features
+
+- **Per-site buffer refresh** — refresh button on each SiteBurnCard opens the corresponding `BS` buffer in APEX to populate burn data without manual navigation. Replaces the previous "open PRD and WF buffers" workflow.
+- **Buffer refresh engine** — programmatic DOM manipulation to open/close APEX buffers, wait for WebSocket data response, and clean up. Same technique rprun uses for XIT BURN.
+- **Batch and auto refresh modes** — sequential multi-site refresh and automatic refresh on login, accessible via `?apxm_refresh=batch|auto` URL param for internal testing only. No UI surface in production.
+
+### Changes
+
+- Empty state text updated from "open PRD and WF buffers" to "tap refresh or open BS buffer in APEX"
+- Batch "Refresh All" button removed from BasesView (was only visible in batch mode)
+- Auto-refresh progress bar removed from Header (was only visible in auto mode)
+- Debug panel mode selector removed (function retained in codebase but not wired up)
+
+---
+
+## 0.1.1 — Loading States & Settings (b1–b10)
 
 ### Features
 
