@@ -14,6 +14,7 @@ import {
   clearAllEntityStores,
   type WorkforceEntity,
 } from './entities';
+import { useSiteSourceStore } from './site-data-sources';
 
 type MessageHandler = (msg: ProcessedMessage) => void;
 const typeHandlers = new Map<string, MessageHandler>();
@@ -83,9 +84,15 @@ export function initMessageHandlers(): void {
   // Connection Events
   // ============================================================================
 
-  // On reconnect: clear all stores to prevent stale data
   typeHandlers.set('CLIENT_CONNECTION_OPENED', () => {
-    clearAllEntityStores();
+    // Skip clear on first connection — cache/FIO data is fresh and WS dump
+    // will replace it via setAll(). On reconnection, delta updates may have
+    // been missed while disconnected, so clear is necessary.
+    const { reconnectCount } = useConnectionStore.getState();
+    if (reconnectCount > 0) {
+      clearAllEntityStores();
+      useSiteSourceStore.getState().clear();
+    }
     useConnectionStore.getState().incrementReconnectCount();
     useConnectionStore.getState().setConnected(true);
   });
@@ -99,6 +106,10 @@ export function initMessageHandlers(): void {
     if (Array.isArray(payload?.sites)) {
       useSitesStore.getState().setAll(payload.sites);
       useSitesStore.getState().setFetched('websocket');
+      // Mark all sites as websocket-sourced (login dump only — BS buffer
+      // doesn't trigger SITE_SITES, so this won't fire during buffer refresh)
+      const siteIds = payload.sites.map((s) => s.siteId);
+      useSiteSourceStore.getState().markAllSites(siteIds, 'websocket');
     } else {
       warn('SITE_SITES: unexpected payload structure', payload);
     }
@@ -143,7 +154,7 @@ export function initMessageHandlers(): void {
   typeHandlers.set('STORAGE_STORAGES', (msg: ProcessedMessage) => {
     const payload = extractPayload(msg) as { stores?: PrunApi.Store[] };
     if (Array.isArray(payload?.stores)) {
-      useStorageStore.getState().setMany(payload.stores);
+      useStorageStore.getState().setAll(payload.stores);
       useStorageStore.getState().setFetched('websocket');
     } else {
       warn('STORAGE_STORAGES: unexpected payload structure', payload);

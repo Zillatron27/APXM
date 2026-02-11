@@ -1,7 +1,10 @@
 import { create } from 'zustand';
 import { useStore, type StoreApi } from 'zustand';
+import { browser } from 'wxt/browser';
+import { BUILD_VERSION } from '../lib/constants';
+import { warn } from '../lib/debug/logger';
 
-export type DataSource = 'websocket' | 'fio' | null;
+export type DataSource = 'websocket' | 'fio' | 'cache' | null;
 
 export interface EntityStoreState<T> {
   entities: Map<string, T>;
@@ -23,6 +26,19 @@ export interface EntityStoreActions<T> {
 
 export type EntityStore<T> = EntityStoreState<T> & EntityStoreActions<T>;
 
+export interface PersistConfig {
+  key: string;
+  ttlMs?: number;
+}
+
+interface StoreCacheEntry<T> {
+  entities: Record<string, T>;
+  lastUpdated: number;
+  dataSource: DataSource;
+  cachedAt: number;
+  version: string;
+}
+
 /**
  * Extended store type that can be used both as a hook (for React components)
  * and accessed directly via getState() (for message handlers).
@@ -35,18 +51,39 @@ export type EntityStoreHook<T> = {
   subscribe: StoreApi<EntityStore<T>>['subscribe'];
   beginBatch: () => void;
   endBatch: () => void;
+  rehydrate: () => Promise<boolean>;
 };
+
+/** Default cache TTL: 24 hours */
+export const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+/** Registry of all persisted stores — used by cache coordination module */
+export const persistedStores: Array<{ key: string; rehydrate: () => Promise<boolean> }> = [];
+
+function isContextInvalidated(error: unknown): boolean {
+  return String(error).includes('Extension context invalidated');
+}
+
+function isBrowserStorageAvailable(): boolean {
+  try {
+    return typeof browser !== 'undefined' && browser?.storage?.local !== undefined;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Creates a Zustand store for managing a collection of entities by ID.
  *
  * @param name - Store name for debugging (not currently used but reserved for devtools)
  * @param selectId - Function to extract the unique ID from an entity
+ * @param persist - Optional config for caching store state to browser.storage.local
  * @returns A Zustand store hook with CRUD operations and metadata tracking
  */
 export function createEntityStore<T>(
   _name: string,
-  selectId: (item: T) => string
+  selectId: (item: T) => string,
+  persist?: PersistConfig
 ): EntityStoreHook<T> {
   // Shadow state for batch mode. During a batch, mutations accumulate
   // here instead of calling Zustand's set(). This prevents synchronous
@@ -137,6 +174,14 @@ export function createEntityStore<T>(
           dataSource: null,
         });
       }
+      // Also clear persisted cache when in-memory state is cleared
+      if (persist && isBrowserStorageAvailable()) {
+        browser.storage.local.remove(persist.key).catch((err) => {
+          if (!isContextInvalidated(err)) {
+            warn('Failed to clear cache key:', persist.key, err);
+          }
+        });
+      }
     },
 
     setFetched: (source: DataSource) => {
@@ -149,6 +194,39 @@ export function createEntityStore<T>(
       }
     },
   }));
+
+  // Debounced persistence via store.subscribe()
+  let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+  if (persist) {
+    const persistKey = persist.key;
+    store.subscribe(() => {
+      if (saveTimer !== null) clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        saveTimer = null;
+        const state = store.getState();
+        // Only persist if store has data
+        if (!state.fetched || state.dataSource === null) return;
+        // Don't persist cache-sourced data back to cache (no-op cycle)
+        if (state.dataSource === 'cache') return;
+
+        const entry: StoreCacheEntry<T> = {
+          entities: Object.fromEntries(state.entities),
+          lastUpdated: state.lastUpdated ?? Date.now(),
+          dataSource: state.dataSource,
+          cachedAt: Date.now(),
+          version: BUILD_VERSION,
+        };
+
+        if (!isBrowserStorageAvailable()) return;
+        browser.storage.local.set({ [persistKey]: JSON.stringify(entry) }).catch((err) => {
+          if (!isContextInvalidated(err)) {
+            warn('Failed to persist cache:', persistKey, err);
+          }
+        });
+      }, 2000);
+    });
+  }
 
   function beginBatch(): void {
     const state = store.getState();
@@ -176,6 +254,46 @@ export function createEntityStore<T>(
     }
   }
 
+  async function rehydrate(): Promise<boolean> {
+    if (!persist || !isBrowserStorageAvailable()) return false;
+
+    try {
+      const result = await browser.storage.local.get(persist.key);
+      const raw = result[persist.key];
+      if (!raw) return false;
+
+      const entry: StoreCacheEntry<T> = typeof raw === 'string' ? JSON.parse(raw) : raw;
+
+      // Version mismatch — discard stale cache from older build
+      if (entry.version !== BUILD_VERSION) return false;
+
+      // TTL check — discard if cache is too old
+      const ttl = persist.ttlMs ?? CACHE_TTL_MS;
+      if (Date.now() - entry.cachedAt > ttl) return false;
+
+      // Rehydrate into store
+      const entities = new Map<string, T>(Object.entries(entry.entities));
+      store.setState({
+        entities,
+        fetched: true,
+        lastUpdated: entry.lastUpdated,
+        dataSource: 'cache',
+      });
+
+      return true;
+    } catch (err) {
+      if (!isContextInvalidated(err)) {
+        warn('Failed to rehydrate cache:', persist.key, err);
+      }
+      return false;
+    }
+  }
+
+  // Register in persisted stores list for coordination
+  if (persist) {
+    persistedStores.push({ key: persist.key, rehydrate });
+  }
+
   // Create a hook that can also be used with selectors
   const hook = (<U>(selector?: (state: EntityStore<T>) => U) => {
     return useStore(store, selector as (state: EntityStore<T>) => U);
@@ -187,6 +305,7 @@ export function createEntityStore<T>(
   hook.subscribe = store.subscribe;
   hook.beginBatch = beginBatch;
   hook.endBatch = endBatch;
+  hook.rehydrate = rehydrate;
 
   return hook;
 }

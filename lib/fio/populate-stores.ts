@@ -21,6 +21,7 @@ import { useSitesStore } from '../../stores/entities/sites';
 import { useStorageStore } from '../../stores/entities/storage';
 import { useWorkforceStore } from '../../stores/entities/workforce';
 import { useProductionStore } from '../../stores/entities/production';
+import { useSiteSourceStore } from '../../stores/site-data-sources';
 
 export type FioProgressStep = 'sites' | 'workforce' | 'storage' | 'production';
 
@@ -120,6 +121,14 @@ export async function populateStoresFromFio(
       result.success = false;
       result.errors.push(formatError('Production', productionData.error));
     }
+  }
+
+  // Mark all known sites as FIO-sourced for per-site staleness indicators
+  const allSites = useSitesStore.getState().getAll();
+  if (allSites.length > 0) {
+    useSiteSourceStore.getState().markAllSites(
+      allSites.map((s) => s.siteId), 'fio'
+    );
   }
 
   return result;

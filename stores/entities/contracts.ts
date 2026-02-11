@@ -5,5 +5,6 @@ export type ContractsStore = EntityStore<PrunApi.Contract>;
 
 export const useContractsStore = createEntityStore<PrunApi.Contract>(
   'contracts',
-  (contract) => contract.id
+  (contract) => contract.id,
+  { key: 'apxm_cache_contracts' }
 );

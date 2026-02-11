@@ -5,7 +5,8 @@ export type FlightsStore = EntityStore<PrunApi.Flight>;
 
 export const useFlightsStore = createEntityStore<PrunApi.Flight>(
   'flights',
-  (flight) => flight.id
+  (flight) => flight.id,
+  { key: 'apxm_cache_flights' }
 );
 
 /**

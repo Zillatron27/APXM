@@ -5,7 +5,8 @@ export type ProductionStore = EntityStore<PrunApi.ProductionLine>;
 
 export const useProductionStore = createEntityStore<PrunApi.ProductionLine>(
   'production',
-  (line) => line.id
+  (line) => line.id,
+  { key: 'apxm_cache_production' }
 );
 
 /**

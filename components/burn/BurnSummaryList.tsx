@@ -1,8 +1,38 @@
 import { useSiteBurns, sortByUrgency } from './useSiteBurns';
 import { SiteBurnCard } from './SiteBurnCard';
 import { DataSourceBadge } from './DataSourceBadge';
-import { useWorkforceStore } from '../../stores/entities/workforce';
 import { useSettingsStore } from '../../stores/settings';
+import { useSiteSourceStore, type SiteSourceEntry } from '../../stores/site-data-sources';
+import type { DataSource } from '../../stores/create-entity-store';
+
+/**
+ * Derive the weakest-link source across all sites.
+ * cache < fio < websocket — if any site is cache, show cache.
+ */
+function deriveSummarySource(entries: Map<string, SiteSourceEntry>): DataSource {
+  if (entries.size === 0) return null;
+  let hasCache = false;
+  let hasFio = false;
+  for (const entry of entries.values()) {
+    if (entry.source === 'cache') hasCache = true;
+    else if (entry.source === 'fio') hasFio = true;
+  }
+  if (hasCache) return 'cache';
+  if (hasFio) return 'fio';
+  return 'websocket';
+}
+
+/**
+ * Derive the oldest timestamp across all sites for the badge age display.
+ */
+function deriveSummaryTimestamp(entries: Map<string, SiteSourceEntry>): number | null {
+  if (entries.size === 0) return null;
+  let oldest = Infinity;
+  for (const entry of entries.values()) {
+    if (entry.updatedAt < oldest) oldest = entry.updatedAt;
+  }
+  return oldest === Infinity ? null : oldest;
+}
 
 interface BurnSummaryListProps {
   /** Expand first card by default */
@@ -16,20 +46,21 @@ export function BurnSummaryList({ expandFirst = true }: BurnSummaryListProps) {
   const summaries = useSiteBurns();
   const sorted = sortByUrgency(summaries);
 
-  // Get data source info for badge
-  const dataSource = useWorkforceStore((s) => s.dataSource);
-  const wsLastUpdated = useWorkforceStore((s) => s.lastUpdated);
+  // Derive data source from per-site entries (weakest-link across all sites)
+  const siteEntries = useSiteSourceStore((s) => s.entries);
+  const summarySource = deriveSummarySource(siteEntries);
+  const summaryUpdated = deriveSummaryTimestamp(siteEntries);
   const fioLastFetch = useSettingsStore((s) => s.fio.lastFetch);
 
-  // Use FIO timestamp when source is FIO, otherwise use WS timestamp
-  const lastUpdated = dataSource === 'fio' ? fioLastFetch : wsLastUpdated;
+  // Use FIO timestamp when source is FIO, otherwise use derived timestamp
+  const lastUpdated = summarySource === 'fio' ? fioLastFetch : summaryUpdated;
 
   if (sorted.length === 0) {
     return (
       <div className="flex flex-col gap-2">
         <div className="flex justify-between items-center">
           <span className="text-sm font-medium">Burns</span>
-          <DataSourceBadge source={dataSource} lastUpdated={lastUpdated} />
+          <DataSourceBadge source={summarySource} lastUpdated={lastUpdated} />
         </div>
         <div className="text-center py-4 text-apxm-text/50 text-sm">
           No sites loaded yet
@@ -42,7 +73,7 @@ export function BurnSummaryList({ expandFirst = true }: BurnSummaryListProps) {
     <div className="flex flex-col gap-2">
       <div className="flex justify-between items-center">
         <span className="text-sm font-medium">Burns</span>
-        <DataSourceBadge source={dataSource} lastUpdated={lastUpdated} />
+        <DataSourceBadge source={summarySource} lastUpdated={lastUpdated} />
       </div>
       {sorted.map((summary, index) => (
         <SiteBurnCard

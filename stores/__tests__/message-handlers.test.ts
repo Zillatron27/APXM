@@ -22,6 +22,7 @@ import {
   createTestContract,
   createProductionOrder,
 } from '../../__tests__/fixtures/factories';
+import { useSiteSourceStore } from '../site-data-sources';
 
 function dispatchMessage(messageType: string, payload: unknown): void {
   const msg: ProcessedMessage = {
@@ -37,6 +38,7 @@ function dispatchMessage(messageType: string, payload: unknown): void {
 describe('message-handlers', () => {
   beforeEach(() => {
     clearAllEntityStores();
+    useSiteSourceStore.getState().clear();
     useConnectionStore.setState({
       connected: false,
       lastMessageTimestamp: null,
@@ -62,7 +64,28 @@ describe('message-handlers', () => {
   });
 
   describe('CLIENT_CONNECTION_OPENED', () => {
-    it('clears all entity stores on reconnect', () => {
+    it('preserves entity stores on first connection', () => {
+      // Populate stores with cache/FIO data
+      useSitesStore.getState().setAll([createTestSite()]);
+      useStorageStore.getState().setAll([createTestStorage()]);
+      useShipsStore.getState().setAll([createTestShip()]);
+
+      expect(useSitesStore.getState().entities.size).toBe(1);
+      expect(useStorageStore.getState().entities.size).toBe(1);
+      expect(useShipsStore.getState().entities.size).toBe(1);
+
+      // First connection (reconnectCount=0) — should NOT clear
+      dispatchMessage('CLIENT_CONNECTION_OPENED', {});
+
+      expect(useSitesStore.getState().entities.size).toBe(1);
+      expect(useStorageStore.getState().entities.size).toBe(1);
+      expect(useShipsStore.getState().entities.size).toBe(1);
+    });
+
+    it('clears all entity stores on reconnection', () => {
+      // First connection increments reconnectCount to 1
+      dispatchMessage('CLIENT_CONNECTION_OPENED', {});
+
       // Populate stores with data
       useSitesStore.getState().setAll([createTestSite()]);
       useStorageStore.getState().setAll([createTestStorage()]);
@@ -72,12 +95,26 @@ describe('message-handlers', () => {
       expect(useStorageStore.getState().entities.size).toBe(1);
       expect(useShipsStore.getState().entities.size).toBe(1);
 
-      // Simulate reconnect
+      // Reconnection (reconnectCount=1) — should clear
       dispatchMessage('CLIENT_CONNECTION_OPENED', {});
 
       expect(useSitesStore.getState().entities.size).toBe(0);
       expect(useStorageStore.getState().entities.size).toBe(0);
       expect(useShipsStore.getState().entities.size).toBe(0);
+    });
+
+    it('clears per-site sources on reconnection', () => {
+      // First connection
+      dispatchMessage('CLIENT_CONNECTION_OPENED', {});
+
+      // Populate per-site sources
+      useSiteSourceStore.getState().markAllSites(['site-1', 'site-2'], 'websocket');
+      expect(useSiteSourceStore.getState().entries.size).toBe(2);
+
+      // Reconnection — should clear per-site sources
+      dispatchMessage('CLIENT_CONNECTION_OPENED', {});
+
+      expect(useSiteSourceStore.getState().entries.size).toBe(0);
     });
 
     it('increments reconnect count', () => {
@@ -152,6 +189,19 @@ describe('message-handlers', () => {
 
       expect(useSitesStore.getState().fetched).toBe(true);
       expect(useSitesStore.getState().dataSource).toBe('websocket');
+    });
+
+    it('marks per-site sources as websocket', () => {
+      const sites = [
+        createTestSite({ siteId: 'site-1' }),
+        createTestSite({ siteId: 'site-2' }),
+      ];
+      dispatchMessage('SITE_SITES', { sites });
+
+      const entries = useSiteSourceStore.getState().entries;
+      expect(entries.size).toBe(2);
+      expect(entries.get('site-1')?.source).toBe('websocket');
+      expect(entries.get('site-2')?.source).toBe('websocket');
     });
   });
 

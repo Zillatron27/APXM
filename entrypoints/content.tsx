@@ -7,11 +7,13 @@ import { useSettingsStore, waitForSettingsHydration } from '../stores/settings';
 import { initMessageHandlers, processMessage } from '../stores/message-handlers';
 import { beginEntityBatch, endEntityBatch } from '../stores/entities';
 import { populateStoresFromFio } from '../lib/fio';
+import { rehydrateAllStores } from '../stores/cache';
 import { warn, error as logError } from '../lib/debug/logger';
 import { isDebugEnabled, createOverlay, markStep, markFailed, pollForAttribute, ensureDiagnosticsVisible } from '../lib/diagnostics';
 import { initRefreshMode, isAutoRefreshEnabled } from '../lib/buffer-refresh';
 import { executeBatchRefresh } from '../lib/buffer-refresh';
 import { useSitesStore } from '../stores/entities';
+import { useSiteSourceStore } from '../stores/site-data-sources';
 import '../assets/styles.css';
 
 export default defineContentScript({
@@ -142,20 +144,31 @@ export default defineContentScript({
       }
     }, APEX_TIMEOUT_MS);
 
-    // 6. Auto-fetch FIO data if credentials are saved (after settings hydrate)
-    waitForSettingsHydration().then(() => {
-      const settings = useSettingsStore.getState();
-      if (settings.fio.apiKey && settings.fio.username) {
-        populateStoresFromFio({
-          apiKey: settings.fio.apiKey,
-          username: settings.fio.username,
-        }).then((result) => {
-          if (result.success) {
-            useSettingsStore.getState().setFioLastFetch(Date.now());
-          }
-        });
-      }
-    });
+    // 6. Rehydrate entity stores from cache (after settings hydrate)
+    await waitForSettingsHydration();
+    await rehydrateAllStores();
+
+    // Mark rehydrated sites as cache-sourced for per-site staleness indicators
+    const rehydratedSites = useSitesStore.getState().getAll();
+    if (rehydratedSites.length > 0) {
+      const ts = useSitesStore.getState().lastUpdated ?? Date.now();
+      useSiteSourceStore.getState().markAllSites(
+        rehydratedSites.map((s) => s.siteId), 'cache', ts
+      );
+    }
+
+    // 6b. FIO fetch (fire-and-forget, concurrent with React mount)
+    const settings = useSettingsStore.getState();
+    if (settings.fio.apiKey && settings.fio.username) {
+      populateStoresFromFio({
+        apiKey: settings.fio.apiKey,
+        username: settings.fio.username,
+      }).then((result) => {
+        if (result.success) {
+          useSettingsStore.getState().setFioLastFetch(Date.now());
+        }
+      });
+    }
 
     // 7. Mount React overlay in Shadow DOM
     const ui = await createShadowRootUi(ctx, {

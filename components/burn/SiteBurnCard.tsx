@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { SiteBurnSummary, BurnRate } from '../../core/burn';
 import { useRefreshState } from '../../stores/refreshState';
 import { executeBufferRefresh, buildBufferCommand } from '../../lib/buffer-refresh';
+import { useSiteStaleness } from '../../hooks/useSiteStaleness';
 import { BurnBadge } from './BurnBadge';
 import { BurnRow } from './BurnRow';
 
@@ -50,6 +51,8 @@ export function SiteBurnCard({ summary, defaultExpanded = false }: SiteBurnCardP
   const [expanded, setExpanded] = useState(defaultExpanded);
   const { siteId, siteName, burns, mostUrgent } = summary;
 
+  const { text: stalenessText, colorClass: stalenessColor } = useSiteStaleness(siteId);
+
   const mode = useRefreshState((s) => s.mode);
   const siteStatus = useRefreshState((s) => s.siteStatus.get(siteId));
 
@@ -79,8 +82,15 @@ export function SiteBurnCard({ summary, defaultExpanded = false }: SiteBurnCardP
             {expanded ? '▼' : '▶'}
           </span>
 
-          {/* Site name */}
-          <span className="font-semibold text-apxm-text">{siteName}</span>
+          {/* Site name + staleness (only when site has burn data) */}
+          <div>
+            <span className="font-semibold text-apxm-text">{siteName}</span>
+            {sortedBurns.length > 0 && (
+              <p className={`text-[11px] mt-0.5 ${stalenessColor}`}>
+                {stalenessText}
+              </p>
+            )}
+          </div>
 
           {/* Quick counts */}
           {criticalCount > 0 && (

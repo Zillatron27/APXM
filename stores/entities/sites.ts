@@ -5,5 +5,6 @@ export type SitesStore = EntityStore<PrunApi.Site>;
 
 export const useSitesStore = createEntityStore<PrunApi.Site>(
   'sites',
-  (site) => site.siteId
+  (site) => site.siteId,
+  { key: 'apxm_cache_sites' }
 );

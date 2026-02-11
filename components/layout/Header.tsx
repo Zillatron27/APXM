@@ -1,9 +1,7 @@
 import { useGameState } from '../../stores/gameState';
 import { useConnectionStatus } from '../../hooks/useConnectionStatus';
 import { StatusDot } from '../shared';
-
-// Increment this on each build for easy verification
-const BUILD_VERSION = 'v0.1.2-b2';
+import { BUILD_VERSION } from '../../lib/constants';
 
 export function Header() {
   const status = useConnectionStatus();

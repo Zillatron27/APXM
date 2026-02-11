@@ -15,7 +15,8 @@ export type WorkforceStore = EntityStore<WorkforceEntity>;
 
 export const useWorkforceStore = createEntityStore<WorkforceEntity>(
   'workforce',
-  (entity) => entity.siteId
+  (entity) => entity.siteId,
+  { key: 'apxm_cache_workforce' }
 );
 
 /**

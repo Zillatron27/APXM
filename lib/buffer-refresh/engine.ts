@@ -15,6 +15,7 @@
 import type { BufferRefreshOptions, BufferRefreshStep } from './types';
 import { useRefreshState } from '../../stores/refreshState';
 import { useSitesStore } from '../../stores/entities';
+import { useSiteSourceStore } from '../../stores/site-data-sources';
 import {
   getContainer,
   isAtStacksTopLevel,
@@ -155,6 +156,7 @@ export async function executeBufferRefresh(options: BufferRefreshOptions): Promi
     await delay(stepTimeoutMs);
 
     store.updateSiteStatus(siteId, 'success');
+    useSiteSourceStore.getState().markSite(siteId, 'websocket');
     return true;
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);

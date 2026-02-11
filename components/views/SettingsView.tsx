@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, MaterialTile } from '../shared';
 import { useSettingsStore, DEFAULT_THRESHOLDS, type MaterialTheme } from '../../stores/settings';
 import { testConnection, populateStoresFromFio, type FioProgressStep } from '../../lib/fio';
+import { clearAllCache } from '../../stores/cache';
 
 type ConnectionStatus = 'untested' | 'testing' | 'valid' | 'invalid';
 
@@ -95,6 +96,7 @@ export function SettingsView() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshStep, setRefreshStep] = useState<FioProgressStep | null>(null);
   const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [isClearing, setIsClearing] = useState(false);
 
   // Initialize form from stored config
   useEffect(() => {
@@ -161,6 +163,12 @@ export function SettingsView() {
     } else {
       setRefreshError(result.errors.join(', '));
     }
+  };
+
+  const handleClearCache = async () => {
+    setIsClearing(true);
+    await clearAllCache();
+    setIsClearing(false);
   };
 
   const hasUnsavedChanges =
@@ -313,6 +321,24 @@ export function SettingsView() {
           {refreshError && (
             <div className="text-sm text-status-critical">{refreshError}</div>
           )}
+        </div>
+      </Card>
+
+      {/* Cached Data Section */}
+      <Card>
+        <h2 className="text-prun-yellow text-sm font-semibold mb-3">Cached Data</h2>
+        <div className="space-y-3">
+          <p className="text-xs text-apxm-muted">
+            Entity data is cached locally to speed up page loads.
+            Clear if you experience stale or incorrect data.
+          </p>
+          <button
+            onClick={handleClearCache}
+            disabled={isClearing}
+            className="w-full min-h-touch px-4 py-2 text-sm rounded border border-apxm-accent text-apxm-muted font-semibold hover:border-prun-yellow hover:text-prun-yellow disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isClearing ? 'Clearing...' : 'Clear Cached Data'}
+          </button>
         </div>
       </Card>
 

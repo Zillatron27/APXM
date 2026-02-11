@@ -5,7 +5,8 @@ export type StorageStore = EntityStore<PrunApi.Store>;
 
 export const useStorageStore = createEntityStore<PrunApi.Store>(
   'storage',
-  (store) => store.id
+  (store) => store.id,
+  { key: 'apxm_cache_storage' }
 );
 
 /**

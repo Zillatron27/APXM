@@ -5,5 +5,6 @@ export type ShipsStore = EntityStore<PrunApi.Ship>;
 
 export const useShipsStore = createEntityStore<PrunApi.Ship>(
   'ships',
-  (ship) => ship.id
+  (ship) => ship.id,
+  { key: 'apxm_cache_ships' }
 );
