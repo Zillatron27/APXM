@@ -12,7 +12,7 @@ export default defineConfig({
     ],
     web_accessible_resources: [
       {
-        resources: ['ws-interceptor.js'],
+        resources: ['ws-interceptor.js', 'icon-48.png'],
         matches: ['https://apex.prosperousuniverse.com/*'],
       },
     ],

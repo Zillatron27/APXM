@@ -10,7 +10,7 @@ export function SectionHeader({ title, onViewAll }: SectionHeaderProps) {
       {onViewAll && (
         <button
           onClick={onViewAll}
-          className="text-xs text-apxm-muted hover:text-apxm-text min-h-touch flex items-center"
+          className="text-xs text-apxm-muted hover:text-apxm-text"
         >
           View all
         </button>
