@@ -165,7 +165,7 @@ export interface ContractDetailsResult {
 /**
  * Hook that assembles contract details with conditions.
  */
-export function useContractDetails(filter: ContractFilter): ContractDetailsResult {
+export function useContractDetails(activeFilters: ReadonlySet<ContractFilter>): ContractDetailsResult {
   const contractsLastUpdated = useContractsStore((s) => s.lastUpdated);
 
   return useMemo(() => {
@@ -176,7 +176,7 @@ export function useContractDetails(filter: ContractFilter): ContractDetailsResul
         const { description, parts } = buildConditionDescription(cond);
         return {
           index: cond.index,
-          party: cond.party === 'CUSTOMER' ? 'self' : 'partner',
+          party: cond.party === contract.party ? 'self' : 'partner',
           partnerName: contract.partner.name,
           type: formatConditionType(cond.type),
           description,
@@ -224,18 +224,14 @@ export function useContractDetails(filter: ContractFilter): ContractDetailsResul
     };
 
     // Apply filter
-    let filtered: ContractDetail[];
-    switch (filter) {
-      case 'active':
-        filtered = details.filter((c) => ACTIVE_STATUSES.includes(c.status));
-        break;
-      case 'fulfilled':
-        filtered = details.filter((c) => FULFILLED_STATUSES.includes(c.status));
-        break;
-      default:
-        filtered = details;
-    }
+    const filtered = activeFilters.has('all')
+      ? details
+      : details.filter((c) => {
+          if (activeFilters.has('active') && ACTIVE_STATUSES.includes(c.status)) return true;
+          if (activeFilters.has('fulfilled') && FULFILLED_STATUSES.includes(c.status)) return true;
+          return false;
+        });
 
     return { contracts: filtered, counts };
-  }, [contractsLastUpdated, filter]);
+  }, [contractsLastUpdated, activeFilters]);
 }

@@ -6,18 +6,20 @@ export interface FilterOption<T extends string> {
 
 interface FilterBarProps<T extends string> {
   options: FilterOption<T>[];
-  active: T;
+  activeFilters: ReadonlySet<T>;
   onChange: (filter: T) => void;
 }
 
 /**
  * Horizontal filter bar for views.
  * Format: LABEL (count) with active indicator.
+ * Supports multi-select: tapping toggles individual filters,
+ * "ALL" resets to show everything.
  * Dense display - NOT touch target sized.
  */
 export function FilterBar<T extends string>({
   options,
-  active,
+  activeFilters,
   onChange,
 }: FilterBarProps<T>) {
   return (
@@ -27,7 +29,7 @@ export function FilterBar<T extends string>({
           key={option.id}
           onClick={() => onChange(option.id)}
           className={`pb-1 transition-colors ${
-            active === option.id
+            activeFilters.has(option.id)
               ? 'text-prun-yellow border-b border-prun-yellow'
               : 'text-apxm-text/70 hover:text-apxm-text'
           }`}

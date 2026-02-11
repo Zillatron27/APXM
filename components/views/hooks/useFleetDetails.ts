@@ -106,7 +106,7 @@ export interface FleetDetailsResult {
 /**
  * Hook that assembles ship details with cargo, fuel, and flight info.
  */
-export function useFleetDetails(filter: FleetFilter): FleetDetailsResult {
+export function useFleetDetails(activeFilters: ReadonlySet<FleetFilter>): FleetDetailsResult {
   const shipsLastUpdated = useShipsStore((s) => s.lastUpdated);
   const flightsLastUpdated = useFlightsStore((s) => s.lastUpdated);
   const storageLastUpdated = useStorageStore((s) => s.lastUpdated);
@@ -165,13 +165,13 @@ export function useFleetDetails(filter: FleetFilter): FleetDetailsResult {
     };
 
     // Apply filter
-    const filtered =
-      filter === 'all'
-        ? details
-        : filter === 'idle'
-          ? details.filter((s) => s.state === 'IDL')
-          : details.filter((s) => s.state !== 'IDL');
+    const filtered = activeFilters.has('all')
+      ? details
+      : details.filter((s) => {
+          const category: FleetFilter = s.state === 'IDL' ? 'idle' : 'in-transit';
+          return activeFilters.has(category);
+        });
 
     return { ships: filtered, counts };
-  }, [shipsLastUpdated, flightsLastUpdated, storageLastUpdated, filter, tick]);
+  }, [shipsLastUpdated, flightsLastUpdated, storageLastUpdated, activeFilters, tick]);
 }

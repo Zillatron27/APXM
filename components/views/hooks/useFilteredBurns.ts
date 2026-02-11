@@ -24,7 +24,7 @@ function getFilterForUrgency(urgency: Urgency | undefined): BurnFilter {
  * Hook that filters burn summaries by urgency level.
  * Returns filtered summaries and counts per filter category.
  */
-export function useFilteredBurns(filter: BurnFilter): FilteredBurnsResult {
+export function useFilteredBurns(activeFilters: ReadonlySet<BurnFilter>): FilteredBurnsResult {
   const allBurns = useSiteBurns();
   const sorted = sortByUrgency(allBurns);
 
@@ -42,14 +42,13 @@ export function useFilteredBurns(filter: BurnFilter): FilteredBurnsResult {
       counts[category]++;
     }
 
-    // Filter if not 'all'
-    const summaries =
-      filter === 'all'
-        ? sorted
-        : sorted.filter(
-            (s) => getFilterForUrgency(s.mostUrgent?.urgency) === filter
-          );
+    // Show all when 'all' is selected
+    const summaries = activeFilters.has('all')
+      ? sorted
+      : sorted.filter(
+          (s) => activeFilters.has(getFilterForUrgency(s.mostUrgent?.urgency))
+        );
 
     return { summaries, counts };
-  }, [sorted, filter]);
+  }, [sorted, activeFilters]);
 }

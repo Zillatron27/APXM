@@ -15,7 +15,7 @@ const colorStyles: Record<BarColor, string> = {
 
 /**
  * Compact progress bar for cargo and fuel displays.
- * Uses: Cargo (orange), STL fuel (yellow), FTL fuel (blue)
+ * Uses: Cargo (orange), SF/STL fuel (yellow), FF/FTL fuel (blue)
  */
 export function ProgressBar({ current, max, color, label }: ProgressBarProps) {
   const percentage = max > 0 ? Math.min(100, (current / max) * 100) : 0;

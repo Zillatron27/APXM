@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { FilterBar, type FilterOption, DataGate, type RequiredStore } from '../shared';
 import { ShipCard } from '../fleet';
 import { useFleetDetails, type FleetFilter } from './hooks';
@@ -11,13 +11,36 @@ const filterLabels: Record<FleetFilter, string> = {
   'in-transit': 'IN TRANSIT',
 };
 
+// Non-ALL filter values for revert logic
+const individualFilters: FleetFilter[] = ['idle', 'in-transit'];
+
 /**
  * Full fleet view showing all ships with filtering.
  * FLEET tab content.
  */
 export function FleetView() {
-  const [filter, setFilter] = useState<FleetFilter>('all');
-  const { ships, counts } = useFleetDetails(filter);
+  const [activeFilters, setActiveFilters] = useState<Set<FleetFilter>>(new Set(['all']));
+  const { ships, counts } = useFleetDetails(activeFilters);
+
+  const handleFilterToggle = useCallback((filter: FleetFilter) => {
+    setActiveFilters((prev) => {
+      if (filter === 'all') return new Set(['all']);
+
+      const next = new Set(prev);
+      next.delete('all');
+
+      if (next.has(filter)) {
+        next.delete(filter);
+      } else {
+        next.add(filter);
+      }
+
+      if (next.size === 0) return new Set(['all']);
+      if (individualFilters.every((f) => next.has(f))) return new Set(['all']);
+
+      return next;
+    });
+  }, []);
 
   const shipsFetched = useShipsStore((s) => s.fetched);
 
@@ -35,7 +58,7 @@ export function FleetView() {
   return (
     <DataGate requiredStores={requiredStores}>
       <div className="space-y-3">
-        <FilterBar options={filterOptions} active={filter} onChange={setFilter} />
+        <FilterBar options={filterOptions} activeFilters={activeFilters} onChange={handleFilterToggle} />
 
         {ships.length === 0 ? (
           <p className="text-sm text-apxm-muted py-4 text-center">

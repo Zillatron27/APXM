@@ -91,7 +91,7 @@ export function ShipCard({ ship, defaultExpanded = false }: ShipCardProps) {
 
           {/* STL fuel bar */}
           <ProgressBar
-            label="STL"
+            label="SF"
             current={ship.stlFuel.current}
             max={ship.stlFuel.max}
             color="yellow"
@@ -99,7 +99,7 @@ export function ShipCard({ ship, defaultExpanded = false }: ShipCardProps) {
 
           {/* FTL fuel bar */}
           <ProgressBar
-            label="FTL"
+            label="FF"
             current={ship.ftlFuel.current}
             max={ship.ftlFuel.max}
             color="blue"
