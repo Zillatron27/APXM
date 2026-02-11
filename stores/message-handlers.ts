@@ -10,6 +10,7 @@ import {
   useShipsStore,
   useFlightsStore,
   useContractsStore,
+  useBalancesStore,
   clearAllEntityStores,
   type WorkforceEntity,
 } from './entities';
@@ -405,6 +406,37 @@ export function initMessageHandlers(): void {
       useContractsStore.getState().setOne(contract);
     } else {
       warn('CONTRACTS_CONTRACT: unexpected payload structure', contract);
+      useConnectionStore.getState().incrementDiscarded();
+    }
+  });
+
+  // ============================================================================
+  // Accounting
+  // ============================================================================
+
+  // Bulk balance snapshot sent on login
+  typeHandlers.set('ACCOUNTING_CASH_BALANCES', (msg: ProcessedMessage) => {
+    const payload = extractPayload(msg) as { currencyAccounts?: PrunApi.CurrencyAccount[] };
+    if (Array.isArray(payload?.currencyAccounts)) {
+      const balances = payload.currencyAccounts.map((a) => a.currencyBalance);
+      useBalancesStore.getState().setAll(balances);
+      useBalancesStore.getState().setFetched('websocket');
+    } else {
+      warn('ACCOUNTING_CASH_BALANCES: unexpected payload structure', payload);
+    }
+  });
+
+  // Delta updates from transactions — only liquid asset accounts are cash
+  typeHandlers.set('ACCOUNTING_BOOKINGS', (msg: ProcessedMessage) => {
+    const payload = extractPayload(msg) as { items?: PrunApi.BookingItem[] };
+    if (Array.isArray(payload?.items)) {
+      for (const item of payload.items) {
+        if (item.accountCategory === 'LIQUID_ASSETS') {
+          useBalancesStore.getState().setOne(item.balance);
+        }
+      }
+    } else {
+      warn('ACCOUNTING_BOOKINGS: unexpected payload structure', payload);
       useConnectionStore.getState().incrementDiscarded();
     }
   });

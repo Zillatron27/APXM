@@ -561,4 +561,29 @@ export namespace PrunApi {
     | 'DEADLINE_EXCEEDED'
     | 'BREACHED'
     | 'TERMINATED';
+
+  // ============================================================================
+  // Accounting Types
+  // ============================================================================
+
+  export interface CurrencyAccount {
+    category: string;
+    type: number;
+    number: number;
+    bookBalance: CurrencyAmount;
+    currencyBalance: CurrencyAmount;
+  }
+
+  export interface BookingItem {
+    accountCategory: string;
+    accountType: number;
+    debit: boolean;
+    type: string;
+    bookAmount: CurrencyAmount;
+    amount: CurrencyAmount;
+    bookBalance: CurrencyAmount;
+    balance: CurrencyAmount;
+    time: { timestamp: number };
+    cash: boolean;
+  }
 }
