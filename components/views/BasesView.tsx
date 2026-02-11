@@ -3,9 +3,6 @@ import { FilterBar, type FilterOption, DataGate, type RequiredStore } from '../s
 import { SiteBurnCard } from '../burn/SiteBurnCard';
 import { useFilteredBurns, type BurnFilter } from './hooks';
 import { useSitesStore } from '../../stores/entities/sites';
-import { useWorkforceStore } from '../../stores/entities/workforce';
-import { useProductionStore } from '../../stores/entities/production';
-import { useStorageStore } from '../../stores/entities/storage';
 
 // UI label mapping: internal type → display
 const filterLabels: Record<BurnFilter, string> = {
@@ -51,15 +48,12 @@ export function BasesView() {
   }, []);
 
   const sitesFetched = useSitesStore((s) => s.fetched);
-  const workforceFetched = useWorkforceStore((s) => s.fetched);
-  const productionFetched = useProductionStore((s) => s.fetched);
-  const storageFetched = useStorageStore((s) => s.fetched);
 
+  // Only gate on sites — workforce, production, and storage populate
+  // incrementally via buffer refresh or APEX navigation. The burn cards
+  // handle missing data gracefully (empty state + refresh button).
   const requiredStores: RequiredStore[] = [
     { fetched: sitesFetched, name: 'bases', canFio: true },
-    { fetched: workforceFetched, name: 'workforce', canFio: true },
-    { fetched: productionFetched, name: 'production', canFio: true },
-    { fetched: storageFetched, name: 'storage', canFio: true },
   ];
 
   // Build filter options from counts
