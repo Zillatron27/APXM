@@ -1,12 +1,22 @@
 # APXM Changelog
 
-## 0.1.2 — Buffer Refresh (2026-02-11)
+## 0.1.2 — Buffer Refresh & Caching (2026-02-11)
 
 ### Features
 
 - **Per-site buffer refresh** — refresh button on each SiteBurnCard opens the corresponding `BS` buffer in APEX to populate burn data without manual navigation. Replaces the previous "open PRD and WF buffers" workflow.
 - **Buffer refresh engine** — programmatic DOM manipulation to open/close APEX buffers, wait for WebSocket data response, and clean up. Same technique rprun uses for XIT BURN.
 - **Batch and auto refresh modes** — sequential multi-site refresh and automatic refresh on login, accessible via `?apxm_refresh=batch|auto` URL param for internal testing only. No UI surface in production.
+- **Entity store persistence** — all entity stores now persist to `browser.storage.local` with 24-hour TTL and 2-second debounced writes. Cache rehydration on startup provides instant data while waiting for FIO/WebSocket.
+- **Per-site staleness indicators** — each SiteBurnCard shows its own data freshness (cached/FIO/live) independently. Refreshing one base no longer flips all indicators to "updated."
+- **Clear cached data** — new button in Settings to purge locally cached entity data.
+- **Cash balance pane** — balance display in status view.
+
+### Bug Fixes
+
+- Fix FIO staleness indicator never appearing — conditional clear in `CLIENT_CONNECTION_OPENED` preserves cache/FIO data on first WS connection
+- Fix all sites jumping to "updated" when one site is buffer-refreshed — per-site source tracking replaces global store-level `dataSource` for staleness display
+- Fix burn view stuck loading without FIO key
 
 ### Changes
 
@@ -14,6 +24,8 @@
 - Batch "Refresh All" button removed from BasesView (was only visible in batch mode)
 - Auto-refresh progress bar removed from Header (was only visible in auto mode)
 - Debug panel mode selector removed (function retained in codebase but not wired up)
+- Clear cache button hover color changed from red to yellow for consistency with other settings buttons
+- `BUILD_VERSION` and `formatRelativeTime` extracted to shared modules
 
 ---
 
