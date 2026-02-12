@@ -113,7 +113,12 @@ export function createEntityStore<T>(
     setAll: (items: T[]) => {
       const entities = new Map<string, T>();
       for (const item of items) {
-        entities.set(selectId(item), item);
+        const id = selectId(item);
+        if (id === undefined || id === null || id === '') {
+          warn(`${_name}: entity missing ID, discarding`);
+          continue;
+        }
+        entities.set(id, item);
       }
       if (shadow) {
         shadow.entities = entities;
@@ -124,12 +129,17 @@ export function createEntityStore<T>(
     },
 
     setOne: (item: T) => {
+      const id = selectId(item);
+      if (id === undefined || id === null || id === '') {
+        warn(`${_name}: entity missing ID, discarding`);
+        return;
+      }
       if (shadow) {
-        shadow.entities.set(selectId(item), item);
+        shadow.entities.set(id, item);
         shadowDirty = true;
       } else {
         const entities = new Map(get().entities);
-        entities.set(selectId(item), item);
+        entities.set(id, item);
         set({ entities, lastUpdated: Date.now() });
       }
     },
@@ -137,13 +147,23 @@ export function createEntityStore<T>(
     setMany: (items: T[]) => {
       if (shadow) {
         for (const item of items) {
-          shadow.entities.set(selectId(item), item);
+          const id = selectId(item);
+          if (id === undefined || id === null || id === '') {
+            warn(`${_name}: entity missing ID, discarding`);
+            continue;
+          }
+          shadow.entities.set(id, item);
         }
         shadowDirty = true;
       } else {
         const entities = new Map(get().entities);
         for (const item of items) {
-          entities.set(selectId(item), item);
+          const id = selectId(item);
+          if (id === undefined || id === null || id === '') {
+            warn(`${_name}: entity missing ID, discarding`);
+            continue;
+          }
+          entities.set(id, item);
         }
         set({ entities, lastUpdated: Date.now() });
       }
