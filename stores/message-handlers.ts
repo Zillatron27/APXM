@@ -69,7 +69,7 @@ export function initMessageHandlers(): void {
     };
 
     const inner = payload?.message;
-    if (inner?.messageType) {
+    if (inner?.messageType && inner.messageType !== 'ACTION_COMPLETED') {
       // Create a synthetic ProcessedMessage matching the wire format the
       // type handlers expect: { messageType, payload: { messageType, payload: data } }
       const syntheticMsg: ProcessedMessage = {

@@ -70,7 +70,7 @@ async function fioFetch<T>(
 export async function fetchWorkforce(
   config: FioConfig
 ): Promise<FioResult<FioWorkforce[]>> {
-  return fioFetch<FioWorkforce[]>(`/workforce/${config.username}`, config.apiKey);
+  return fioFetch<FioWorkforce[]>(`/workforce/${encodeURIComponent(config.username)}`, config.apiKey);
 }
 
 /**
@@ -79,7 +79,7 @@ export async function fetchWorkforce(
 export async function fetchProduction(
   config: FioConfig
 ): Promise<FioResult<FioProductionLine[]>> {
-  return fioFetch<FioProductionLine[]>(`/production/${config.username}`, config.apiKey);
+  return fioFetch<FioProductionLine[]>(`/production/${encodeURIComponent(config.username)}`, config.apiKey);
 }
 
 /**
@@ -88,7 +88,7 @@ export async function fetchProduction(
 export async function fetchStorage(
   config: FioConfig
 ): Promise<FioResult<FioStorage[]>> {
-  return fioFetch<FioStorage[]>(`/storage/${config.username}`, config.apiKey);
+  return fioFetch<FioStorage[]>(`/storage/${encodeURIComponent(config.username)}`, config.apiKey);
 }
 
 /**
@@ -97,7 +97,7 @@ export async function fetchStorage(
 export async function fetchSites(
   config: FioConfig
 ): Promise<FioResult<FioSite[]>> {
-  return fioFetch<FioSite[]>(`/sites/${config.username}`, config.apiKey);
+  return fioFetch<FioSite[]>(`/sites/${encodeURIComponent(config.username)}`, config.apiKey);
 }
 
 /**
@@ -110,7 +110,7 @@ export async function testConnection(
   config: FioConfig
 ): Promise<FioResult<true>> {
   const result = await fioFetch<FioSite[]>(
-    `/sites/${config.username}`,
+    `/sites/${encodeURIComponent(config.username)}`,
     config.apiKey
   );
   if (result.ok) {
