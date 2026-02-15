@@ -491,6 +491,8 @@ export function createStorageWithItems(
 
 /**
  * Creates a production order with specific inputs and outputs for burn calculation tests.
+ * Defaults to started: null (unstarted) because the burn engine only counts
+ * unstarted orders — they represent the production plan, not in-progress execution.
  */
 export function createOrderWithIO(
   inputs: Array<{ ticker: string; name?: string; amount: number }>,
@@ -513,5 +515,8 @@ export function createOrderWithIO(
     ),
     duration: createTimeSpan(durationMs),
     recurring,
+    started: null,
+    completion: null,
+    completed: 0,
   });
 }

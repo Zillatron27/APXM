@@ -64,15 +64,22 @@ interface WorkforceRateEntry {
 const MS_PER_DAY = 86400000;
 
 /**
- * Returns recurring orders only if any exist, else all orders.
- * If ANY order is recurring, use ONLY recurring orders (steady-state production plan).
+ * Filters to orders representing the future production plan.
+ * Started orders (in-progress or completed) are excluded — they represent
+ * current/past execution, not the steady-state plan.
+ * If ANY unstarted order is recurring, use ONLY recurring orders.
  */
 export function getOrdersForCalculation(
   orders: PrunApi.ProductionOrder[]
 ): PrunApi.ProductionOrder[] {
   if (orders.length === 0) return [];
-  const recurring = orders.filter((o) => o.recurring);
-  return recurring.length > 0 ? recurring : orders;
+
+  // Only unstarted orders represent the production plan
+  const unstarted = orders.filter((o) => !o.started);
+  if (unstarted.length === 0) return [];
+
+  const recurring = unstarted.filter((o) => o.recurring);
+  return recurring.length > 0 ? recurring : unstarted;
 }
 
 /**

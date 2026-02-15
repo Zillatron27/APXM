@@ -31,6 +31,7 @@ import {
   createStoreItem,
   createAddress,
   createTestSite,
+  createDateTime,
   createTimeSpan,
   resetIdCounter,
   createStorageWithItems,
@@ -60,18 +61,18 @@ describe('burn.ts', () => {
       expect(getOrdersForCalculation([])).toEqual([]);
     });
 
-    it('returns all orders when none are recurring', () => {
+    it('returns all unstarted orders when none are recurring', () => {
       const orders = [
-        createProductionOrder({ recurring: false }),
-        createProductionOrder({ recurring: false }),
+        createProductionOrder({ recurring: false, started: null }),
+        createProductionOrder({ recurring: false, started: null }),
       ];
       expect(getOrdersForCalculation(orders)).toHaveLength(2);
     });
 
-    it('returns only recurring orders when some are recurring', () => {
-      const recurring1 = createProductionOrder({ recurring: true });
-      const nonRecurring = createProductionOrder({ recurring: false });
-      const recurring2 = createProductionOrder({ recurring: true });
+    it('returns only recurring unstarted orders when some are recurring', () => {
+      const recurring1 = createProductionOrder({ recurring: true, started: null });
+      const nonRecurring = createProductionOrder({ recurring: false, started: null });
+      const recurring2 = createProductionOrder({ recurring: true, started: null });
       const orders = [recurring1, nonRecurring, recurring2];
 
       const result = getOrdersForCalculation(orders);
@@ -79,12 +80,65 @@ describe('burn.ts', () => {
       expect(result.every((o) => o.recurring)).toBe(true);
     });
 
-    it('returns all recurring orders when all are recurring', () => {
+    it('returns all recurring orders when all are recurring and unstarted', () => {
       const orders = [
-        createProductionOrder({ recurring: true }),
-        createProductionOrder({ recurring: true }),
+        createProductionOrder({ recurring: true, started: null }),
+        createProductionOrder({ recurring: true, started: null }),
       ];
       expect(getOrdersForCalculation(orders)).toHaveLength(2);
+    });
+
+    it('excludes started orders (in-progress)', () => {
+      const started = createProductionOrder({ started: createDateTime(), recurring: false });
+      const unstarted = createProductionOrder({ started: null, recurring: false });
+      const result = getOrdersForCalculation([started, unstarted]);
+      expect(result).toHaveLength(1);
+      expect(result[0].started).toBeNull();
+    });
+
+    it('returns empty array when all orders are started', () => {
+      const orders = [
+        createProductionOrder({ started: createDateTime(), recurring: false }),
+        createProductionOrder({ started: createDateTime(), recurring: true }),
+      ];
+      expect(getOrdersForCalculation(orders)).toEqual([]);
+    });
+
+    it('excludes completed-but-not-cleared non-recurring order', () => {
+      // Player ran a WAI order, it completed, but hasn't been dismissed.
+      // completed=100, started is set, completion timestamp is set.
+      // This order should NOT contribute to burn calculation.
+      const completedOrder = createProductionOrder({
+        recurring: false,
+        started: createDateTime(Date.now() - 7200000),
+        completion: createDateTime(Date.now() - 3600000),
+        completed: 100,
+      });
+      const result = getOrdersForCalculation([completedOrder]);
+      expect(result).toEqual([]);
+    });
+
+    it('uses only the unstarted template copy of a running recurring order', () => {
+      // In PrUn, a running recurring order has two copies in the queue:
+      // 1. The in-progress copy (started is set)
+      // 2. The next-up template copy (started is null, recurring: true)
+      // Only the template copy represents the steady-state plan.
+      const runningCopy = createProductionOrder({
+        recurring: true,
+        started: createDateTime(),
+        completed: 50,
+        duration: createTimeSpan(MS_PER_DAY),
+      });
+      const templateCopy = createProductionOrder({
+        recurring: true,
+        started: null,
+        completed: 0,
+        duration: createTimeSpan(MS_PER_DAY),
+      });
+      const result = getOrdersForCalculation([runningCopy, templateCopy]);
+      expect(result).toHaveLength(1);
+      expect(result[0].started).toBeNull();
+      expect(result[0].recurring).toBe(true);
     });
   });
 
