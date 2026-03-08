@@ -24,3 +24,5 @@ Thumbs.db
 
 # Claude Code config (lives in context/ repo, symlinked here)
 CLAUDE.md
+.claude/settings.json
+.claude/commands/
