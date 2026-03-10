@@ -58,7 +58,7 @@ importers:
   shell:
     dependencies:
       '@27bit/helm':
-        specifier: git+ssh://git@github.com/Zillatron27/helm.git#v0.5.0
+        specifier: git+https://github.com/Zillatron27/helm.git#v0.5.0
         version: https://codeload.github.com/Zillatron27/helm/tar.gz/cbb8f52ff327c65109cfb0d1f7b5e60a53cf4d44
     devDependencies:
       typescript:
