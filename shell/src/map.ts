@@ -15,6 +15,8 @@ import type { ApxmInitMessage, ApxmUpdateMessage } from './types/bridge';
 import { createEmpireState } from './empire-state';
 import { createEmpireOverlay } from './empire-overlay';
 import type { EmpireOverlay, SystemResolvers, PlanetInfo } from './empire-overlay';
+import { createGatewayMarkers } from './overlays/gateway-markers';
+import type { GatewayMarkerLayer } from './overlays/gateway-markers';
 
 const MAX_ZOOM = 8.0;
 const EMPIRE_PADDING = 100;
@@ -98,6 +100,7 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
   const empireState = createEmpireState();
   let helm: HelmInstance | null = null;
   let overlay: EmpireOverlay | null = null;
+  let gatewayMarkers: GatewayMarkerLayer | null = null;
   const pendingMessages: MessageEvent[] = [];
 
   function processMessage(event: MessageEvent): void {
@@ -108,6 +111,7 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
       const msg = data as ApxmInitMessage;
       empireState.applySnapshot(msg.snapshot);
       overlay?.refresh();
+      gatewayMarkers?.refresh();
       frameToEmpire(helm!.viewport, empireState.getOwnedSystemNaturalIds());
     } else if (data.type === 'apxm-update') {
       const msg = data as ApxmUpdateMessage;
@@ -129,6 +133,13 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
 
   helm = await createMap(container);
   overlay = createEmpireOverlay(helm.viewport, empireState, resolvers);
+
+  // Hide Helm's native gateway indicator dots, render via status grid instead
+  helm.renderer.setGatewayIndicatorsVisible(false);
+  gatewayMarkers = createGatewayMarkers(empireState);
+  gatewayMarkers.refresh();
+  // Insert after empire overlay (index 2) → index 3
+  helm.viewport.addChildAt(gatewayMarkers.container, 3);
 
   // Restore empire camera when exiting system view
   const viewport = helm.viewport;
