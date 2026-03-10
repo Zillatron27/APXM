@@ -12,5 +12,6 @@
       "@apxm/bridge": ["../types/bridge.ts"]
     }
   },
-  "include": ["src/**/*.ts", "../types/bridge.ts"]
+  "include": ["src/**/*.ts", "../types/bridge.ts"],
+  "exclude": ["src/**/*.test.ts", "src/**/__tests__/**"]
 }
