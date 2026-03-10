@@ -10,6 +10,7 @@ import {
   onStateChange, getViewLevel,
 } from '@27bit/helm';
 import type { HelmInstance } from '@27bit/helm';
+import { Ticker } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { ApxmInitMessage, ApxmUpdateMessage } from './types/bridge';
 import { createEmpireState } from './empire-state';
@@ -17,6 +18,10 @@ import { createEmpireOverlay } from './empire-overlay';
 import type { EmpireOverlay, SystemResolvers, PlanetInfo } from './empire-overlay';
 import { createGatewayMarkers } from './overlays/gateway-markers';
 import type { GatewayMarkerLayer } from './overlays/gateway-markers';
+import { createShipIdleMarkers } from './overlays/ship-idle-markers';
+import type { ShipIdleMarkerLayer } from './overlays/ship-idle-markers';
+import { createShipTransitLayer } from './overlays/ship-transit';
+import type { ShipTransitLayer } from './overlays/ship-transit';
 
 const MAX_ZOOM = 8.0;
 const EMPIRE_PADDING = 100;
@@ -101,6 +106,8 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
   let helm: HelmInstance | null = null;
   let overlay: EmpireOverlay | null = null;
   let gatewayMarkers: GatewayMarkerLayer | null = null;
+  let shipIdleMarkers: ShipIdleMarkerLayer | null = null;
+  let shipTransit: ShipTransitLayer | null = null;
   const pendingMessages: MessageEvent[] = [];
 
   function processMessage(event: MessageEvent): void {
@@ -112,12 +119,18 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
       empireState.applySnapshot(msg.snapshot);
       overlay?.refresh();
       gatewayMarkers?.refresh();
+      shipIdleMarkers?.refresh();
+      shipTransit?.refresh();
       frameToEmpire(helm!.viewport, empireState.getOwnedSystemNaturalIds());
     } else if (data.type === 'apxm-update') {
       const msg = data as ApxmUpdateMessage;
       empireState.applyUpdate(msg.update);
       if (msg.update.entityType === 'sites' || msg.update.entityType === 'workforce') {
         overlay?.refresh();
+      }
+      if (msg.update.entityType === 'ships' || msg.update.entityType === 'flights') {
+        shipIdleMarkers?.refresh();
+        shipTransit?.refresh();
       }
     }
   }
@@ -140,6 +153,18 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
   gatewayMarkers.refresh();
   // Insert after empire overlay (index 2) → index 3
   helm.viewport.addChildAt(gatewayMarkers.container, 3);
+
+  shipIdleMarkers = createShipIdleMarkers(empireState);
+  shipIdleMarkers.refresh();
+  helm.viewport.addChildAt(shipIdleMarkers.container, 4);
+
+  shipTransit = createShipTransitLayer(empireState, resolvers, helm.viewport);
+  shipTransit.refresh();
+  helm.viewport.addChildAt(shipTransit.container, 5);
+
+  // Per-frame ticker for transit ship interpolation
+  const tickerFn = () => shipTransit!.tick();
+  Ticker.shared.add(tickerFn);
 
   // Restore empire camera when exiting system view
   const viewport = helm.viewport;

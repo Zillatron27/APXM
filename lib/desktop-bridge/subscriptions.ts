@@ -90,6 +90,17 @@ export function subscribeToStores(post: PostFn): () => void {
             timestamp: Date.now(),
           },
         });
+        // Ship cargo/fuel comes from storage — cross-trigger ships update
+        if (binding.entityType === 'storage') {
+          post({
+            type: 'apxm-update',
+            update: {
+              entityType: 'ships',
+              data: deriveShipSummaries() as ApxmUpdateMessage['update']['data'],
+              timestamp: Date.now(),
+            },
+          });
+        }
       }, DEBOUNCE_MS);
     });
 

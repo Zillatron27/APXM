@@ -10,6 +10,7 @@ import type {
   SiteSummary,
   ShipSummary,
   FlightSummary,
+  CargoItem,
   StorageSummary,
   ProductionSummary,
   WorkforceSummary,
@@ -74,16 +75,63 @@ export function deriveSiteSummaries(): SiteSummary[] {
   });
 }
 
+/** Maps store items to CargoItem[], filtering out items with no quantity. */
+export function deriveCargoItems(items: PrunApi.StoreItem[]): CargoItem[] {
+  const result: CargoItem[] = [];
+  for (const item of items) {
+    if (!item.quantity) continue;
+    result.push({
+      ticker: item.quantity.material.ticker,
+      category: item.quantity.material.category,
+      amount: item.quantity.amount,
+      weight: item.weight,
+      volume: item.volume,
+    });
+  }
+  return result;
+}
+
 export function deriveShipSummaries(): ShipSummary[] {
-  return useShipsStore.getState().getAll().map((ship) => ({
-    shipId: ship.id,
-    name: ship.name,
-    registration: ship.registration,
-    status: ship.status,
-    locationSystemNaturalId: ship.address
-      ? extractSystemNaturalId(ship.address)
-      : null,
-  }));
+  const storageState = useStorageStore.getState();
+
+  return useShipsStore.getState().getAll().map((ship) => {
+    const cargoStore = storageState.getById(ship.idShipStore);
+    const stlFuelStore = storageState.getById(ship.idStlFuelStore);
+    const ftlFuelStore = storageState.getById(ship.idFtlFuelStore);
+
+    return {
+      shipId: ship.id,
+      name: ship.name,
+      registration: ship.registration,
+      blueprintNaturalId: ship.blueprintNaturalId,
+      condition: ship.condition,
+      status: ship.status,
+      locationSystemNaturalId: ship.address
+        ? extractSystemNaturalId(ship.address)
+        : null,
+      locationPlanetNaturalId: ship.address
+        ? extractPlanetInfo(ship.address)?.naturalId ?? null
+        : null,
+      cargo: cargoStore
+        ? {
+            weightUsed: cargoStore.weightLoad,
+            weightCapacity: cargoStore.weightCapacity,
+            volumeUsed: cargoStore.volumeLoad,
+            volumeCapacity: cargoStore.volumeCapacity,
+            items: deriveCargoItems(cargoStore.items),
+          }
+        : null,
+      fuel:
+        stlFuelStore && ftlFuelStore
+          ? {
+              stlWeightUsed: stlFuelStore.weightLoad,
+              stlWeightCapacity: stlFuelStore.weightCapacity,
+              ftlWeightUsed: ftlFuelStore.weightLoad,
+              ftlWeightCapacity: ftlFuelStore.weightCapacity,
+            }
+          : null,
+    };
+  });
 }
 
 export function deriveFlightSummaries(): FlightSummary[] {
@@ -92,9 +140,17 @@ export function deriveFlightSummaries(): FlightSummary[] {
     shipId: flight.shipId,
     originSystemNaturalId: extractSystemNaturalId(flight.origin),
     destinationSystemNaturalId: extractSystemNaturalId(flight.destination),
+    originPlanetNaturalId: extractPlanetInfo(flight.origin)?.naturalId ?? null,
+    destinationPlanetNaturalId: extractPlanetInfo(flight.destination)?.naturalId ?? null,
     departureTimestamp: flight.departure.timestamp,
     arrivalTimestamp: flight.arrival.timestamp,
-    segmentCount: flight.segments.length,
+    segments: flight.segments.map((seg) => ({
+      type: seg.type,
+      originSystemNaturalId: extractSystemNaturalId(seg.origin),
+      destinationSystemNaturalId: extractSystemNaturalId(seg.destination),
+      departureTimestamp: seg.departure.timestamp,
+      arrivalTimestamp: seg.arrival.timestamp,
+    })),
     currentSegmentIndex: flight.currentSegmentIndex,
   }));
 }

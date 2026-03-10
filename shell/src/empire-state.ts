@@ -6,7 +6,7 @@
  * derives owned systems and burn status for overlay rendering.
  */
 
-import type { BridgeSnapshot, BridgeUpdate, WorkforceSummary } from './types/bridge';
+import type { BridgeSnapshot, BridgeUpdate, WorkforceSummary, ShipSummary, FlightSummary } from './types/bridge';
 
 const BURN_PRIORITY: Record<WorkforceSummary['burnStatus'], number> = {
   critical: 3,
@@ -22,6 +22,10 @@ export interface EmpireState {
   getOwnedPlanetNaturalIds(systemNaturalId: string): string[];
   getSystemBurnStatus(systemNaturalId: string): 'critical' | 'warning' | 'ok' | 'unknown';
   getPlanetBurnStatus(planetNaturalId: string): 'critical' | 'warning' | 'ok' | 'unknown';
+  getShipsInSystem(systemNaturalId: string): ShipSummary[];
+  getInTransitShips(): Array<{ ship: ShipSummary; flight: FlightSummary }>;
+  getFlightForShip(shipId: string): FlightSummary | undefined;
+  getIdleShipsBySystem(): Map<string, ShipSummary[]>;
   onChange(callback: () => void): () => void;
 }
 
@@ -101,6 +105,41 @@ export function createEmpireState(): EmpireState {
     return worst ?? 'unknown';
   }
 
+  function getShipsInSystem(systemNaturalId: string): ShipSummary[] {
+    const flightShipIds = new Set(state.flights.map((f) => f.shipId));
+    return state.ships.filter(
+      (s) => s.locationSystemNaturalId === systemNaturalId && !flightShipIds.has(s.shipId),
+    );
+  }
+
+  function getInTransitShips(): Array<{ ship: ShipSummary; flight: FlightSummary }> {
+    const pairs: Array<{ ship: ShipSummary; flight: FlightSummary }> = [];
+    for (const flight of state.flights) {
+      const ship = state.ships.find((s) => s.shipId === flight.shipId);
+      if (ship) pairs.push({ ship, flight });
+    }
+    return pairs;
+  }
+
+  function getFlightForShip(shipId: string): FlightSummary | undefined {
+    return state.flights.find((f) => f.shipId === shipId);
+  }
+
+  function getIdleShipsBySystem(): Map<string, ShipSummary[]> {
+    const flightShipIds = new Set(state.flights.map((f) => f.shipId));
+    const bySystem = new Map<string, ShipSummary[]>();
+    for (const ship of state.ships) {
+      if (!ship.locationSystemNaturalId || flightShipIds.has(ship.shipId)) continue;
+      const existing = bySystem.get(ship.locationSystemNaturalId);
+      if (existing) {
+        existing.push(ship);
+      } else {
+        bySystem.set(ship.locationSystemNaturalId, [ship]);
+      }
+    }
+    return bySystem;
+  }
+
   function onChange(callback: () => void): () => void {
     listeners.push(callback);
     return () => {
@@ -111,6 +150,8 @@ export function createEmpireState(): EmpireState {
 
   return {
     applySnapshot, applyUpdate, getOwnedSystemNaturalIds, getOwnedPlanetNaturalIds,
-    getSystemBurnStatus, getPlanetBurnStatus, onChange,
+    getSystemBurnStatus, getPlanetBurnStatus,
+    getShipsInSystem, getInTransitShips, getFlightForShip, getIdleShipsBySystem,
+    onChange,
   };
 }

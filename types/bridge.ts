@@ -19,12 +19,44 @@ export interface SiteSummary {
   area: number;
 }
 
+export interface CargoItem {
+  ticker: string;
+  category: string;
+  amount: number;
+  weight: number;
+  volume: number;
+}
+
+export interface FlightSegmentSummary {
+  type: string;
+  originSystemNaturalId: string | null;
+  destinationSystemNaturalId: string | null;
+  departureTimestamp: number;
+  arrivalTimestamp: number;
+}
+
 export interface ShipSummary {
   shipId: string;
   name: string;
   registration: string;
+  blueprintNaturalId: string;
+  condition: number;
   status: string;
   locationSystemNaturalId: string | null;
+  locationPlanetNaturalId: string | null;
+  cargo: {
+    weightUsed: number;
+    weightCapacity: number;
+    volumeUsed: number;
+    volumeCapacity: number;
+    items: CargoItem[];
+  } | null;
+  fuel: {
+    stlWeightUsed: number;
+    stlWeightCapacity: number;
+    ftlWeightUsed: number;
+    ftlWeightCapacity: number;
+  } | null;
 }
 
 export interface FlightSummary {
@@ -32,9 +64,11 @@ export interface FlightSummary {
   shipId: string;
   originSystemNaturalId: string | null;
   destinationSystemNaturalId: string | null;
+  originPlanetNaturalId: string | null;
+  destinationPlanetNaturalId: string | null;
   departureTimestamp: number;
   arrivalTimestamp: number;
-  segmentCount: number;
+  segments: FlightSegmentSummary[];
   currentSegmentIndex: number;
 }
 

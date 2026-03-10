@@ -12,6 +12,8 @@ export type {
   SiteSummary,
   ShipSummary,
   FlightSummary,
+  CargoItem,
+  FlightSegmentSummary,
   StorageSummary,
   ProductionSummary,
   WorkforceSummary,
