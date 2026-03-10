@@ -1,0 +1,4 @@
+{
+  "name": "apxm-shell",
+  "assets": { "directory": "./dist" }
+}
