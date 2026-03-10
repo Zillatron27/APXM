@@ -8,6 +8,6 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     include: ['**/*.test.ts'],
-    exclude: ['node_modules', '.wxt', '.output'],
+    exclude: ['node_modules', '.wxt', '.output', 'shell'],
   },
 });

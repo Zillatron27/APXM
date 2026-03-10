@@ -1,0 +1,20 @@
+// Re-export bridge types from shared definition
+export type {
+  ApxmBridgeMessage,
+  ApxmHelloMessage,
+  ApxmHelloAckMessage,
+  ApxmInitMessage,
+  ApxmUpdateMessage,
+  ApxmBufferCommandMessage,
+  BridgeSnapshot,
+  BridgeUpdate,
+  BridgeEntityType,
+  SiteSummary,
+  ShipSummary,
+  FlightSummary,
+  StorageSummary,
+  ProductionSummary,
+  WorkforceSummary,
+  ContractSummary,
+  CurrencyAmount,
+} from '@apxm/bridge';

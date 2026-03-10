@@ -12,6 +12,7 @@ import { warn, error as logError } from '../lib/debug/logger';
 import { isDebugEnabled, createOverlay, markStep, markFailed, pollForAttribute, ensureDiagnosticsVisible } from '../lib/diagnostics';
 import { initRefreshMode, isAutoRefreshEnabled } from '../lib/buffer-refresh';
 import { executeBatchRefresh } from '../lib/buffer-refresh';
+import { initDesktopBridge } from '../lib/desktop-bridge';
 import { useSitesStore } from '../stores/entities';
 import { useSiteSourceStore } from '../stores/site-data-sources';
 import '../assets/styles.css';
@@ -31,22 +32,18 @@ export default defineContentScript({
       }
     });
 
-    // Desktop detection — bail before doing anything on non-touch devices.
-    // Zero footprint: no script blocker, no interceptor, no React mount.
+    // Desktop detection — on desktop without ?apxm_force, run data pipeline
+    // and bridge but skip the mobile UI overlay.
     const isMobile = window.matchMedia('(pointer: coarse)').matches;
     const forceEnabled = new URLSearchParams(window.location.search).has('apxm_force');
-
-    if (!isMobile && !forceEnabled) {
-      console.log('[APXM] Desktop detected (pointer: fine) — not activating. Use ?apxm_force to override.');
-      return;
-    }
+    const isDesktopBridgeMode = !isMobile && !forceEnabled;
 
     const debug = isDebugEnabled();
 
     if (debug) {
       createOverlay();
       markStep(1, 'ok');
-      markStep(2, 'ok', isMobile ? 'mobile detected' : 'forced via ?apxm_force');
+      markStep(2, 'ok', isMobile ? 'mobile detected' : forceEnabled ? 'forced via ?apxm_force' : 'desktop bridge mode');
     }
 
     // 1. Inject main-world interceptor (includes script blocker)
@@ -168,6 +165,16 @@ export default defineContentScript({
           useSettingsStore.getState().setFioLastFetch(Date.now());
         }
       });
+    }
+
+    // Desktop bridge: start iframe detection and store subscriptions
+    if (!isMobile) {
+      initDesktopBridge();
+    }
+
+    if (isDesktopBridgeMode) {
+      console.log('[APXM] Desktop mode — bridge active, mobile UI skipped.');
+      return;
     }
 
     // 7. Mount React overlay in Shadow DOM

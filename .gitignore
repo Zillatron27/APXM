@@ -4,6 +4,7 @@ node_modules/
 # Build output
 .output/
 .wxt/
+shell/dist/
 
 # IDE
 .idea/

@@ -1,0 +1,60 @@
+#landing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  font-family: 'IBM Plex Mono', 'Courier New', monospace;
+  color: #e0e0e0;
+  text-align: center;
+  padding: 2rem;
+}
+
+#landing h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.1em;
+}
+
+#landing .accent {
+  color: #ff8c00;
+}
+
+#landing .tagline {
+  font-size: 1rem;
+  color: #888;
+  margin-bottom: 2rem;
+}
+
+#landing .links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+#landing .links a {
+  color: #ff8c00;
+  text-decoration: none;
+  font-size: 0.9rem;
+  padding: 0.5rem 1.5rem;
+  border: 1px solid #ff8c0040;
+  border-radius: 4px;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+#landing .links a:hover {
+  border-color: #ff8c00;
+  background-color: #ff8c0010;
+}
+
+#loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  font-family: 'IBM Plex Mono', 'Courier New', monospace;
+  color: #888;
+  font-size: 0.9rem;
+}
