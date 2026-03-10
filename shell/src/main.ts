@@ -38,17 +38,28 @@ async function activateMap(): Promise<void> {
   if (loading) loading.style.display = 'none';
   if (mapContainer) {
     mapContainer.style.display = 'block';
-    initMap(mapContainer);
+    // Pass early messages buffered between handshake and initMap listener registration
+    await initMap(mapContainer, earlyMessages);
+    earlyMessages.length = 0;
+    mapReady = true;
   }
 }
 
 let handshakeComplete = false;
+let mapReady = false;
+const earlyMessages: MessageEvent[] = [];
 
 function handleMessage(event: MessageEvent): void {
   if (!isAllowedOrigin(event.origin)) return;
 
   const data = event.data;
   if (!data || typeof data !== 'object') return;
+
+  // Buffer bridge data messages that arrive before initMap registers its listener
+  if (handshakeComplete && !mapReady && (data.type === 'apxm-init' || data.type === 'apxm-update')) {
+    earlyMessages.push(event);
+    return;
+  }
 
   if (data.type === 'apxm-hello' && !handshakeComplete) {
     const hello = data as ApxmHelloMessage;

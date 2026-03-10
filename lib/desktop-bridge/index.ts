@@ -30,12 +30,32 @@ function isApxmIframe(iframe: HTMLIFrameElement): boolean {
   return origin !== null && isAllowedOrigin(origin);
 }
 
+function waitForIframeLoad(iframe: HTMLIFrameElement): Promise<void> {
+  return new Promise((resolve) => {
+    // If iframe has already loaded its target src, proceed immediately
+    try {
+      if (iframe.contentWindow?.location.href !== 'about:blank') {
+        resolve();
+        return;
+      }
+    } catch {
+      // Cross-origin — contentWindow.location is inaccessible, meaning it already navigated
+      resolve();
+      return;
+    }
+    iframe.addEventListener('load', () => resolve(), { once: true });
+  });
+}
+
 async function connectToIframe(iframe: HTMLIFrameElement): Promise<void> {
   // Already connected to this iframe
   if (activeBridge?.iframe === iframe) return;
 
   // Disconnect previous bridge if any
   disconnectBridge();
+
+  // Wait for iframe to navigate to its src before sending postMessage
+  await waitForIframeLoad(iframe);
 
   console.log('[APXM Bridge] Found shell iframe, starting handshake...');
   const success = await startHandshake(iframe);
@@ -74,6 +94,17 @@ function scanForIframes(): void {
 
 function handleMutations(mutations: MutationRecord[]): void {
   for (const mutation of mutations) {
+    // Handle iframe src attribute changes (APEX may insert iframe first, set src after)
+    if (mutation.type === 'attributes' && mutation.target instanceof HTMLIFrameElement) {
+      if (isApxmIframe(mutation.target)) {
+        connectToIframe(mutation.target);
+      } else if (activeBridge?.iframe === mutation.target) {
+        // src changed away from our shell — disconnect
+        disconnectBridge();
+      }
+      continue;
+    }
+
     // Check for added iframes
     for (const node of mutation.addedNodes) {
       if (node instanceof HTMLIFrameElement && isApxmIframe(node)) {
@@ -134,5 +165,10 @@ export function initDesktopBridge(): void {
 
   // Watch for future iframe insertions/removals
   observer = new MutationObserver(handleMutations);
-  observer.observe(document.body, { childList: true, subtree: true });
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['src'],
+  });
 }

@@ -12,6 +12,8 @@
     "@27bit/helm": "git+https://github.com/Zillatron27/helm.git#v0.5.0"
   },
   "devDependencies": {
+    "pixi-viewport": "^6.0.3",
+    "pixi.js": "^8.17.0",
     "typescript": "^5.9.3",
     "vite": "^6.3.5"
   }
