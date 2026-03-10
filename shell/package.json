@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@27bit/helm": "git+ssh://git@github.com/Zillatron27/helm.git#v0.5.0"
+    "@27bit/helm": "git+https://github.com/Zillatron27/helm.git#v0.5.0"
   },
   "devDependencies": {
     "typescript": "^5.9.3",
