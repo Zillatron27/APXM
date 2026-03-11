@@ -91,6 +91,7 @@ export function normalizeCategory(category: string | null | undefined): string {
   if (!category) return 'default';
   return category
     .toLowerCase()
+    .replace(/[()]/g, '')
     .replace(/_/g, '-')
     .replace(/\s+/g, '-');
 }

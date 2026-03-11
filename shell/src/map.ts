@@ -7,7 +7,7 @@
 
 import {
   createMap, getSystemByNaturalId, getSystemById, getPlanetsForSystem,
-  onStateChange, getViewLevel,
+  onStateChange, getViewLevel, getSelectedEntity, setSelectedEntity,
 } from '@27bit/helm';
 import type { HelmInstance } from '@27bit/helm';
 import { Ticker } from 'pixi.js';
@@ -20,8 +20,11 @@ import { createGatewayMarkers } from './overlays/gateway-markers';
 import type { GatewayMarkerLayer } from './overlays/gateway-markers';
 import { createShipIdleMarkers } from './overlays/ship-idle-markers';
 import type { ShipIdleMarkerLayer } from './overlays/ship-idle-markers';
+import type { ShipInteractionCallbacks } from './overlays/ship-idle-markers';
 import { createShipTransitLayer } from './overlays/ship-transit';
 import type { ShipTransitLayer } from './overlays/ship-transit';
+import { showTooltip, hideTooltip, updateTooltipPosition } from './ui/ship-tooltip';
+import { showPanel, hidePanel, isPanelVisible, updatePanel } from './ui/ship-panel';
 
 const MAX_ZOOM = 8.0;
 const EMPIRE_PADDING = 100;
@@ -121,6 +124,7 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
       gatewayMarkers?.refresh();
       shipIdleMarkers?.refresh();
       shipTransit?.refresh();
+      updatePanel(msg.snapshot.ships, msg.snapshot.flights);
       frameToEmpire(helm!.viewport, empireState.getOwnedSystemNaturalIds());
     } else if (data.type === 'apxm-update') {
       const msg = data as ApxmUpdateMessage;
@@ -131,6 +135,13 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
       if (msg.update.entityType === 'ships' || msg.update.entityType === 'flights') {
         shipIdleMarkers?.refresh();
         shipTransit?.refresh();
+        // Re-render open ship panel with updated data
+        const snap = empireState;
+        const allShips = [...snap.getIdleShipsBySystem().values()].flat();
+        const inTransit = snap.getInTransitShips();
+        const ships = [...allShips, ...inTransit.map(e => e.ship)];
+        const flights = inTransit.map(e => e.flight);
+        updatePanel(ships, flights);
       }
     }
   }
@@ -145,6 +156,38 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
   });
 
   helm = await createMap(container);
+
+  const viewport = helm.viewport;
+
+  // Ship interaction callbacks shared by idle + transit layers
+  const shipCallbacks: ShipInteractionCallbacks = {
+    onHover(ships, screenX, screenY) {
+      const flights = ships
+        .map(s => empireState.getFlightForShip(s.shipId))
+        .filter((f): f is NonNullable<typeof f> => !!f);
+      showTooltip(ships, flights, screenX, screenY);
+    },
+    onHoverEnd() {
+      hideTooltip();
+    },
+    onClick(ships, screenX, screenY) {
+      hideTooltip();
+      const flights = ships
+        .map(s => empireState.getFlightForShip(s.shipId))
+        .filter((f): f is NonNullable<typeof f> => !!f);
+      // Close any Helm entity panel
+      setSelectedEntity(null);
+      showPanel(ships, flights, screenX, screenY, {
+        onBufferCommand(command) {
+          window.parent.postMessage({ type: 'apxm-buffer-command', command }, '*');
+        },
+        onClose() {
+          // No-op — panel handles its own DOM cleanup
+        },
+      });
+    },
+  };
+
   overlay = createEmpireOverlay(helm.viewport, empireState, resolvers);
 
   // Hide Helm's native gateway indicator dots, render via status grid instead
@@ -154,23 +197,41 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
   // Insert after empire overlay (index 2) → index 3
   helm.viewport.addChildAt(gatewayMarkers.container, 3);
 
-  shipIdleMarkers = createShipIdleMarkers(empireState);
+  shipIdleMarkers = createShipIdleMarkers(empireState, shipCallbacks);
   shipIdleMarkers.refresh();
   helm.viewport.addChildAt(shipIdleMarkers.container, 4);
 
-  shipTransit = createShipTransitLayer(empireState, resolvers, helm.viewport);
+  shipTransit = createShipTransitLayer(empireState, resolvers, helm.viewport, shipCallbacks);
   shipTransit.refresh();
   helm.viewport.addChildAt(shipTransit.container, 5);
 
   // Per-frame ticker for transit ship interpolation
-  const tickerFn = () => shipTransit!.tick();
+  const tickerFn = () => {
+    shipTransit!.tick();
+
+    // Update tooltip position for moving transit ships
+    const worldPos = shipTransit!.getHoveredWorldPos();
+    if (worldPos) {
+      const screen = viewport.toScreen(worldPos.x, worldPos.y);
+      updateTooltipPosition(screen.x, screen.y);
+    }
+  };
   Ticker.shared.add(tickerFn);
 
-  // Restore empire camera when exiting system view
-  const viewport = helm.viewport;
+  // Panel coordination: Helm entity selection closes ship panel
   onStateChange(() => {
     if (getViewLevel() === 'galaxy' && empireCamera) {
       restoreEmpireCamera(viewport);
+    }
+    if (getSelectedEntity() !== null && isPanelVisible()) {
+      hidePanel();
+    }
+  });
+
+  // Escape key closes ship panel
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isPanelVisible()) {
+      hidePanel();
     }
   });
 
