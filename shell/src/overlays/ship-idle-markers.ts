@@ -6,19 +6,35 @@
  * chevrons for 2+ ships.
  */
 
-import { Container, Graphics } from 'pixi.js';
+import { Container, Graphics, Circle } from 'pixi.js';
 import { getSystems, getCxForSystem, onStateChange, getViewLevel } from '@27bit/helm';
 import { getSlotOffset, SYSTEM_GRID_CONFIG, BASE_SYSTEM_GRID_CONFIG, CX_SYSTEM_GRID_CONFIG } from './status-grid';
 import { drawChevron } from './chevron';
 import type { EmpireState } from '../empire-state';
+import type { ShipSummary } from '../types/bridge';
 
 const SHIP_COLOUR = 0xff8c00;
 const SHIP_ALPHA = 0.8;
 const SYSTEM_VIEW_DIM_ALPHA = 0.05;
 const CHEVRON_SIZE = 5;
 const STACK_OFFSET_Y = -4;
+const HIT_RADIUS = 12;
 
 const SHIP_SLOT = 1;
+/** Extra downward nudge so stacked chevrons don't overlap gateway (slot 0) */
+const SHIP_SLOT_NUDGE_Y = 4;
+
+export interface ShipInteractionCallbacks {
+  onHover(ships: ShipSummary[], screenX: number, screenY: number): void;
+  onHoverEnd(): void;
+  onClick(ships: ShipSummary[], screenX: number, screenY: number): void;
+}
+
+interface IdleEntry {
+  systemNaturalId: string;
+  ships: ShipSummary[];
+  graphic: Graphics;
+}
 
 export interface ShipIdleMarkerLayer {
   refresh(): void;
@@ -26,13 +42,19 @@ export interface ShipIdleMarkerLayer {
   container: Container;
 }
 
-export function createShipIdleMarkers(empireState: EmpireState): ShipIdleMarkerLayer {
+export function createShipIdleMarkers(
+  empireState: EmpireState,
+  callbacks: ShipInteractionCallbacks,
+): ShipIdleMarkerLayer {
   const container = new Container();
-  container.eventMode = 'none';
+  container.eventMode = 'passive';
   container.alpha = SHIP_ALPHA;
+
+  let entries: IdleEntry[] = [];
 
   function refresh(): void {
     container.removeChildren();
+    entries = [];
 
     const idleBySystem = empireState.getIdleShipsBySystem();
     if (idleBySystem.size === 0) return;
@@ -52,18 +74,33 @@ export function createShipIdleMarkers(empireState: EmpireState): ShipIdleMarkerL
       const offset = getSlotOffset(SHIP_SLOT, config);
 
       const marker = new Graphics();
-      marker.eventMode = 'none';
+      marker.eventMode = 'static';
+      marker.cursor = 'pointer';
+      marker.hitArea = new Circle(0, 0, HIT_RADIUS);
       marker.x = system.worldX + offset.x;
-      marker.y = system.worldY + offset.y;
+      marker.y = system.worldY + offset.y + SHIP_SLOT_NUDGE_Y;
 
       drawChevron(marker, CHEVRON_SIZE, SHIP_COLOUR);
       if (ships.length >= 2) {
-        // Draw a second chevron offset upward to suggest a group
         const stacked = new Graphics();
         stacked.y = STACK_OFFSET_Y;
         drawChevron(stacked, CHEVRON_SIZE, SHIP_COLOUR);
         marker.addChild(stacked);
       }
+
+      const entry: IdleEntry = { systemNaturalId: system.naturalId, ships, graphic: marker };
+      entries.push(entry);
+
+      marker.on('pointerover', (e) => {
+        callbacks.onHover(entry.ships, e.global.x, e.global.y);
+      });
+      marker.on('pointerout', () => {
+        callbacks.onHoverEnd();
+      });
+      marker.on('pointertap', (e) => {
+        callbacks.onHoverEnd();
+        callbacks.onClick(entry.ships, e.global.x, e.global.y);
+      });
 
       container.addChild(marker);
     }

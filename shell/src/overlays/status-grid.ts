@@ -17,8 +17,9 @@
  * Slot assignments:
  *   0 = Gateway indicators
  *   1 = Ship presence (idle)
- *   2 = Reserved
- *   3-5 = Reserved (second column, used when first is full)
+ *   2 = Ship arriving (transit, pointing down)
+ *   3 = Ship departing (transit, pointing up)
+ *   4-5 = Reserved
  */
 
 export interface StatusGridConfig {
