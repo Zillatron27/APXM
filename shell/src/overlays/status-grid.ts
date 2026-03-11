@@ -5,14 +5,20 @@
  * Each overlay type claims a slot index; getSlotOffset() returns
  * the world-space offset from the element centre for that slot.
  *
- * Layout:
+ * Layout (column-major — fills down first column, then second):
  *        ┌───┬───┐
- *        │ 0 │ 1 │
+ *        │ 0 │ 3 │
  *   ★    ├───┼───┤
- *        │ 2 │ 3 │
+ *        │ 1 │ 4 │
  *        ├───┼───┤
- *        │ 4 │ 5 │
+ *        │ 2 │ 5 │
  *        └───┘───┘
+ *
+ * Slot assignments:
+ *   0 = Gateway indicators
+ *   1 = Ship presence (idle)
+ *   2 = Reserved
+ *   3-5 = Reserved (second column, used when first is full)
  */
 
 export interface StatusGridConfig {
@@ -69,17 +75,16 @@ export const PLANET_GRID_CONFIG: StatusGridConfig = {
   rows: 3,
 };
 
-/** Returns world-space offset from element centre for a given slot index. */
+/** Returns world-space offset from element centre for a given slot index (column-major). */
 export function getSlotOffset(
   slot: number,
   config: StatusGridConfig,
 ): { x: number; y: number } {
-  const col = slot % config.columns;
-  const row = Math.floor(slot / config.columns);
-  const step = config.cellSize + config.gapX;
+  const col = Math.floor(slot / config.rows);
+  const row = slot % config.rows;
 
   return {
-    x: config.originOffsetX + col * step,
+    x: config.originOffsetX + col * (config.cellSize + config.gapX),
     y: config.originOffsetY + row * (config.cellSize + config.gapY),
   };
 }
