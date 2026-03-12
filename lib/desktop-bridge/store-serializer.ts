@@ -16,6 +16,7 @@ import type {
   WorkforceSummary,
   ContractSummary,
   CurrencyAmount,
+  ScreenInfo,
   BridgeSnapshot,
 } from '../../types/bridge';
 import { useSitesStore } from '../../stores/entities/sites';
@@ -26,6 +27,7 @@ import { useProductionStore } from '../../stores/entities/production';
 import { useWorkforceStore } from '../../stores/entities/workforce';
 import { useContractsStore } from '../../stores/entities/contracts';
 import { useBalancesStore } from '../../stores/entities/balances';
+import { useScreensStore } from '../../stores/screens';
 import { calculateSiteBurn } from '../../core/burn';
 
 // ============================================================================
@@ -186,27 +188,23 @@ export function deriveProductionSummaries(): ProductionSummary[] {
     const planet = extractPlanetInfo(firstLine.address);
     const systemNaturalId = extractSystemNaturalId(firstLine.address);
 
-    let activeLines = 0;
-    let idleLines = 0;
+    let totalCapacity = 0;
+    let activeCount = 0;
     let nextCompletion: number | null = null;
 
     for (const line of lines) {
-      const hasActiveOrder = line.orders.some(
-        (o) => o.started !== null && o.completion !== null && !o.halted
-      );
-      if (hasActiveOrder) {
-        activeLines++;
-        // Find earliest completion across active orders
-        for (const order of line.orders) {
-          if (order.completion !== null && !order.halted) {
+      totalCapacity += line.capacity;
+      // Count orders that are actively producing
+      for (const order of line.orders) {
+        if (order.started !== null && !order.halted) {
+          activeCount++;
+          if (order.completion !== null) {
             const ts = order.completion.timestamp;
             if (nextCompletion === null || ts < nextCompletion) {
               nextCompletion = ts;
             }
           }
         }
-      } else {
-        idleLines++;
       }
     }
 
@@ -214,9 +212,9 @@ export function deriveProductionSummaries(): ProductionSummary[] {
       siteId,
       planetNaturalId: planet?.naturalId ?? null,
       systemNaturalId,
-      totalLines: lines.length,
-      activeLines,
-      idleLines,
+      totalLines: totalCapacity,
+      activeLines: activeCount,
+      idleLines: totalCapacity - activeCount,
       nextCompletionTimestamp: nextCompletion,
     });
   }
@@ -289,6 +287,14 @@ export function deriveBalances(): CurrencyAmount[] {
   }));
 }
 
+export function deriveScreens(): ScreenInfo[] {
+  return useScreensStore.getState().screens.map((s) => ({
+    id: s.id,
+    name: s.name,
+    hidden: s.hidden,
+  }));
+}
+
 /** Creates a full snapshot from all entity stores. */
 export function createSnapshot(): BridgeSnapshot {
   return {
@@ -300,6 +306,8 @@ export function createSnapshot(): BridgeSnapshot {
     workforce: deriveWorkforceSummaries(),
     contracts: deriveContractSummaries(),
     balances: deriveBalances(),
+    screens: deriveScreens(),
+    screenAssignments: { ...useScreensStore.getState().screenAssignments },
     timestamp: Date.now(),
   };
 }

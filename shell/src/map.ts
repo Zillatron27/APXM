@@ -8,6 +8,7 @@
 import {
   createMap, getSystemByNaturalId, getSystemById, getPlanetsForSystem,
   onStateChange, getViewLevel, getSelectedEntity, setSelectedEntity,
+  getFocusedSystemId,
 } from '@27bit/helm';
 import type { HelmInstance } from '@27bit/helm';
 import { Ticker } from 'pixi.js';
@@ -24,7 +25,9 @@ import type { ShipInteractionCallbacks } from './overlays/ship-idle-markers';
 import { createShipTransitLayer } from './overlays/ship-transit';
 import type { ShipTransitLayer } from './overlays/ship-transit';
 import { showTooltip, hideTooltip, updateTooltipPosition } from './ui/ship-tooltip';
-import { showPanel, hidePanel, isPanelVisible, updatePanel } from './ui/ship-panel';
+import { showPanel, updatePanel } from './ui/ship-panel';
+import { showBasePanel, updateBasePanel } from './ui/base-panel';
+import { isManagedPanelVisible, hideManagedPanel } from './ui/panel-manager';
 
 const MAX_ZOOM = 8.0;
 const EMPIRE_PADDING = 100;
@@ -125,6 +128,7 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
       shipIdleMarkers?.refresh();
       shipTransit?.refresh();
       updatePanel(msg.snapshot.ships, msg.snapshot.flights);
+      updateBasePanel(empireState);
       frameToEmpire(helm!.viewport, empireState.getOwnedSystemNaturalIds());
     } else if (data.type === 'apxm-update') {
       const msg = data as ApxmUpdateMessage;
@@ -142,6 +146,11 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
         const ships = [...allShips, ...inTransit.map(e => e.ship)];
         const flights = inTransit.map(e => e.flight);
         updatePanel(ships, flights);
+      }
+      // Re-render open base panel when relevant data changes
+      const basePanelTypes = ['sites', 'production', 'workforce', 'storage', 'screens'];
+      if (basePanelTypes.includes(msg.update.entityType)) {
+        updateBasePanel(empireState);
       }
     }
   }
@@ -218,20 +227,81 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
   };
   Ticker.shared.add(tickerFn);
 
-  // Panel coordination: Helm entity selection closes ship panel
+  // Panel coordination: entity selection drives panel lifecycle
+  let prevViewLevel = getViewLevel();
   onStateChange(() => {
-    if (getViewLevel() === 'galaxy' && empireCamera) {
+    const viewLevel = getViewLevel();
+
+    if (viewLevel === 'galaxy' && empireCamera) {
       restoreEmpireCamera(viewport);
     }
-    if (getSelectedEntity() !== null && isPanelVisible()) {
-      hidePanel();
+
+    // Dismiss Helm's native panel when entering system view (zoom-in transition)
+    if (viewLevel === 'system' && prevViewLevel === 'galaxy') {
+      setTimeout(() => helm!.panelManager.hide(), 0);
     }
+    prevViewLevel = viewLevel;
+
+    const entity = getSelectedEntity();
+
+    if (entity === null) {
+      // Deselection — close any APXM panel
+      if (isManagedPanelVisible()) hideManagedPanel();
+      return;
+    }
+
+    if (entity.type === 'planet') {
+      // Resolve Helm UUID to naturalId
+      const focusedId = getFocusedSystemId();
+      if (!focusedId) return;
+      const system = getSystemById(focusedId);
+      if (!system) return;
+      const planets = getPlanetsForSystem(system.naturalId);
+      const planet = planets?.find((p) => p.id === entity.id || p.naturalId === entity.id);
+      if (!planet) return;
+
+      const site = empireState.getSiteForPlanet(planet.naturalId);
+      if (site) {
+        // Owned planet — suppress Helm's panel and show base panel
+        // setTimeout(0) ensures our hide fires after Helm's own onStateChange renders
+        setTimeout(() => helm!.panelManager.hide(), 0);
+
+        // Calculate planet screen position from world coordinates
+        const planetAngle = (planet.orbitIndex / Math.max(planets!.length, 1)) * Math.PI * 2 - Math.PI / 2;
+        const planetWorldX = system.worldX + Math.cos(planetAngle) * planet.ringRadius;
+        const planetWorldY = system.worldY + Math.sin(planetAngle) * planet.ringRadius;
+        const screenPos = viewport.toScreen(planetWorldX, planetWorldY);
+
+        showBasePanel(planet.naturalId, planet.name || planet.naturalId, screenPos.x, screenPos.y, empireState, {
+          onBufferCommand(command) {
+            window.parent.postMessage({ type: 'apxm-buffer-command', command }, '*');
+          },
+          onScreenSwitch(screenId) {
+            window.parent.postMessage({ type: 'apxm-screen-switch', screenId }, '*');
+          },
+          onScreenAssign(planetNaturalId, screenId) {
+            empireState.setScreenAssignment(planetNaturalId, screenId);
+            window.parent.postMessage({ type: 'apxm-screen-assign', planetNaturalId, screenId }, '*');
+          },
+          onClose() {
+            // No-op — panel handles its own DOM cleanup
+          },
+        });
+        return;
+      }
+      // Not owned — close any APXM panel, let Helm show its native panel
+      if (isManagedPanelVisible()) hideManagedPanel();
+      return;
+    }
+
+    // System or other entity selection — close any APXM panel
+    if (isManagedPanelVisible()) hideManagedPanel();
   });
 
   // Escape key closes ship panel
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && isPanelVisible()) {
-      hidePanel();
+    if (e.key === 'Escape' && isManagedPanelVisible()) {
+      hideManagedPanel();
     }
   });
 

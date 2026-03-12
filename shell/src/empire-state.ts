@@ -6,7 +6,10 @@
  * derives owned systems and burn status for overlay rendering.
  */
 
-import type { BridgeSnapshot, BridgeUpdate, WorkforceSummary, ShipSummary, FlightSummary } from './types/bridge';
+import type {
+  BridgeSnapshot, BridgeUpdate, WorkforceSummary, ShipSummary, FlightSummary,
+  SiteSummary, ProductionSummary, StorageSummary, ScreenInfo,
+} from './types/bridge';
 
 const BURN_PRIORITY: Record<WorkforceSummary['burnStatus'], number> = {
   critical: 3,
@@ -26,6 +29,14 @@ export interface EmpireState {
   getInTransitShips(): Array<{ ship: ShipSummary; flight: FlightSummary }>;
   getFlightForShip(shipId: string): FlightSummary | undefined;
   getIdleShipsBySystem(): Map<string, ShipSummary[]>;
+  getSiteForPlanet(planetNaturalId: string): SiteSummary | undefined;
+  getProductionForPlanet(planetNaturalId: string): ProductionSummary | undefined;
+  getWorkforceForPlanet(planetNaturalId: string): WorkforceSummary | undefined;
+  getStorageForSite(siteId: string): StorageSummary | undefined;
+  getScreens(): ScreenInfo[];
+  getAssignedScreenIdForPlanet(planetNaturalId: string): string | null;
+  getAssignedScreenForPlanet(planetNaturalId: string): ScreenInfo | null;
+  setScreenAssignment(planetNaturalId: string, screenId: string | null): void;
   onChange(callback: () => void): () => void;
 }
 
@@ -39,6 +50,8 @@ export function createEmpireState(): EmpireState {
     workforce: [],
     contracts: [],
     balances: [],
+    screens: [],
+    screenAssignments: {},
     timestamp: 0,
   };
 
@@ -140,6 +153,45 @@ export function createEmpireState(): EmpireState {
     return bySystem;
   }
 
+  function getSiteForPlanet(planetNaturalId: string): SiteSummary | undefined {
+    return state.sites.find((s) => s.planetNaturalId === planetNaturalId);
+  }
+
+  function getProductionForPlanet(planetNaturalId: string): ProductionSummary | undefined {
+    return state.production.find((p) => p.planetNaturalId === planetNaturalId);
+  }
+
+  function getWorkforceForPlanet(planetNaturalId: string): WorkforceSummary | undefined {
+    return state.workforce.find((w) => w.planetNaturalId === planetNaturalId);
+  }
+
+  function getStorageForSite(siteId: string): StorageSummary | undefined {
+    return state.storage.find((s) => s.addressableId === siteId && s.type === 'STORE');
+  }
+
+  function getScreens(): ScreenInfo[] {
+    return state.screens;
+  }
+
+  function getAssignedScreenIdForPlanet(planetNaturalId: string): string | null {
+    return state.screenAssignments[planetNaturalId] ?? null;
+  }
+
+  function getAssignedScreenForPlanet(planetNaturalId: string): ScreenInfo | null {
+    const screenId = state.screenAssignments[planetNaturalId];
+    if (!screenId) return null;
+    return state.screens.find((s) => s.id === screenId) ?? null;
+  }
+
+  function setScreenAssignment(planetNaturalId: string, screenId: string | null): void {
+    if (screenId) {
+      state.screenAssignments[planetNaturalId] = screenId;
+    } else {
+      delete state.screenAssignments[planetNaturalId];
+    }
+    notify();
+  }
+
   function onChange(callback: () => void): () => void {
     listeners.push(callback);
     return () => {
@@ -152,6 +204,8 @@ export function createEmpireState(): EmpireState {
     applySnapshot, applyUpdate, getOwnedSystemNaturalIds, getOwnedPlanetNaturalIds,
     getSystemBurnStatus, getPlanetBurnStatus,
     getShipsInSystem, getInTransitShips, getFlightForShip, getIdleShipsBySystem,
+    getSiteForPlanet, getProductionForPlanet, getWorkforceForPlanet, getStorageForSite,
+    getScreens, getAssignedScreenIdForPlanet, getAssignedScreenForPlanet, setScreenAssignment,
     onChange,
   };
 }

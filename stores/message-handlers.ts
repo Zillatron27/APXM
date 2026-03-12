@@ -15,6 +15,7 @@ import {
   type WorkforceEntity,
 } from './entities';
 import { useSiteSourceStore } from './site-data-sources';
+import { useScreensStore, type ScreenInfo } from './screens';
 
 type MessageHandler = (msg: ProcessedMessage) => void;
 const typeHandlers = new Map<string, MessageHandler>();
@@ -449,6 +450,48 @@ export function initMessageHandlers(): void {
     } else {
       warn('ACCOUNTING_BOOKINGS: unexpected payload structure', payload);
       useConnectionStore.getState().incrementDiscarded();
+    }
+  });
+
+  // ============================================================================
+  // UI / Screens
+  // ============================================================================
+
+  typeHandlers.set('UI_DATA', (msg: ProcessedMessage) => {
+    const payload = extractPayload(msg) as { screens?: Array<{ id?: string; name?: string; hidden?: boolean }> };
+    if (Array.isArray(payload?.screens)) {
+      const screens: ScreenInfo[] = [];
+      for (const s of payload.screens) {
+        if (typeof s?.id === 'string' && typeof s?.name === 'string') {
+          screens.push({ id: s.id, name: s.name, hidden: !!s.hidden });
+        }
+      }
+      useScreensStore.getState().setScreens(screens);
+    }
+  });
+
+  typeHandlers.set('UI_SCREENS_ADD', (msg: ProcessedMessage) => {
+    const payload = extractPayload(msg) as { id?: string; name?: string; hidden?: boolean };
+    if (typeof payload?.id === 'string' && typeof payload?.name === 'string') {
+      useScreensStore.getState().addScreen({
+        id: payload.id,
+        name: payload.name,
+        hidden: !!payload.hidden,
+      });
+    }
+  });
+
+  typeHandlers.set('UI_SCREENS_RENAME', (msg: ProcessedMessage) => {
+    const payload = extractPayload(msg) as { id?: string; name?: string };
+    if (typeof payload?.id === 'string' && typeof payload?.name === 'string') {
+      useScreensStore.getState().renameScreen(payload.id, payload.name);
+    }
+  });
+
+  typeHandlers.set('UI_SCREENS_DELETE', (msg: ProcessedMessage) => {
+    const payload = extractPayload(msg) as { id?: string };
+    if (typeof payload?.id === 'string') {
+      useScreensStore.getState().removeScreen(payload.id);
     }
   });
 }

@@ -10,15 +10,13 @@ import { getCategoryColors } from './material-colors';
 import { MATERIAL_CATEGORIES } from './material-categories';
 import type { MaterialTheme } from './material-colors';
 import type { ShipSummary, FlightSummary } from '../types/bridge';
+import { showManagedPanel, hideManagedPanel, isManagedPanelActive } from './panel-manager';
 import './ship-panel.css';
 
 export interface ShipPanelCallbacks {
   onBufferCommand(command: string): void;
   onClose(): void;
 }
-
-const PANEL_OFFSET = 20;
-const VIEWPORT_MARGIN = 10;
 
 let container: HTMLDivElement | null = null;
 let callbacks: ShipPanelCallbacks | null = null;
@@ -27,9 +25,6 @@ let currentFlights: FlightSummary[] = [];
 let currentIndex = 0;
 let trackedShipId: string | null = null;
 let themeListener: (() => void) | null = null;
-let anchorX = 0;
-let anchorY = 0;
-let clickOutsideHandler: ((e: MouseEvent) => void) | null = null;
 
 function getTheme(): MaterialTheme {
   return getActiveThemeId() === 'prun-classic' ? 'prun' : 'rprun';
@@ -174,28 +169,6 @@ function renderShip(ship: ShipSummary, flight: FlightSummary | undefined): strin
   return sections.join('');
 }
 
-function positionPanel(el: HTMLDivElement): void {
-  // Place panel to the right of the anchor point, fall back to left if no room
-  let x = anchorX + PANEL_OFFSET;
-  let y = anchorY - 40;
-
-  const w = el.offsetWidth || 380;
-  const h = el.offsetHeight || 400;
-
-  if (x + w > window.innerWidth - VIEWPORT_MARGIN) {
-    x = anchorX - PANEL_OFFSET - w;
-  }
-  if (x < VIEWPORT_MARGIN) x = VIEWPORT_MARGIN;
-
-  if (y + h > window.innerHeight - VIEWPORT_MARGIN) {
-    y = window.innerHeight - VIEWPORT_MARGIN - h;
-  }
-  if (y < VIEWPORT_MARGIN) y = VIEWPORT_MARGIN;
-
-  el.style.left = `${x}px`;
-  el.style.top = `${y}px`;
-}
-
 function render(): void {
   const el = ensureContainer();
   if (currentShips.length === 0) {
@@ -231,13 +204,12 @@ function render(): void {
         ${renderShip(ship, flight)}
       </div>
       <div class="ship-action">
-        <button data-ship-buffer="SHP ${ship.registration}">Open SHP ${ship.registration}</button>
+        <button data-ship-buffer="SFC ${ship.registration}">Open Flight Control</button>
       </div>
     </div>
   `;
 
   el.classList.add('panel-open');
-  positionPanel(el);
   wireListeners(el);
 }
 
@@ -269,8 +241,6 @@ export function showPanel(
   currentShips = ships;
   currentFlights = flights;
   currentIndex = 0;
-  anchorX = screenX;
-  anchorY = screenY;
 
   // Re-render cargo colors on theme change
   if (!themeListener) {
@@ -278,40 +248,25 @@ export function showPanel(
     onThemeChange(themeListener);
   }
 
-  // Click-outside-to-dismiss (delay to avoid the opening click itself)
-  if (clickOutsideHandler) {
-    document.removeEventListener('pointerdown', clickOutsideHandler);
-  }
-  clickOutsideHandler = (e: MouseEvent) => {
-    if (container && !container.contains(e.target as Node)) {
-      hidePanel();
-    }
-  };
-  // Use setTimeout so the current click event doesn't immediately close it
-  setTimeout(() => {
-    if (clickOutsideHandler) {
-      document.addEventListener('pointerdown', clickOutsideHandler);
-    }
-  }, 0);
-
+  const el = ensureContainer();
   render();
+
+  showManagedPanel(el, screenX, screenY, () => {
+    // Called by panel-manager when dismissing (click-outside or another panel opening)
+    el.classList.remove('panel-open');
+    currentShips = [];
+    currentFlights = [];
+    trackedShipId = null;
+    if (callbacks) callbacks.onClose();
+  });
 }
 
 export function hidePanel(): void {
-  if (clickOutsideHandler) {
-    document.removeEventListener('pointerdown', clickOutsideHandler);
-    clickOutsideHandler = null;
-  }
-  const el = ensureContainer();
-  el.classList.remove('panel-open');
-  currentShips = [];
-  currentFlights = [];
-  trackedShipId = null;
-  if (callbacks) callbacks.onClose();
+  hideManagedPanel();
 }
 
 export function isPanelVisible(): boolean {
-  return container?.classList.contains('panel-open') ?? false;
+  return container ? isManagedPanelActive(container) : false;
 }
 
 /** Re-render if the tracked ship is in the updated data */

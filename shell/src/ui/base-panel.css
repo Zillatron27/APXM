@@ -1,0 +1,211 @@
+/* Base Panel — floating popover anchored near clicked planet */
+
+#base-panel-container {
+  position: fixed;
+  z-index: 50;
+  width: 380px;
+  max-height: 420px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease-out;
+}
+
+#base-panel-container.panel-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.base-panel {
+  width: 100%;
+  background: rgba(var(--bg-secondary-rgb, 20, 20, 30), 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 15px;
+  color: var(--text-primary, #e0e0e0);
+  overflow-y: auto;
+  max-height: 420px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.base-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.base-panel-header h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.base-panel-header .base-natural-id {
+  opacity: 0.5;
+  font-size: 15px;
+  margin-left: 8px;
+  font-weight: 400;
+}
+
+.base-panel-header .base-label {
+  font-size: 13px;
+  opacity: 0.4;
+  display: block;
+  margin-top: 2px;
+}
+
+.base-panel-close {
+  background: none;
+  border: none;
+  color: var(--text-primary, #e0e0e0);
+  font-size: 20px;
+  cursor: pointer;
+  opacity: 0.5;
+  padding: 4px 6px;
+  line-height: 1;
+}
+
+.base-panel-close:hover {
+  opacity: 1;
+}
+
+/* Body sections */
+.base-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+}
+
+.base-panel-section {
+  margin-bottom: 14px;
+}
+
+.base-panel-section:last-child {
+  margin-bottom: 0;
+}
+
+.base-panel-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.base-panel-row-label {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.4;
+  flex-shrink: 0;
+}
+
+.base-panel-row-value {
+  font-size: 15px;
+  text-align: right;
+}
+
+/* Storage bar */
+.base-storage-bar {
+  flex: 1;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 0 10px;
+}
+
+.base-storage-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.base-storage-fill.storage-ok { background: #4ade80; }
+.base-storage-fill.storage-warn { background: #fbbf24; }
+.base-storage-fill.storage-crit { background: #f87171; }
+
+/* Burn status dot */
+.base-burn-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.base-burn-dot.burn-ok { background: #4ade80; }
+.base-burn-dot.burn-warn { background: #fbbf24; }
+.base-burn-dot.burn-crit { background: #f87171; }
+.base-burn-dot.burn-unknown { background: rgba(255, 255, 255, 0.2); }
+
+/* Action buttons */
+.base-actions {
+  padding: 10px 16px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.base-action-btn {
+  min-width: 52px;
+  padding: 7px 12px;
+  background: rgba(255, 140, 0, 0.15);
+  border: 1px solid rgba(255, 140, 0, 0.3);
+  color: #ff8c00;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+.base-action-btn:hover {
+  background: rgba(255, 140, 0, 0.25);
+}
+
+.base-screen-btn {
+  flex: 1;
+  padding: 7px 10px;
+  background: rgba(100, 140, 255, 0.12);
+  border: 1px solid rgba(100, 140, 255, 0.25);
+  color: #7cacff;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.base-screen-btn:hover {
+  background: rgba(100, 140, 255, 0.22);
+}
+
+.base-config-btn {
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-primary, #e0e0e0);
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 14px;
+  opacity: 0.6;
+}
+
+.base-config-btn:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.1);
+}

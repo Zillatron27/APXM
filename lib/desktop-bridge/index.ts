@@ -7,6 +7,8 @@
 
 import { startHandshake, isAllowedOrigin } from './handshake';
 import { subscribeToStores } from './subscriptions';
+import { openBuffer } from '../buffer-opener';
+import { useScreensStore } from '../../stores/screens';
 import type { ApxmBridgeMessage } from '../../types/bridge';
 
 interface ActiveBridge {
@@ -145,8 +147,28 @@ function handleIncomingMessages(event: MessageEvent): void {
   if (!data || typeof data !== 'object') return;
 
   if (data.type === 'apxm-buffer-command') {
-    // Step 2: log only, actual dispatch comes in Step 3+
-    console.log('[APXM Bridge] Received buffer command:', data.command);
+    const command = data.command;
+    if (typeof command === 'string' && command.trim().length > 0) {
+      openBuffer(command.trim());
+    }
+  }
+
+  if (data.type === 'apxm-screen-switch') {
+    const screenId = data.screenId;
+    if (typeof screenId === 'string') {
+      location.hash = `#screen=${screenId}`;
+    }
+  }
+
+  if (data.type === 'apxm-screen-assign') {
+    const planetNaturalId = data.planetNaturalId;
+    const screenId = data.screenId ?? null;
+    if (typeof planetNaturalId === 'string') {
+      useScreensStore.getState().setAssignment(
+        planetNaturalId,
+        typeof screenId === 'string' ? screenId : null,
+      );
+    }
   }
 }
 

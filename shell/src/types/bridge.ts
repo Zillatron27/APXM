@@ -6,6 +6,8 @@ export type {
   ApxmInitMessage,
   ApxmUpdateMessage,
   ApxmBufferCommandMessage,
+  ApxmScreenSwitchMessage,
+  ApxmScreenAssignMessage,
   BridgeSnapshot,
   BridgeUpdate,
   BridgeEntityType,
@@ -19,4 +21,5 @@ export type {
   WorkforceSummary,
   ContractSummary,
   CurrencyAmount,
+  ScreenInfo,
 } from '@apxm/bridge';

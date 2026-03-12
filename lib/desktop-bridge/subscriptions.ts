@@ -17,6 +17,7 @@ import {
   deriveWorkforceSummaries,
   deriveContractSummaries,
   deriveBalances,
+  deriveScreens,
 } from './store-serializer';
 import { useSitesStore } from '../../stores/entities/sites';
 import { useShipsStore } from '../../stores/entities/ships';
@@ -26,6 +27,7 @@ import { useProductionStore } from '../../stores/entities/production';
 import { useWorkforceStore } from '../../stores/entities/workforce';
 import { useContractsStore } from '../../stores/entities/contracts';
 import { useBalancesStore } from '../../stores/entities/balances';
+import { useScreensStore } from '../../stores/screens';
 import { useConnectionStore } from '../../stores/connection';
 
 type PostFn = (message: ApxmInitMessage | ApxmUpdateMessage) => void;
@@ -47,6 +49,7 @@ const STORE_BINDINGS: StoreBinding[] = [
   { entityType: 'workforce', store: useWorkforceStore, derive: deriveWorkforceSummaries },
   { entityType: 'contracts', store: useContractsStore, derive: deriveContractSummaries },
   { entityType: 'balances', store: useBalancesStore, derive: deriveBalances },
+  { entityType: 'screens', store: useScreensStore, derive: deriveScreens },
 ];
 
 /**
@@ -65,6 +68,7 @@ export function subscribeToStores(post: PostFn): () => void {
     production: snapshot.production.length,
     workforce: snapshot.workforce.length,
     contracts: snapshot.contracts.length,
+    screens: snapshot.screens.length,
     balances: snapshot.balances.length,
   });
 

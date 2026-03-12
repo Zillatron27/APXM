@@ -115,6 +115,12 @@ export interface CurrencyAmount {
   amount: number;
 }
 
+export interface ScreenInfo {
+  id: string;
+  name: string;
+  hidden: boolean;
+}
+
 // ============================================================================
 // Full Snapshot (sent on init and reconnect)
 // ============================================================================
@@ -128,6 +134,8 @@ export interface BridgeSnapshot {
   workforce: WorkforceSummary[];
   contracts: ContractSummary[];
   balances: CurrencyAmount[];
+  screens: ScreenInfo[];
+  screenAssignments: Record<string, string>;
   timestamp: number;
 }
 
@@ -135,7 +143,7 @@ export interface BridgeSnapshot {
 // Incremental Update
 // ============================================================================
 
-export type BridgeEntityType = keyof Omit<BridgeSnapshot, 'timestamp'>;
+export type BridgeEntityType = keyof Omit<BridgeSnapshot, 'timestamp' | 'screenAssignments'>;
 
 export interface BridgeUpdate {
   entityType: BridgeEntityType;
@@ -147,7 +155,8 @@ export interface BridgeUpdate {
     | ProductionSummary[]
     | WorkforceSummary[]
     | ContractSummary[]
-    | CurrencyAmount[];
+    | CurrencyAmount[]
+    | ScreenInfo[];
   timestamp: number;
 }
 
@@ -180,9 +189,22 @@ export interface ApxmBufferCommandMessage {
   command: string;
 }
 
+export interface ApxmScreenSwitchMessage {
+  type: 'apxm-screen-switch';
+  screenId: string;
+}
+
+export interface ApxmScreenAssignMessage {
+  type: 'apxm-screen-assign';
+  planetNaturalId: string;
+  screenId: string | null;
+}
+
 export type ApxmBridgeMessage =
   | ApxmHelloMessage
   | ApxmHelloAckMessage
   | ApxmInitMessage
   | ApxmUpdateMessage
-  | ApxmBufferCommandMessage;
+  | ApxmBufferCommandMessage
+  | ApxmScreenSwitchMessage
+  | ApxmScreenAssignMessage;
