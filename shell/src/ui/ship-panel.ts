@@ -109,9 +109,9 @@ function renderShip(ship: ShipSummary, flight: FlightSummary | undefined): strin
   // Cargo
   if (ship.cargo && ship.cargo.items.length > 0) {
     const wPct = ship.cargo.weightCapacity > 0
-      ? ((ship.cargo.weightUsed / ship.cargo.weightCapacity) * 100).toFixed(0) : '0';
+      ? ((ship.cargo.weightUsed / ship.cargo.weightCapacity) * 100).toFixed(1) : '0';
     const vPct = ship.cargo.volumeCapacity > 0
-      ? ((ship.cargo.volumeUsed / ship.cargo.volumeCapacity) * 100).toFixed(0) : '0';
+      ? ((ship.cargo.volumeUsed / ship.cargo.volumeCapacity) * 100).toFixed(1) : '0';
     const tiles = ship.cargo.items.map(item => {
       const categorySlug = MATERIAL_CATEGORIES[item.ticker.toUpperCase()] ?? '';
       const c = getCategoryColors(categorySlug, theme);
@@ -123,7 +123,22 @@ function renderShip(ship: ShipSummary, flight: FlightSummary | undefined): strin
     sections.push(`
       <div class="ship-panel-section">
         <div class="ship-panel-section-label">Cargo</div>
-        <div class="ship-cargo-summary">${wPct}% weight · ${vPct}% volume</div>
+        <div class="ship-cargo-bars">
+          <div class="ship-cargo-bar-row">
+            <span class="ship-cargo-bar-label">W</span>
+            <div class="ship-cargo-bar">
+              <div class="ship-cargo-bar-fill" style="width:${wPct}%"></div>
+            </div>
+            <span class="ship-cargo-bar-text">${ship.cargo.weightUsed.toFixed(1)}/${ship.cargo.weightCapacity.toFixed(1)}t</span>
+          </div>
+          <div class="ship-cargo-bar-row">
+            <span class="ship-cargo-bar-label">V</span>
+            <div class="ship-cargo-bar">
+              <div class="ship-cargo-bar-fill" style="width:${vPct}%"></div>
+            </div>
+            <span class="ship-cargo-bar-text">${ship.cargo.volumeUsed.toFixed(1)}/${ship.cargo.volumeCapacity.toFixed(1)}m³</span>
+          </div>
+        </div>
         <div class="ship-cargo-grid">${tiles}</div>
       </div>
     `);
@@ -132,27 +147,27 @@ function renderShip(ship: ShipSummary, flight: FlightSummary | undefined): strin
   // Fuel
   if (ship.fuel) {
     const fuelRows: string[] = [];
-    if (ship.fuel.stlWeightCapacity > 0) {
-      const pct = (ship.fuel.stlWeightUsed / ship.fuel.stlWeightCapacity * 100).toFixed(0);
+    if (ship.fuel.stlUnitCapacity > 0) {
+      const pct = (ship.fuel.stlUnits / ship.fuel.stlUnitCapacity * 100).toFixed(0);
       fuelRows.push(`
         <div class="ship-fuel-row">
           <span class="ship-fuel-label">STL</span>
           <div class="ship-fuel-bar">
             <div class="ship-fuel-fill" style="width:${pct}%"></div>
           </div>
-          <span class="ship-fuel-text">${ship.fuel.stlWeightUsed.toFixed(1)}/${ship.fuel.stlWeightCapacity.toFixed(1)}t</span>
+          <span class="ship-fuel-text">${ship.fuel.stlUnits}/${ship.fuel.stlUnitCapacity}</span>
         </div>
       `);
     }
-    if (ship.fuel.ftlWeightCapacity > 0) {
-      const pct = (ship.fuel.ftlWeightUsed / ship.fuel.ftlWeightCapacity * 100).toFixed(0);
+    if (ship.fuel.ftlUnitCapacity > 0) {
+      const pct = (ship.fuel.ftlUnits / ship.fuel.ftlUnitCapacity * 100).toFixed(0);
       fuelRows.push(`
         <div class="ship-fuel-row">
           <span class="ship-fuel-label">FTL</span>
           <div class="ship-fuel-bar">
             <div class="ship-fuel-fill" style="width:${pct}%"></div>
           </div>
-          <span class="ship-fuel-text">${ship.fuel.ftlWeightUsed.toFixed(1)}/${ship.fuel.ftlWeightCapacity.toFixed(1)}t</span>
+          <span class="ship-fuel-text">${ship.fuel.ftlUnits}/${ship.fuel.ftlUnitCapacity}</span>
         </div>
       `);
     }
