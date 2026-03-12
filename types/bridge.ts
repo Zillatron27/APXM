@@ -31,6 +31,8 @@ export interface FlightSegmentSummary {
   type: string;
   originSystemNaturalId: string | null;
   destinationSystemNaturalId: string | null;
+  originPlanetNaturalId: string | null;
+  destinationPlanetNaturalId: string | null;
   departureTimestamp: number;
   arrivalTimestamp: number;
 }
@@ -52,10 +54,10 @@ export interface ShipSummary {
     items: CargoItem[];
   } | null;
   fuel: {
-    stlWeightUsed: number;
-    stlWeightCapacity: number;
-    ftlWeightUsed: number;
-    ftlWeightCapacity: number;
+    stlUnits: number;
+    stlUnitCapacity: number;
+    ftlUnits: number;
+    ftlUnitCapacity: number;
   } | null;
 }
 

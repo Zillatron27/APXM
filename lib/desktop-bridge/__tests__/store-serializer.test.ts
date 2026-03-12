@@ -81,6 +81,27 @@ describe('extractSystemNaturalId', () => {
   });
 });
 
+describe('segment planet extraction in deriveFlightSummaries', () => {
+  it('extracts planet naturalIds from segment origin and destination', () => {
+    const originAddr = makeAddress(
+      makeSystemLine('UV-351'),
+      makePlanetLine('UV-351a', 'Montem'),
+    );
+    const destAddr = makeAddress(
+      makeSystemLine('UV-351'),
+      makePlanetLine('UV-351b', 'Vallis'),
+    );
+
+    expect(extractPlanetInfo(originAddr)?.naturalId).toBe('UV-351a');
+    expect(extractPlanetInfo(destAddr)?.naturalId).toBe('UV-351b');
+  });
+
+  it('returns null for segments without planet data', () => {
+    const systemOnly = makeAddress(makeSystemLine('UV-351'));
+    expect(extractPlanetInfo(systemOnly)).toBeNull();
+  });
+});
+
 function makeStoreItem(overrides: Partial<PrunApi.StoreItem> = {}): PrunApi.StoreItem {
   return {
     id: 'item-1',

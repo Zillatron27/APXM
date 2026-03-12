@@ -59,6 +59,22 @@ export function extractSystemNaturalId(address: PrunApi.Address): string | null 
   return null;
 }
 
+/** Sums the quantity amounts of all items in a store (fuel unit count). */
+function sumItemUnits(items: PrunApi.StoreItem[]): number {
+  let total = 0;
+  for (const item of items) {
+    if (item.quantity) total += item.quantity.amount;
+  }
+  return total;
+}
+
+/** Derives unit capacity from store weight capacity and per-unit material weight. */
+function deriveUnitCapacity(store: PrunApi.Store): number {
+  const perUnit = store.items.find((i) => i.quantity)?.quantity?.material.weight;
+  if (perUnit && perUnit > 0) return Math.floor(store.weightCapacity / perUnit);
+  return 0;
+}
+
 // ============================================================================
 // Derive Functions
 // ============================================================================
@@ -126,10 +142,10 @@ export function deriveShipSummaries(): ShipSummary[] {
       fuel:
         stlFuelStore && ftlFuelStore
           ? {
-              stlWeightUsed: stlFuelStore.weightLoad,
-              stlWeightCapacity: stlFuelStore.weightCapacity,
-              ftlWeightUsed: ftlFuelStore.weightLoad,
-              ftlWeightCapacity: ftlFuelStore.weightCapacity,
+              stlUnits: sumItemUnits(stlFuelStore.items),
+              stlUnitCapacity: deriveUnitCapacity(stlFuelStore),
+              ftlUnits: sumItemUnits(ftlFuelStore.items),
+              ftlUnitCapacity: deriveUnitCapacity(ftlFuelStore),
             }
           : null,
     };
@@ -150,6 +166,8 @@ export function deriveFlightSummaries(): FlightSummary[] {
       type: seg.type,
       originSystemNaturalId: extractSystemNaturalId(seg.origin),
       destinationSystemNaturalId: extractSystemNaturalId(seg.destination),
+      originPlanetNaturalId: extractPlanetInfo(seg.origin)?.naturalId ?? null,
+      destinationPlanetNaturalId: extractPlanetInfo(seg.destination)?.naturalId ?? null,
       departureTimestamp: seg.departure.timestamp,
       arrivalTimestamp: seg.arrival.timestamp,
     })),
