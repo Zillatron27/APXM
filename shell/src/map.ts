@@ -24,6 +24,8 @@ import type { ShipIdleMarkerLayer } from './overlays/ship-idle-markers';
 import type { ShipInteractionCallbacks } from './overlays/ship-idle-markers';
 import { createShipTransitLayer } from './overlays/ship-transit';
 import type { ShipTransitLayer } from './overlays/ship-transit';
+import { createShipSystemView } from './overlays/ship-system-view';
+import type { ShipSystemViewLayer } from './overlays/ship-system-view';
 import { showTooltip, hideTooltip, updateTooltipPosition } from './ui/ship-tooltip';
 import { showPanel, updatePanel } from './ui/ship-panel';
 import { showBasePanel, updateBasePanel } from './ui/base-panel';
@@ -114,6 +116,7 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
   let gatewayMarkers: GatewayMarkerLayer | null = null;
   let shipIdleMarkers: ShipIdleMarkerLayer | null = null;
   let shipTransit: ShipTransitLayer | null = null;
+  let shipSystemView: ShipSystemViewLayer | null = null;
   const pendingMessages: MessageEvent[] = [];
 
   function processMessage(event: MessageEvent): void {
@@ -127,6 +130,7 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
       gatewayMarkers?.refresh();
       shipIdleMarkers?.refresh();
       shipTransit?.refresh();
+      shipSystemView?.refresh();
       updatePanel(msg.snapshot.ships, msg.snapshot.flights);
       updateBasePanel(empireState);
       frameToEmpire(helm!.viewport, empireState.getOwnedSystemNaturalIds());
@@ -139,6 +143,7 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
       if (msg.update.entityType === 'ships' || msg.update.entityType === 'flights') {
         shipIdleMarkers?.refresh();
         shipTransit?.refresh();
+        shipSystemView?.refresh();
         // Re-render open ship panel with updated data
         const snap = empireState;
         const allShips = [...snap.getIdleShipsBySystem().values()].flat();
@@ -214,9 +219,15 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
   shipTransit.refresh();
   helm.viewport.addChildAt(shipTransit.container, 5);
 
+  shipSystemView = createShipSystemView(empireState, resolvers, helm.viewport, shipCallbacks);
+  shipSystemView.refresh();
+  // Append on top — must be above Helm's system-level planet hit areas
+  helm.viewport.addChild(shipSystemView.container);
+
   // Per-frame ticker for transit ship interpolation
   const tickerFn = () => {
     shipTransit!.tick();
+    shipSystemView!.tick();
 
     // Update tooltip position for moving transit ships
     const worldPos = shipTransit!.getHoveredWorldPos();

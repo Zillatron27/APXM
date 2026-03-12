@@ -29,6 +29,7 @@ export interface EmpireState {
   getInTransitShips(): Array<{ ship: ShipSummary; flight: FlightSummary }>;
   getFlightForShip(shipId: string): FlightSummary | undefined;
   getIdleShipsBySystem(): Map<string, ShipSummary[]>;
+  getIdleShipsByPlanet(systemNaturalId: string): Map<string, ShipSummary[]>;
   getSiteForPlanet(planetNaturalId: string): SiteSummary | undefined;
   getProductionForPlanet(planetNaturalId: string): ProductionSummary | undefined;
   getWorkforceForPlanet(planetNaturalId: string): WorkforceSummary | undefined;
@@ -153,6 +154,21 @@ export function createEmpireState(): EmpireState {
     return bySystem;
   }
 
+  function getIdleShipsByPlanet(systemNaturalId: string): Map<string, ShipSummary[]> {
+    const ships = getShipsInSystem(systemNaturalId);
+    const byPlanet = new Map<string, ShipSummary[]>();
+    for (const ship of ships) {
+      const key = ship.locationPlanetNaturalId ?? '';
+      const existing = byPlanet.get(key);
+      if (existing) {
+        existing.push(ship);
+      } else {
+        byPlanet.set(key, [ship]);
+      }
+    }
+    return byPlanet;
+  }
+
   function getSiteForPlanet(planetNaturalId: string): SiteSummary | undefined {
     return state.sites.find((s) => s.planetNaturalId === planetNaturalId);
   }
@@ -203,7 +219,7 @@ export function createEmpireState(): EmpireState {
   return {
     applySnapshot, applyUpdate, getOwnedSystemNaturalIds, getOwnedPlanetNaturalIds,
     getSystemBurnStatus, getPlanetBurnStatus,
-    getShipsInSystem, getInTransitShips, getFlightForShip, getIdleShipsBySystem,
+    getShipsInSystem, getInTransitShips, getFlightForShip, getIdleShipsBySystem, getIdleShipsByPlanet,
     getSiteForPlanet, getProductionForPlanet, getWorkforceForPlanet, getStorageForSite,
     getScreens, getAssignedScreenIdForPlanet, getAssignedScreenForPlanet, setScreenAssignment,
     onChange,

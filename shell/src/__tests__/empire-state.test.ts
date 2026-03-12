@@ -193,6 +193,87 @@ describe('EmpireState', () => {
     });
   });
 
+  describe('getIdleShipsByPlanet', () => {
+    it('groups idle ships by planet within a system', () => {
+      const state = createEmpireState();
+      state.applySnapshot(
+        makeSnapshot({
+          ships: [
+            {
+              shipId: 'ship1', name: 'Hauler', registration: 'HLR-1',
+              blueprintNaturalId: 'bp1', condition: 1, status: 'IDLE',
+              locationSystemNaturalId: 'UV-351', locationPlanetNaturalId: 'UV-351a',
+              cargo: null, fuel: null,
+            },
+            {
+              shipId: 'ship2', name: 'Miner', registration: 'MNR-1',
+              blueprintNaturalId: 'bp2', condition: 1, status: 'IDLE',
+              locationSystemNaturalId: 'UV-351', locationPlanetNaturalId: 'UV-351b',
+              cargo: null, fuel: null,
+            },
+            {
+              shipId: 'ship3', name: 'Trader', registration: 'TRD-1',
+              blueprintNaturalId: 'bp3', condition: 1, status: 'IDLE',
+              locationSystemNaturalId: 'UV-351', locationPlanetNaturalId: 'UV-351a',
+              cargo: null, fuel: null,
+            },
+          ],
+        }),
+      );
+
+      const byPlanet = state.getIdleShipsByPlanet('UV-351');
+      expect(byPlanet.get('UV-351a')).toHaveLength(2);
+      expect(byPlanet.get('UV-351b')).toHaveLength(1);
+    });
+
+    it('groups ships with null planet under empty string key', () => {
+      const state = createEmpireState();
+      state.applySnapshot(
+        makeSnapshot({
+          ships: [
+            {
+              shipId: 'ship1', name: 'Hauler', registration: 'HLR-1',
+              blueprintNaturalId: 'bp1', condition: 1, status: 'IDLE',
+              locationSystemNaturalId: 'UV-351', locationPlanetNaturalId: null,
+              cargo: null, fuel: null,
+            },
+          ],
+        }),
+      );
+
+      const byPlanet = state.getIdleShipsByPlanet('UV-351');
+      expect(byPlanet.get('')).toHaveLength(1);
+    });
+
+    it('excludes ships that are in transit', () => {
+      const state = createEmpireState();
+      state.applySnapshot(
+        makeSnapshot({
+          ships: [
+            {
+              shipId: 'ship1', name: 'Hauler', registration: 'HLR-1',
+              blueprintNaturalId: 'bp1', condition: 1, status: 'IDLE',
+              locationSystemNaturalId: 'UV-351', locationPlanetNaturalId: 'UV-351a',
+              cargo: null, fuel: null,
+            },
+          ],
+          flights: [
+            {
+              flightId: 'f1', shipId: 'ship1',
+              originSystemNaturalId: 'UV-351', destinationSystemNaturalId: 'HM-838',
+              originPlanetNaturalId: 'UV-351a', destinationPlanetNaturalId: null,
+              departureTimestamp: 1000, arrivalTimestamp: 2000,
+              segments: [], currentSegmentIndex: 0,
+            },
+          ],
+        }),
+      );
+
+      const byPlanet = state.getIdleShipsByPlanet('UV-351');
+      expect(byPlanet.size).toBe(0);
+    });
+  });
+
   describe('onChange', () => {
     it('fires on snapshot', () => {
       const state = createEmpireState();

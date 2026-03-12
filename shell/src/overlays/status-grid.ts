@@ -70,7 +70,18 @@ export const PLANET_GRID_CONFIG: StatusGridConfig = {
   cellSize: 16,
   gapX: 3,
   gapY: 3,
-  originOffsetX: 20,
+  originOffsetX: 24,
+  originOffsetY: -20,
+  columns: 2,
+  rows: 3,
+};
+
+/** System-view grid for owned planets — clears burn ring + Helm planet hit area */
+export const OWNED_PLANET_GRID_CONFIG: StatusGridConfig = {
+  cellSize: 16,
+  gapX: 3,
+  gapY: 3,
+  originOffsetX: 36,
   originOffsetY: -20,
   columns: 2,
   rows: 3,
