@@ -78,9 +78,15 @@ Load as an unpacked/temporary extension from the `.output/` directory.
 - Tailwind CSS — mobile-first styling
 - Vitest — unit tests
 
-## Community Context
+## Acknowledgments
 
-Prosperous Universe has an established extension ecosystem. [Refined PrUn (rprun)](https://github.com/refined-prun/refined-prun) is the primary desktop extension (MIT, 1,200+ commits). APXM complements rprun — it targets mobile where rprun doesn't operate. WebSocket observation is established community practice, explicitly approved by the game developer.
+APXM builds on the shoulders of the Prosperous Universe community tooling ecosystem. Two projects in particular deserve recognition:
+
+**[Refined PrUn (rprun)](https://github.com/refined-prun/refined-prun)** — the primary desktop extension for Prosperous Universe (MIT, 1,200+ commits). rprun pioneered the WebSocket interception and Socket.IO decoding patterns that the entire community extension ecosystem now relies on. APXM's understanding of APEX's internal message protocol, DOM structure, and buffer management draws heavily from rprun's prior art. APXM targets mobile where rprun doesn't operate — the two projects are complementary, not competing.
+
+**[FIO (Prosperous Universe Data API)](https://doc.fnar.net)** — the community REST API maintained by Kovus (Illumindale) and contributors. FIO provides the public game data layer (materials, buildings, recipes, planet data, exchange prices) that makes tools like APXM possible. Without FIO, every extension would need to independently reconstruct this data from raw WebSocket traffic. APXM uses FIO for material metadata, recipe lookups, and planet information on startup.
+
+WebSocket observation is established community practice in the PrUn ecosystem, explicitly approved by the game developer (Simulogics / molp).
 
 ## License
 
