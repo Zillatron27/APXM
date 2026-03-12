@@ -189,8 +189,14 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
       const flights = ships
         .map(s => empireState.getFlightForShip(s.shipId))
         .filter((f): f is NonNullable<typeof f> => !!f);
-      // Close any Helm entity panel
-      setSelectedEntity(null);
+      // Hide Helm's native panel without clearing entity selection
+      setTimeout(() => helm!.panelManager.hide(), 0);
+      // If no entity selected, set focused system as guard so Helm's
+      // cascade step 1 (deselect) absorbs the dismiss click
+      if (!getSelectedEntity() && getViewLevel() === 'system') {
+        const focusedId = getFocusedSystemId();
+        if (focusedId) setSelectedEntity({ type: 'system', id: focusedId });
+      }
       showPanel(ships, flights, screenX, screenY, {
         onBufferCommand(command) {
           window.parent.postMessage({ type: 'apxm-buffer-command', command }, '*');
@@ -305,7 +311,9 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
       return;
     }
 
-    // System or other entity selection — close any APXM panel
+    // System guard entity in system view while panel is open — don't close
+    if (entity.type === 'system' && getViewLevel() === 'system' && isManagedPanelVisible()) return;
+    // Other entity selection — close any APXM panel
     if (isManagedPanelVisible()) hideManagedPanel();
   });
 

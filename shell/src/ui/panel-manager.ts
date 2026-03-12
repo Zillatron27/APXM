@@ -3,6 +3,8 @@
  *
  * Extracted from ship-panel.ts so all panel types (ship, base, future)
  * share the same placement and lifecycle logic.
+ *
+ * Uses a fullscreen transparent backdrop to absorb clicks outside the panel.
  */
 
 export interface PanelHandle {
@@ -14,7 +16,27 @@ const PANEL_OFFSET = 20;
 const VIEWPORT_MARGIN = 10;
 
 let activePanel: PanelHandle | null = null;
-let clickOutsideHandler: ((e: MouseEvent) => void) | null = null;
+let backdrop: HTMLDivElement | null = null;
+
+function ensureBackdrop(): HTMLDivElement {
+  if (backdrop) return backdrop;
+  backdrop = document.createElement('div');
+  backdrop.id = 'panel-backdrop';
+  backdrop.style.cssText = `
+    position: fixed;
+    inset: 0;
+    z-index: 49;
+    background: transparent;
+    display: none;
+  `;
+  backdrop.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    hideManagedPanel();
+  });
+  document.body.appendChild(backdrop);
+  return backdrop;
+}
 
 function positionPanel(container: HTMLDivElement, anchorX: number, anchorY: number): void {
   let x = anchorX + PANEL_OFFSET;
@@ -39,7 +61,7 @@ function positionPanel(container: HTMLDivElement, anchorX: number, anchorY: numb
 
 /**
  * Shows a managed panel, closing any existing one first.
- * Handles positioning and click-outside dismissal.
+ * Handles positioning and click-outside dismissal via backdrop.
  */
 export function showManagedPanel(
   container: HTMLDivElement,
@@ -55,27 +77,15 @@ export function showManagedPanel(
   activePanel = { container, onClose };
   positionPanel(container, anchorX, anchorY);
 
-  // Click-outside-to-dismiss (delay to avoid the opening click itself)
-  if (clickOutsideHandler) {
-    document.removeEventListener('pointerdown', clickOutsideHandler);
-  }
-  clickOutsideHandler = (e: MouseEvent) => {
-    if (container && !container.contains(e.target as Node)) {
-      hideManagedPanel();
-    }
-  };
-  setTimeout(() => {
-    if (clickOutsideHandler) {
-      document.addEventListener('pointerdown', clickOutsideHandler);
-    }
-  }, 0);
+  // Show backdrop to absorb clicks outside the panel
+  const bg = ensureBackdrop();
+  bg.style.display = 'block';
 }
 
 /** Hides the currently active managed panel (if any). */
 export function hideManagedPanel(): void {
-  if (clickOutsideHandler) {
-    document.removeEventListener('pointerdown', clickOutsideHandler);
-    clickOutsideHandler = null;
+  if (backdrop) {
+    backdrop.style.display = 'none';
   }
   if (activePanel) {
     const panel = activePanel;
