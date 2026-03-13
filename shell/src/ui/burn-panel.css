@@ -1,0 +1,117 @@
+/* Burn Status panel — fixed overlay listing base burn urgency */
+
+.burn-panel {
+  position: fixed;
+  z-index: 50;
+  width: 340px;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  background: rgba(var(--bg-secondary-rgb, 20, 20, 30), 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 14px;
+  color: var(--text-primary, #e0e0e0);
+  top: 60px;
+  left: 12px;
+}
+
+.burn-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.burn-panel-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.burn-panel-close {
+  background: none;
+  border: none;
+  color: var(--text-primary, #e0e0e0);
+  font-size: 18px;
+  cursor: pointer;
+  opacity: 0.5;
+  padding: 4px 6px;
+  line-height: 1;
+}
+
+.burn-panel-close:hover {
+  opacity: 1;
+}
+
+.burn-panel-body {
+  overflow-y: auto;
+  padding: 0;
+}
+
+.burn-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.burn-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.burn-row:last-child {
+  border-bottom: none;
+}
+
+.burn-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.burn-dot.critical { background: #f44336; }
+.burn-dot.warning { background: #ff9800; }
+.burn-dot.ok { background: #4caf50; }
+.burn-dot.unknown { background: #666; }
+
+.burn-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.burn-planet-name {
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.burn-planet-id {
+  opacity: 0.4;
+  font-size: 12px;
+  margin-left: 6px;
+  font-weight: 400;
+}
+
+.burn-days {
+  font-size: 13px;
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+.burn-days.critical { color: #f44336; }
+.burn-days.warning { color: #ff9800; }
+
+.burn-empty {
+  padding: 20px 16px;
+  text-align: center;
+  opacity: 0.4;
+}

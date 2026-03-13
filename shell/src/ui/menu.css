@@ -1,0 +1,90 @@
+/* Menu dropdown — anchored to toolbar menu button */
+
+.apxm-menu {
+  position: fixed;
+  z-index: 45;
+  min-width: 200px;
+  background: rgba(var(--bg-secondary-rgb, 20, 20, 30), 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 14px;
+  color: var(--text-primary, #e0e0e0);
+  padding: 4px 0;
+}
+
+.menu-item {
+  padding: 10px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.menu-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.menu-separator {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 4px 0;
+}
+
+/* Theme picker section */
+.menu-theme-header {
+  padding: 10px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.menu-theme-header:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.menu-theme-arrow {
+  font-size: 10px;
+  opacity: 0.5;
+  transition: transform 0.15s;
+}
+
+.menu-theme-arrow.expanded {
+  transform: rotate(90deg);
+}
+
+.menu-theme-list {
+  display: none;
+  padding: 0;
+}
+
+.menu-theme-list.expanded {
+  display: block;
+}
+
+.menu-theme-item {
+  padding: 8px 16px 8px 28px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.menu-theme-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.menu-theme-item.active {
+  background: rgba(var(--accent-rgb, 100, 140, 255), 0.1);
+}
+
+.menu-theme-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+}

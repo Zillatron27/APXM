@@ -18,6 +18,7 @@ import {
   deriveContractSummaries,
   deriveBalances,
   deriveScreens,
+  deriveBurnThresholds,
 } from './store-serializer';
 import { useSitesStore } from '../../stores/entities/sites';
 import { useShipsStore } from '../../stores/entities/ships';
@@ -29,6 +30,7 @@ import { useContractsStore } from '../../stores/entities/contracts';
 import { useBalancesStore } from '../../stores/entities/balances';
 import { useScreensStore } from '../../stores/screens';
 import { useConnectionStore } from '../../stores/connection';
+import { useSettingsStore } from '../../stores/settings';
 
 type PostFn = (message: ApxmInitMessage | ApxmUpdateMessage) => void;
 
@@ -112,6 +114,24 @@ export function subscribeToStores(post: PostFn): () => void {
     // Track timer for cleanup — store ref so we can clear on teardown
     unsubscribers.push(() => {
       if (timer !== null) clearTimeout(timer);
+    });
+  }
+
+  // Watch for settings changes (e.g. burn thresholds changed on mobile UI)
+  {
+    let settingsTimer: ReturnType<typeof setTimeout> | null = null;
+    const unsubSettings = useSettingsStore.subscribe(() => {
+      if (settingsTimer !== null) clearTimeout(settingsTimer);
+      settingsTimer = setTimeout(() => {
+        settingsTimer = null;
+        const freshSnapshot = createSnapshot();
+        post({ type: 'apxm-init', snapshot: freshSnapshot });
+        console.log('[APXM Bridge] Sent apxm-init after settings change');
+      }, DEBOUNCE_MS);
+    });
+    unsubscribers.push(unsubSettings);
+    unsubscribers.push(() => {
+      if (settingsTimer !== null) clearTimeout(settingsTimer);
     });
   }
 

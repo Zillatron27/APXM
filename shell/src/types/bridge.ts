@@ -8,6 +8,8 @@ export type {
   ApxmBufferCommandMessage,
   ApxmScreenSwitchMessage,
   ApxmScreenAssignMessage,
+  ApxmSettingsUpdateMessage,
+  BurnThresholds,
   BridgeSnapshot,
   BridgeUpdate,
   BridgeEntityType,

@@ -8,7 +8,7 @@
 
 import type {
   BridgeSnapshot, BridgeUpdate, WorkforceSummary, ShipSummary, FlightSummary,
-  SiteSummary, ProductionSummary, StorageSummary, ScreenInfo,
+  SiteSummary, ProductionSummary, StorageSummary, ScreenInfo, BurnThresholds,
 } from './types/bridge';
 
 const BURN_PRIORITY: Record<WorkforceSummary['burnStatus'], number> = {
@@ -38,10 +38,14 @@ export interface EmpireState {
   getAssignedScreenIdForPlanet(planetNaturalId: string): string | null;
   getAssignedScreenForPlanet(planetNaturalId: string): ScreenInfo | null;
   setScreenAssignment(planetNaturalId: string, screenId: string | null): void;
+  getBurnThresholds(): BurnThresholds;
+  setBurnThresholds(thresholds: BurnThresholds): void;
   onChange(callback: () => void): () => void;
 }
 
 export function createEmpireState(): EmpireState {
+  const DEFAULT_BURN_THRESHOLDS: BurnThresholds = { critical: 3, warning: 5, resupply: 30 };
+
   let state: BridgeSnapshot = {
     sites: [],
     ships: [],
@@ -53,6 +57,7 @@ export function createEmpireState(): EmpireState {
     balances: [],
     screens: [],
     screenAssignments: {},
+    burnThresholds: DEFAULT_BURN_THRESHOLDS,
     timestamp: 0,
   };
 
@@ -208,6 +213,15 @@ export function createEmpireState(): EmpireState {
     notify();
   }
 
+  function getBurnThresholds(): BurnThresholds {
+    return state.burnThresholds;
+  }
+
+  function setBurnThresholds(thresholds: BurnThresholds): void {
+    state.burnThresholds = thresholds;
+    notify();
+  }
+
   function onChange(callback: () => void): () => void {
     listeners.push(callback);
     return () => {
@@ -222,6 +236,7 @@ export function createEmpireState(): EmpireState {
     getShipsInSystem, getInTransitShips, getFlightForShip, getIdleShipsBySystem, getIdleShipsByPlanet,
     getSiteForPlanet, getProductionForPlanet, getWorkforceForPlanet, getStorageForSite,
     getScreens, getAssignedScreenIdForPlanet, getAssignedScreenForPlanet, setScreenAssignment,
+    getBurnThresholds, setBurnThresholds,
     onChange,
   };
 }

@@ -28,6 +28,7 @@ import { useWorkforceStore } from '../../stores/entities/workforce';
 import { useContractsStore } from '../../stores/entities/contracts';
 import { useBalancesStore } from '../../stores/entities/balances';
 import { useScreensStore } from '../../stores/screens';
+import { useSettingsStore } from '../../stores/settings';
 import { calculateSiteBurn } from '../../core/burn';
 
 // ============================================================================
@@ -313,6 +314,11 @@ export function deriveScreens(): ScreenInfo[] {
   }));
 }
 
+export function deriveBurnThresholds(): BridgeSnapshot['burnThresholds'] {
+  const { burnThresholds } = useSettingsStore.getState();
+  return { ...burnThresholds };
+}
+
 /** Creates a full snapshot from all entity stores. */
 export function createSnapshot(): BridgeSnapshot {
   return {
@@ -326,6 +332,7 @@ export function createSnapshot(): BridgeSnapshot {
     balances: deriveBalances(),
     screens: deriveScreens(),
     screenAssignments: { ...useScreensStore.getState().screenAssignments },
+    burnThresholds: deriveBurnThresholds(),
     timestamp: Date.now(),
   };
 }

@@ -2,18 +2,19 @@
  * Map Module
  *
  * Initializes the Helm galaxy map, wires up empire state from bridge messages,
- * renders ownership overlays, and frames camera to player territory.
+ * renders ownership overlays, frames camera to player territory,
+ * and provides toolbar/menu/panel UI for the desktop view.
  */
 
 import {
   createMap, getSystemByNaturalId, getSystemById, getPlanetsForSystem,
   onStateChange, getViewLevel, getSelectedEntity, setSelectedEntity,
-  getFocusedSystemId,
+  getFocusedSystemId, setGatewaysVisible, onThemeChange,
 } from '@27bit/helm';
 import type { HelmInstance } from '@27bit/helm';
 import { Ticker } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
-import type { ApxmInitMessage, ApxmUpdateMessage } from './types/bridge';
+import type { ApxmInitMessage, ApxmUpdateMessage, ApxmSettingsUpdateMessage } from './types/bridge';
 import { createEmpireState } from './empire-state';
 import { createEmpireOverlay } from './empire-overlay';
 import type { EmpireOverlay, SystemResolvers, PlanetInfo } from './empire-overlay';
@@ -30,10 +31,17 @@ import { showTooltip, hideTooltip, updateTooltipPosition } from './ui/ship-toolt
 import { showPanel, updatePanel } from './ui/ship-panel';
 import { showBasePanel, updateBasePanel } from './ui/base-panel';
 import { isManagedPanelVisible, hideManagedPanel } from './ui/panel-manager';
+import { createToolbar, setMenuActive, setEmpireActive, isEmpireActive, getMenuButton } from './ui/toolbar';
+import { showMenu, hideMenu, isMenuVisible } from './ui/menu';
+import { showFleetPanel, hideFleetPanel, isFleetPanelVisible } from './ui/fleet-panel';
+import { showBurnPanel, hideBurnPanel, isBurnPanelVisible } from './ui/burn-panel';
+import { showSettingsPanel, hideSettingsPanel } from './ui/settings-panel';
+import { getBrightSystems, clearBrightCache } from './ui/empire-dim';
 
 const MAX_ZOOM = 8.0;
 const EMPIRE_PADDING = 100;
 const FRAME_TRANSITION_MS = 800;
+const EMPIRE_DIM_STORAGE_KEY = 'apxm-empire-dim';
 
 const resolvers: SystemResolvers = {
   resolveSystem(naturalId: string) {
@@ -119,6 +127,37 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
   let shipSystemView: ShipSystemViewLayer | null = null;
   const pendingMessages: MessageEvent[] = [];
 
+  // Empire dim state
+  let empireDimActive = false;
+  try {
+    empireDimActive = localStorage.getItem(EMPIRE_DIM_STORAGE_KEY) === 'true';
+  } catch { /* localStorage unavailable */ }
+
+  function applyEmpireDim(): void {
+    if (!helm) return;
+    if (empireDimActive) {
+      const bright = getBrightSystems(empireState);
+      helm.setHighlightedSystems(bright);
+    } else {
+      helm.setHighlightedSystems(null);
+    }
+  }
+
+  function toggleEmpireDim(active: boolean): void {
+    empireDimActive = active;
+    try {
+      localStorage.setItem(EMPIRE_DIM_STORAGE_KEY, String(active));
+    } catch { /* localStorage unavailable */ }
+    applyEmpireDim();
+  }
+
+  // Close all overlay panels (fleet, burn, settings)
+  function closeOverlayPanels(): void {
+    if (isFleetPanelVisible()) hideFleetPanel();
+    if (isBurnPanelVisible()) hideBurnPanel();
+    hideSettingsPanel();
+  }
+
   function processMessage(event: MessageEvent): void {
     const data = event.data;
     if (!data || typeof data !== 'object') return;
@@ -134,6 +173,9 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
       updatePanel(msg.snapshot.ships, msg.snapshot.flights);
       updateBasePanel(empireState);
       frameToEmpire(helm!.viewport, empireState.getOwnedSystemNaturalIds());
+      // Re-apply empire dim with potentially new site data
+      clearBrightCache();
+      if (empireDimActive) applyEmpireDim();
     } else if (data.type === 'apxm-update') {
       const msg = data as ApxmUpdateMessage;
       empireState.applyUpdate(msg.update);
@@ -156,6 +198,11 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
       const basePanelTypes = ['sites', 'production', 'workforce', 'storage', 'screens'];
       if (basePanelTypes.includes(msg.update.entityType)) {
         updateBasePanel(empireState);
+      }
+      // Re-compute empire dim when sites change
+      if (msg.update.entityType === 'sites') {
+        clearBrightCache();
+        if (empireDimActive) applyEmpireDim();
       }
     }
   }
@@ -244,6 +291,82 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
   };
   Ticker.shared.add(tickerFn);
 
+  // ============================================================================
+  // Toolbar + Menu
+  // ============================================================================
+
+  const toolbarEl = createToolbar({
+    onGatewayToggle(active) {
+      setGatewaysVisible(active);
+      helm!.setGatewaysVisible(active);
+    },
+    onEmpireToggle(active) {
+      toggleEmpireDim(active);
+    },
+    onMenuToggle(active) {
+      if (active) {
+        const anchor = getMenuButton();
+        if (!anchor) return;
+        closeOverlayPanels();
+        showMenu(anchor, {
+          onFleetOverview() {
+            closeOverlayPanels();
+            showFleetPanel(empireState, {
+              onShipClick(systemNaturalId) {
+                const sys = getSystemByNaturalId(systemNaturalId);
+                if (sys) helm!.panToSystem(sys.id);
+              },
+              onClose() { /* panel cleans itself up */ },
+            });
+          },
+          onBurnStatus() {
+            closeOverlayPanels();
+            showBurnPanel(empireState, {
+              onBaseClick(systemNaturalId, planetNaturalId) {
+                const sys = getSystemByNaturalId(systemNaturalId);
+                if (!sys) return;
+                // Find planet UUID for panToPlanet
+                const planets = getPlanetsForSystem(sys.naturalId);
+                const planet = planets?.find(p => p.naturalId === planetNaturalId);
+                if (planet) {
+                  helm!.panToPlanet(sys.id, planet.id);
+                } else {
+                  helm!.panToSystem(sys.id);
+                }
+              },
+              onClose() { /* panel cleans itself up */ },
+            });
+          },
+          onSettings() {
+            closeOverlayPanels();
+            showSettingsPanel(empireState, {
+              onSave(thresholds) {
+                const msg: ApxmSettingsUpdateMessage = {
+                  type: 'apxm-settings-update',
+                  settings: { burnThresholds: thresholds },
+                };
+                window.parent.postMessage(msg, '*');
+              },
+              onClose() { /* panel cleans itself up */ },
+            });
+          },
+          onDismiss() {
+            setMenuActive(false);
+          },
+        });
+      } else {
+        hideMenu();
+      }
+    },
+  });
+  document.body.appendChild(toolbarEl);
+
+  // Restore persisted empire dim state
+  if (empireDimActive) {
+    setEmpireActive(true);
+    // Defer dim application until first data arrives (no owned systems yet)
+  }
+
   // Panel coordination: entity selection drives panel lifecycle
   let prevViewLevel = getViewLevel();
   onStateChange(() => {
@@ -317,10 +440,27 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
     if (isManagedPanelVisible()) hideManagedPanel();
   });
 
-  // Escape key closes ship panel
+  // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && isManagedPanelVisible()) {
-      hideManagedPanel();
+    // Skip if input is focused (same guard as Helm's controls)
+    const tag = (e.target as HTMLElement)?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+    if (e.key === 'Escape') {
+      if (isMenuVisible()) {
+        hideMenu();
+        setMenuActive(false);
+        return;
+      }
+      if (isFleetPanelVisible()) { hideFleetPanel(); return; }
+      if (isBurnPanelVisible()) { hideBurnPanel(); return; }
+      if (isManagedPanelVisible()) { hideManagedPanel(); return; }
+    }
+
+    if (e.key === 'E' || e.key === 'e') {
+      const next = !isEmpireActive();
+      setEmpireActive(next);
+      toggleEmpireDim(next);
     }
   });
 

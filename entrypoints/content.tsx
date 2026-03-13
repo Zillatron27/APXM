@@ -13,6 +13,7 @@ import { isDebugEnabled, createOverlay, markStep, markFailed, pollForAttribute, 
 import { initRefreshMode, isAutoRefreshEnabled } from '../lib/buffer-refresh';
 import { executeBatchRefresh } from '../lib/buffer-refresh';
 import { initDesktopBridge } from '../lib/desktop-bridge';
+import { initApxmButton } from '../lib/apxm-button';
 import { useSitesStore } from '../stores/entities';
 import { useSiteSourceStore } from '../stores/site-data-sources';
 import '../assets/styles.css';
@@ -173,7 +174,8 @@ export default defineContentScript({
     }
 
     if (isDesktopBridgeMode) {
-      console.log('[APXM] Desktop mode — bridge active, mobile UI skipped.');
+      initApxmButton();
+      console.log('[APXM] Desktop mode — bridge active, APXM button injected, mobile UI skipped.');
       return;
     }
 

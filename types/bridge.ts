@@ -124,6 +124,16 @@ export interface ScreenInfo {
 }
 
 // ============================================================================
+// Settings Types (mirrored from extension settings store)
+// ============================================================================
+
+export interface BurnThresholds {
+  critical: number;
+  warning: number;
+  resupply: number;
+}
+
+// ============================================================================
 // Full Snapshot (sent on init and reconnect)
 // ============================================================================
 
@@ -138,6 +148,7 @@ export interface BridgeSnapshot {
   balances: CurrencyAmount[];
   screens: ScreenInfo[];
   screenAssignments: Record<string, string>;
+  burnThresholds: BurnThresholds;
   timestamp: number;
 }
 
@@ -202,6 +213,13 @@ export interface ApxmScreenAssignMessage {
   screenId: string | null;
 }
 
+export interface ApxmSettingsUpdateMessage {
+  type: 'apxm-settings-update';
+  settings: {
+    burnThresholds: BurnThresholds;
+  };
+}
+
 export type ApxmBridgeMessage =
   | ApxmHelloMessage
   | ApxmHelloAckMessage
@@ -209,4 +227,5 @@ export type ApxmBridgeMessage =
   | ApxmUpdateMessage
   | ApxmBufferCommandMessage
   | ApxmScreenSwitchMessage
-  | ApxmScreenAssignMessage;
+  | ApxmScreenAssignMessage
+  | ApxmSettingsUpdateMessage;
