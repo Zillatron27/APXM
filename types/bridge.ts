@@ -133,6 +133,13 @@ export interface BurnThresholds {
   resupply: number;
 }
 
+export interface WarehouseLocation {
+  warehouseId: string;
+  storeId: string;
+  systemNaturalId: string;
+  stationNaturalId: string | null;
+}
+
 // ============================================================================
 // Full Snapshot (sent on init and reconnect)
 // ============================================================================
@@ -151,6 +158,7 @@ export interface BridgeSnapshot {
   burnThresholds: BurnThresholds;
   companyName: string | null;
   primaryCurrency: string | null;
+  warehouses: WarehouseLocation[];
   timestamp: number;
 }
 
@@ -171,7 +179,8 @@ export interface BridgeUpdate {
     | WorkforceSummary[]
     | ContractSummary[]
     | CurrencyAmount[]
-    | ScreenInfo[];
+    | ScreenInfo[]
+    | WarehouseLocation[];
   timestamp: number;
 }
 

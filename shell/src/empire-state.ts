@@ -9,6 +9,7 @@
 import type {
   BridgeSnapshot, BridgeUpdate, WorkforceSummary, ShipSummary, FlightSummary,
   SiteSummary, ProductionSummary, StorageSummary, ScreenInfo, BurnThresholds,
+  WarehouseLocation,
 } from './types/bridge';
 
 const BURN_PRIORITY: Record<WorkforceSummary['burnStatus'], number> = {
@@ -43,6 +44,9 @@ export interface EmpireState {
   getCompanyName(): string | null;
   getPrimaryCurrency(): string | null;
   getBalances(): BridgeSnapshot['balances'];
+  hasWarehouse(systemNaturalId: string): boolean;
+  getWarehouse(systemNaturalId: string): WarehouseLocation | undefined;
+  getWarehouses(): WarehouseLocation[];
   onChange(callback: () => void): () => void;
 }
 
@@ -63,6 +67,7 @@ export function createEmpireState(): EmpireState {
     burnThresholds: DEFAULT_BURN_THRESHOLDS,
     companyName: null,
     primaryCurrency: null,
+    warehouses: [],
     timestamp: 0,
   };
 
@@ -239,6 +244,18 @@ export function createEmpireState(): EmpireState {
     return state.balances;
   }
 
+  function hasWarehouse(systemNaturalId: string): boolean {
+    return state.warehouses.some((w) => w.systemNaturalId === systemNaturalId);
+  }
+
+  function getWarehouse(systemNaturalId: string): WarehouseLocation | undefined {
+    return state.warehouses.find((w) => w.systemNaturalId === systemNaturalId);
+  }
+
+  function getWarehouses(): WarehouseLocation[] {
+    return state.warehouses;
+  }
+
   function onChange(callback: () => void): () => void {
     listeners.push(callback);
     return () => {
@@ -255,6 +272,7 @@ export function createEmpireState(): EmpireState {
     getScreens, getAssignedScreenIdForPlanet, getAssignedScreenForPlanet, setScreenAssignment,
     getBurnThresholds, setBurnThresholds,
     getCompanyName, getPrimaryCurrency, getBalances,
+    hasWarehouse, getWarehouse, getWarehouses,
     onChange,
   };
 }

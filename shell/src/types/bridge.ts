@@ -24,4 +24,5 @@ export type {
   ContractSummary,
   CurrencyAmount,
   ScreenInfo,
+  WarehouseLocation,
 } from '@apxm/bridge';

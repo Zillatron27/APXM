@@ -101,6 +101,19 @@ function clamp(screenX: number, screenY: number): { x: number; y: number } {
   return { x, y };
 }
 
+export function showTextTooltip(
+  text: string,
+  screenX: number,
+  screenY: number,
+): void {
+  const tooltip = ensureElement();
+  tooltip.textContent = text;
+  tooltip.style.display = 'block';
+  const pos = clamp(screenX, screenY);
+  tooltip.style.left = `${pos.x}px`;
+  tooltip.style.top = `${pos.y}px`;
+}
+
 export function showTooltip(
   ships: ShipSummary[],
   flights: FlightSummary[],

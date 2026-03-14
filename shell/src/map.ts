@@ -209,7 +209,7 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
     } else if (data.type === 'apxm-update') {
       const msg = data as ApxmUpdateMessage;
       empireState.applyUpdate(msg.update);
-      if (msg.update.entityType === 'sites' || msg.update.entityType === 'workforce') {
+      if (msg.update.entityType === 'sites' || msg.update.entityType === 'workforce' || msg.update.entityType === 'warehouses') {
         overlay?.refresh();
       }
       if (msg.update.entityType === 'ships' || msg.update.entityType === 'flights') {

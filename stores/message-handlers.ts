@@ -17,6 +17,7 @@ import {
 import { useSiteSourceStore } from './site-data-sources';
 import { useScreensStore, type ScreenInfo } from './screens';
 import { useCompanyStore } from './company';
+import { useWarehouseStore, type WarehouseLocation } from './warehouses';
 
 type MessageHandler = (msg: ProcessedMessage) => void;
 const typeHandlers = new Map<string, MessageHandler>();
@@ -472,6 +473,59 @@ export function initMessageHandlers(): void {
       });
     } else {
       warn('COMPANY_DATA: unexpected payload structure', payload);
+    }
+  });
+
+  // ============================================================================
+  // Warehouses
+  // ============================================================================
+
+  function extractWarehouse(wh: Record<string, unknown>): WarehouseLocation | null {
+    const warehouseId = wh.warehouseId as string | undefined;
+    const storeId = wh.storeId as string | undefined;
+    const address = wh.address as { lines?: Array<{ type?: string; entity?: { naturalId?: string } }> } | undefined;
+    if (typeof warehouseId !== 'string' || typeof storeId !== 'string') return null;
+    const systemLine = address?.lines?.find((l) => l.type === 'SYSTEM');
+    const systemNaturalId = systemLine?.entity?.naturalId;
+    if (typeof systemNaturalId !== 'string') return null;
+    const stationLine = address?.lines?.find((l) => l.type === 'STATION');
+    const stationNaturalId = typeof stationLine?.entity?.naturalId === 'string'
+      ? stationLine.entity.naturalId : null;
+    return { warehouseId, storeId, systemNaturalId, stationNaturalId };
+  }
+
+  typeHandlers.set('WAREHOUSE_STORAGES', (msg: ProcessedMessage) => {
+    const payload = extractPayload(msg) as { storages?: unknown[] };
+    if (Array.isArray(payload?.storages)) {
+      const locations: WarehouseLocation[] = [];
+      for (const wh of payload.storages) {
+        if (wh && typeof wh === 'object') {
+          const loc = extractWarehouse(wh as Record<string, unknown>);
+          if (loc) locations.push(loc);
+        }
+      }
+      useWarehouseStore.getState().setWarehouses(locations);
+    } else {
+      warn('WAREHOUSE_STORAGES: unexpected payload structure', payload);
+    }
+  });
+
+  typeHandlers.set('WAREHOUSE_STORAGE', (msg: ProcessedMessage) => {
+    const payload = extractPayload(msg) as Record<string, unknown>;
+    if (payload && typeof payload === 'object') {
+      const loc = extractWarehouse(payload);
+      if (loc) {
+        useWarehouseStore.getState().addWarehouse(loc);
+        return;
+      }
+    }
+    warn('WAREHOUSE_STORAGE: unexpected payload structure', payload);
+  });
+
+  typeHandlers.set('WAREHOUSE_STORAGE_REMOVED', (msg: ProcessedMessage) => {
+    const payload = extractPayload(msg) as { warehouseId?: string };
+    if (typeof payload?.warehouseId === 'string') {
+      useWarehouseStore.getState().removeWarehouse(payload.warehouseId);
     }
   });
 

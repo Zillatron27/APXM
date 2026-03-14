@@ -30,6 +30,7 @@ import { useBalancesStore } from '../../stores/entities/balances';
 import { useScreensStore } from '../../stores/screens';
 import { useSettingsStore } from '../../stores/settings';
 import { useCompanyStore } from '../../stores/company';
+import { useWarehouseStore } from '../../stores/warehouses';
 import { calculateSiteBurn } from '../../core/burn';
 
 // ============================================================================
@@ -339,6 +340,10 @@ export function deriveCompanyInfo(): { companyName: string | null; primaryCurren
   };
 }
 
+export function deriveWarehouses(): BridgeSnapshot['warehouses'] {
+  return useWarehouseStore.getState().warehouses;
+}
+
 /** Creates a full snapshot from all entity stores. */
 export function createSnapshot(): BridgeSnapshot {
   const { companyName, primaryCurrency } = deriveCompanyInfo();
@@ -356,6 +361,7 @@ export function createSnapshot(): BridgeSnapshot {
     burnThresholds: deriveBurnThresholds(),
     companyName,
     primaryCurrency,
+    warehouses: deriveWarehouses(),
     timestamp: Date.now(),
   };
 }

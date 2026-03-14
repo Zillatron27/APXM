@@ -7,10 +7,11 @@
  * red (critical), orange (unknown/no data).
  */
 
-import { Container, Graphics } from 'pixi.js';
+import { Container, Graphics, Circle } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
-import { onStateChange, getViewLevel, getFocusedSystemId } from '@27bit/helm';
+import { onStateChange, getViewLevel, getFocusedSystemId, getCxForSystem, getSystemByNaturalId } from '@27bit/helm';
 import type { EmpireState } from './empire-state';
+import { showTextTooltip, hideTooltip } from './ui/ship-tooltip';
 
 // Galaxy-level system rings (calibrated against Helm's CX markers)
 const EMPIRE_RING_RADIUS = 18;
@@ -21,6 +22,13 @@ const EMPIRE_RING_ALPHA = 0.7;
 const PLANET_RING_PADDING = 6;
 const PLANET_RING_STROKE = 2.5;
 const PLANET_RING_ALPHA = 0.8;
+
+// Warehouse dot on CX diamonds
+const WAREHOUSE_DOT_RADIUS = 2.5;
+const WAREHOUSE_DOT_COLOUR = 0xffaa00;
+const WAREHOUSE_DOT_OFFSET_Y = -30;
+const WAREHOUSE_HIT_RADIUS = 10;
+const WAREHOUSE_DOT_ALPHA = 0.85;
 
 type BurnStatus = ReturnType<EmpireState['getSystemBurnStatus']>;
 
@@ -60,16 +68,23 @@ export function createEmpireOverlay(
   const galaxyContainer = new Container();
   galaxyContainer.eventMode = 'none';
 
+  const warehouseContainer = new Container();
+  warehouseContainer.eventMode = 'static';
+  warehouseContainer.interactiveChildren = true;
+
   const systemContainer = new Container();
   systemContainer.eventMode = 'none';
 
   // Insert galaxy overlay between Galaxy[1] and System[2→3]
   viewport.addChildAt(galaxyContainer, 2);
+  // Warehouse dots above galaxy overlay (interactive)
+  viewport.addChildAt(warehouseContainer, 3);
   // System overlay on top of everything
   viewport.addChild(systemContainer);
 
   function refreshGalaxy(): void {
     galaxyContainer.removeChildren();
+    warehouseContainer.removeChildren();
 
     for (const nid of empireState.getOwnedSystemNaturalIds()) {
       const pos = resolvers.resolveSystem(nid);
@@ -86,6 +101,43 @@ export function createEmpireOverlay(
       ring.eventMode = 'none';
 
       galaxyContainer.addChild(ring);
+    }
+
+    // Warehouse dots on CX systems
+    for (const warehouse of empireState.getWarehouses()) {
+      // Only CX warehouses (station-based), not base warehouses (planet-based)
+      if (!warehouse.stationNaturalId) continue;
+      const pos = resolvers.resolveSystem(warehouse.systemNaturalId);
+      if (!pos) continue;
+      const system = getSystemByNaturalId(warehouse.systemNaturalId);
+      if (!system) continue;
+      const cx = getCxForSystem(system.id);
+      if (!cx) continue;
+
+      const dot = new Graphics();
+      dot.circle(0, 0, WAREHOUSE_DOT_RADIUS);
+      dot.fill({ color: WAREHOUSE_DOT_COLOUR, alpha: WAREHOUSE_DOT_ALPHA });
+      dot.x = pos.worldX;
+      dot.y = pos.worldY + WAREHOUSE_DOT_OFFSET_Y;
+      dot.eventMode = 'static';
+      dot.cursor = 'pointer';
+      dot.hitArea = new Circle(0, 0, WAREHOUSE_HIT_RADIUS);
+
+      dot.on('pointerover', (e) => {
+        showTextTooltip(`Warehouse \u2014 ${cx.ComexCode}`, e.global.x, e.global.y);
+      });
+      dot.on('pointerout', () => {
+        hideTooltip();
+      });
+      dot.on('pointertap', (e) => {
+        e.stopPropagation();
+        window.parent.postMessage(
+          { type: 'apxm-buffer-command', command: `INV ${warehouse.storeId}` },
+          '*',
+        );
+      });
+
+      warehouseContainer.addChild(dot);
     }
   }
 
@@ -129,6 +181,7 @@ export function createEmpireOverlay(
 
     if (viewLevel === 'galaxy') {
       galaxyContainer.visible = true;
+      warehouseContainer.visible = true;
       systemContainer.removeChildren();
       refreshGalaxy();
     } else if (viewLevel === 'system') {
@@ -138,6 +191,7 @@ export function createEmpireOverlay(
 
   function showPlanetOverlay(): void {
     galaxyContainer.visible = false;
+    warehouseContainer.visible = false;
     const focusedUuid = getFocusedSystemId();
     if (!focusedUuid) return;
 
@@ -167,6 +221,7 @@ export function createEmpireOverlay(
     const viewLevel = getViewLevel();
     if (viewLevel === 'galaxy') {
       galaxyContainer.visible = true;
+      warehouseContainer.visible = true;
       systemContainer.removeChildren();
     } else if (viewLevel === 'system') {
       showPlanetOverlay();

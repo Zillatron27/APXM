@@ -19,6 +19,7 @@ import {
   deriveBalances,
   deriveScreens,
   deriveBurnThresholds,
+  deriveWarehouses,
 } from './store-serializer';
 import { useSitesStore } from '../../stores/entities/sites';
 import { useShipsStore } from '../../stores/entities/ships';
@@ -32,6 +33,7 @@ import { useScreensStore } from '../../stores/screens';
 import { useConnectionStore } from '../../stores/connection';
 import { useSettingsStore } from '../../stores/settings';
 import { useCompanyStore } from '../../stores/company';
+import { useWarehouseStore } from '../../stores/warehouses';
 
 type PostFn = (message: ApxmInitMessage | ApxmUpdateMessage) => void;
 
@@ -53,6 +55,7 @@ const STORE_BINDINGS: StoreBinding[] = [
   { entityType: 'contracts', store: useContractsStore, derive: deriveContractSummaries },
   { entityType: 'balances', store: useBalancesStore, derive: deriveBalances },
   { entityType: 'screens', store: useScreensStore, derive: deriveScreens },
+  { entityType: 'warehouses', store: useWarehouseStore, derive: deriveWarehouses },
 ];
 
 /**
