@@ -29,6 +29,7 @@ import { useContractsStore } from '../../stores/entities/contracts';
 import { useBalancesStore } from '../../stores/entities/balances';
 import { useScreensStore } from '../../stores/screens';
 import { useSettingsStore } from '../../stores/settings';
+import { useCompanyStore } from '../../stores/company';
 import { calculateSiteBurn } from '../../core/burn';
 
 // ============================================================================
@@ -259,9 +260,9 @@ export function deriveWorkforceSummaries(): WorkforceSummary[] {
     let lowestBurnDays: number | null = null;
     try {
       const siteBurn = calculateSiteBurn(entity.siteId);
-      const workforceBurns = siteBurn.burns.filter((b) => b.type === 'workforce');
-      if (workforceBurns.length > 0) {
-        const lowest = Math.min(...workforceBurns.map((b) => b.daysRemaining));
+      const consumingBurns = siteBurn.burns.filter((b) => b.type === 'workforce' || b.type === 'input');
+      if (consumingBurns.length > 0) {
+        const lowest = Math.min(...consumingBurns.map((b) => b.daysRemaining));
         lowestBurnDays = lowest === Infinity ? null : lowest;
         if (lowestBurnDays !== null) {
           if (lowestBurnDays <= burnThresholds.critical) burnStatus = 'critical';
@@ -321,8 +322,26 @@ export function deriveBurnThresholds(): BridgeSnapshot['burnThresholds'] {
   return { ...burnThresholds };
 }
 
+// Faction → primary currency mapping (countryId values need verification against live data)
+const COUNTRY_CURRENCY: Record<string, string> = {
+  'AI': 'AIC',
+  'CI': 'CIS',
+  'IC': 'ICA',
+  'NC': 'NCC',
+};
+
+export function deriveCompanyInfo(): { companyName: string | null; primaryCurrency: string | null } {
+  const company = useCompanyStore.getState().company;
+  if (!company) return { companyName: null, primaryCurrency: null };
+  return {
+    companyName: company.name,
+    primaryCurrency: COUNTRY_CURRENCY[company.countryId] ?? null,
+  };
+}
+
 /** Creates a full snapshot from all entity stores. */
 export function createSnapshot(): BridgeSnapshot {
+  const { companyName, primaryCurrency } = deriveCompanyInfo();
   return {
     sites: deriveSiteSummaries(),
     ships: deriveShipSummaries(),
@@ -335,6 +354,8 @@ export function createSnapshot(): BridgeSnapshot {
     screens: deriveScreens(),
     screenAssignments: { ...useScreensStore.getState().screenAssignments },
     burnThresholds: deriveBurnThresholds(),
+    companyName,
+    primaryCurrency,
     timestamp: Date.now(),
   };
 }
