@@ -13,8 +13,6 @@ import type { CurrencyAmount } from '../types/bridge';
 import './menu.css';
 
 export interface MenuCallbacks {
-  onFleetOverview(): void;
-  onBurnStatus(): void;
   onSettings(): void;
   onDismiss(): void;
 }
@@ -159,35 +157,6 @@ export function showMenu(
     menuEl.appendChild(sepHeader);
   }
 
-  // Fleet Overview
-  const fleetItem = document.createElement('div');
-  fleetItem.className = 'menu-item';
-  fleetItem.textContent = 'Fleet Overview';
-  fleetItem.addEventListener('click', (e) => {
-    e.stopPropagation();
-    cleanup();
-    callbacks.onDismiss();
-    callbacks.onFleetOverview();
-  });
-  menuEl.appendChild(fleetItem);
-
-  // Burn Status
-  const burnItem = document.createElement('div');
-  burnItem.className = 'menu-item';
-  burnItem.textContent = 'Burn Status';
-  burnItem.addEventListener('click', (e) => {
-    e.stopPropagation();
-    cleanup();
-    callbacks.onDismiss();
-    callbacks.onBurnStatus();
-  });
-  menuEl.appendChild(burnItem);
-
-  // Separator
-  const sep1 = document.createElement('div');
-  sep1.className = 'menu-separator';
-  menuEl.appendChild(sep1);
-
   // Theme picker (inline expand/collapse)
   const activeTheme = themePresets.find(p => p.id === getActiveThemeId());
   const themeHeader = document.createElement('div');
@@ -263,4 +232,13 @@ export function hideMenu(): void {
 
 export function isMenuVisible(): boolean {
   return menuEl !== null;
+}
+
+/** Returns the distance from the left edge of the menu to the right edge of the viewport. */
+export function getMenuRightEdge(): number {
+  if (!menuEl) return 0;
+  // Force layout reflow so dimensions are available immediately after DOM append
+  void menuEl.offsetWidth;
+  const rect = menuEl.getBoundingClientRect();
+  return window.innerWidth - rect.left;
 }

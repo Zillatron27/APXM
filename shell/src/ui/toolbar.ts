@@ -7,6 +7,8 @@
 import './toolbar.css';
 
 export interface ToolbarCallbacks {
+  onBurnToggle(active: boolean): void;
+  onFleetToggle(active: boolean): void;
   onGatewayToggle(active: boolean): void;
   onEmpireToggle(active: boolean): void;
   onMenuToggle(active: boolean): void;
@@ -14,10 +16,14 @@ export interface ToolbarCallbacks {
 
 let toolbarEl: HTMLDivElement | null = null;
 
+let burnBtn: HTMLButtonElement | null = null;
+let fleetBtn: HTMLButtonElement | null = null;
 let gatewayBtn: HTMLButtonElement | null = null;
 let empireBtn: HTMLButtonElement | null = null;
 let menuBtn: HTMLButtonElement | null = null;
 
+let burnActive = false;
+let fleetActive = false;
 let gatewayActive = true;
 let empireActive = false;
 let menuActive = false;
@@ -50,6 +56,22 @@ export function createToolbar(callbacks: ToolbarCallbacks): HTMLDivElement {
   toolbarEl = document.createElement('div');
   toolbarEl.className = 'apxm-toolbar';
 
+  burnBtn = createButton('\u{1F525}', 'Burn status (B)');
+  burnBtn.classList.add('toolbar-btn-icon');
+  burnBtn.addEventListener('click', () => {
+    burnActive = !burnActive;
+    burnBtn!.classList.toggle('active', burnActive);
+    callbacks.onBurnToggle(burnActive);
+  });
+
+  fleetBtn = createButton('\u{1F6A2}', 'Fleet overview (F)');
+  fleetBtn.classList.add('toolbar-btn-icon');
+  fleetBtn.addEventListener('click', () => {
+    fleetActive = !fleetActive;
+    fleetBtn!.classList.toggle('active', fleetActive);
+    callbacks.onFleetToggle(fleetActive);
+  });
+
   gatewayBtn = createIconButton(GATEWAY_ICON_SVG, 'Toggle gateways (G)');
   gatewayBtn.classList.add('active'); // gateways visible by default
   gatewayBtn.addEventListener('click', () => {
@@ -74,11 +96,31 @@ export function createToolbar(callbacks: ToolbarCallbacks): HTMLDivElement {
     callbacks.onMenuToggle(menuActive);
   });
 
+  toolbarEl.appendChild(burnBtn);
+  toolbarEl.appendChild(fleetBtn);
   toolbarEl.appendChild(gatewayBtn);
   toolbarEl.appendChild(empireBtn);
   toolbarEl.appendChild(menuBtn);
 
   return toolbarEl;
+}
+
+export function setBurnActive(active: boolean): void {
+  burnActive = active;
+  burnBtn?.classList.toggle('active', active);
+}
+
+export function isBurnActive(): boolean {
+  return burnActive;
+}
+
+export function setFleetActive(active: boolean): void {
+  fleetActive = active;
+  fleetBtn?.classList.toggle('active', active);
+}
+
+export function isFleetActive(): boolean {
+  return fleetActive;
 }
 
 export function setGatewayActive(active: boolean): void {
@@ -94,6 +136,10 @@ export function setEmpireActive(active: boolean): void {
 export function setMenuActive(active: boolean): void {
   menuActive = active;
   menuBtn?.classList.toggle('active', active);
+}
+
+export function isGatewayActive(): boolean {
+  return gatewayActive;
 }
 
 export function isEmpireActive(): boolean {

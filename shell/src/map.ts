@@ -31,8 +31,8 @@ import { showTooltip, hideTooltip, updateTooltipPosition } from './ui/ship-toolt
 import { showPanel, updatePanel } from './ui/ship-panel';
 import { showBasePanel, updateBasePanel } from './ui/base-panel';
 import { isManagedPanelVisible, hideManagedPanel } from './ui/panel-manager';
-import { createToolbar, setMenuActive, setEmpireActive, isEmpireActive, getMenuButton } from './ui/toolbar';
-import { showMenu, hideMenu, isMenuVisible } from './ui/menu';
+import { createToolbar, setMenuActive, setEmpireActive, isEmpireActive, setGatewayActive, isGatewayActive, setBurnActive, setFleetActive, getMenuButton } from './ui/toolbar';
+import { showMenu, hideMenu, isMenuVisible, getMenuRightEdge } from './ui/menu';
 import { showFleetPanel, hideFleetPanel, isFleetPanelVisible, getFleetPanelWidth, setFleetPanelRightOffset } from './ui/fleet-panel';
 import { showBurnPanel, hideBurnPanel, isBurnPanelVisible, getBurnPanelWidth, setBurnPanelRightOffset } from './ui/burn-panel';
 import { showSettingsPanel, hideSettingsPanel } from './ui/settings-panel';
@@ -138,6 +138,9 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
   let shipSystemView: ShipSystemViewLayer | null = null;
   const pendingMessages: MessageEvent[] = [];
 
+  // Track whether initial empire framing has happened
+  let initialFrameDone = false;
+
   // Empire dim state
   let empireDimActive = false;
   try {
@@ -169,14 +172,13 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
     hideSettingsPanel();
   }
 
-  const MENU_WIDTH = 220;
   const PANEL_GAP = 8;
   const BASE_RIGHT = 12;
 
   /** Reposition all open panels based on whether the menu is open. */
   function repositionPanels(): void {
-    const menuOpen = isMenuVisible();
-    let right = menuOpen ? MENU_WIDTH : BASE_RIGHT;
+    const menuEdge = getMenuRightEdge();
+    let right = menuEdge > 0 ? menuEdge + PANEL_GAP : BASE_RIGHT;
 
     // Stack panels left-to-right: first fleet, then burn
     if (isFleetPanelVisible()) {
@@ -202,7 +204,10 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
       shipSystemView?.refresh();
       updatePanel(msg.snapshot.ships, msg.snapshot.flights);
       updateBasePanel(empireState);
-      frameToEmpire(helm!.viewport, empireState.getOwnedSystemNaturalIds());
+      if (!initialFrameDone) {
+        frameToEmpire(helm!.viewport, empireState.getOwnedSystemNaturalIds());
+        initialFrameDone = true;
+      }
       // Re-apply empire dim with potentially new site data
       clearBrightCache();
       if (empireDimActive) applyEmpireDim();
@@ -364,91 +369,111 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
   // Toolbar + Menu
   // ============================================================================
 
+  function toggleFleetPanel(): void {
+    if (isFleetPanelVisible()) {
+      hideFleetPanel();
+      setFleetActive(false);
+      repositionPanels();
+      return;
+    }
+    showFleetPanel(empireState, {
+      onShipClick(systemNaturalId, shipId) {
+        const transitPos = shipTransit?.getShipWorldPosition(shipId) ?? null;
+        const sys = getSystemByNaturalId(systemNaturalId);
+        if (!sys && !transitPos) return;
+
+        const targetX = transitPos?.x ?? sys!.worldX;
+        const targetY = transitPos?.y ?? sys!.worldY;
+
+        const vp = helm!.viewport;
+        if (!preShipCamera) {
+          preShipCamera = { x: vp.center.x, y: vp.center.y, scale: vp.scaled };
+        }
+
+        vp.animate({
+          position: { x: targetX, y: targetY },
+          scale: SHIP_ZOOM_SCALE,
+          time: FRAME_TRANSITION_MS,
+          ease: 'easeInOutCubic',
+        });
+
+        shipIdleMarkers?.setSelectedShip(shipId);
+        shipTransit?.setSelectedShip(shipId);
+        shipSystemView?.setSelectedShip(shipId);
+      },
+      onClose() {
+        shipIdleMarkers?.setSelectedShip(null);
+        shipTransit?.setSelectedShip(null);
+        shipSystemView?.setSelectedShip(null);
+        if (preShipCamera) {
+          const vp = helm!.viewport;
+          vp.animate({
+            position: { x: preShipCamera.x, y: preShipCamera.y },
+            scale: preShipCamera.scale,
+            time: FRAME_TRANSITION_MS,
+            ease: 'easeInOutCubic',
+          });
+          preShipCamera = null;
+        }
+        setFleetActive(false);
+        repositionPanels();
+      },
+    });
+    repositionPanels();
+  }
+
+  function toggleBurnPanel(): void {
+    if (isBurnPanelVisible()) {
+      hideBurnPanel();
+      setBurnActive(false);
+      repositionPanels();
+      return;
+    }
+    showBurnPanel(empireState, {
+      onBaseClick(systemNaturalId, planetNaturalId) {
+        const sys = getSystemByNaturalId(systemNaturalId);
+        if (!sys) return;
+        const planets = getPlanetsForSystem(sys.naturalId);
+        const planet = planets?.find(p => p.naturalId === planetNaturalId);
+        if (planet) {
+          helm!.panToPlanet(sys.id, planet.id);
+        } else {
+          helm!.panToSystem(sys.id);
+        }
+      },
+      onClose() {
+        setBurnActive(false);
+        repositionPanels();
+      },
+    });
+    repositionPanels();
+  }
+
   const toolbarEl = createToolbar({
+    onBurnToggle(active) {
+      if (active) toggleBurnPanel();
+      else { hideBurnPanel(); repositionPanels(); }
+    },
+    onFleetToggle(active) {
+      if (active) toggleFleetPanel();
+      else { hideFleetPanel(); repositionPanels(); }
+    },
     onGatewayToggle(active) {
       setGatewaysVisible(active);
       helm!.setGatewaysVisible(active);
-      // Keep Helm's native indicators hidden — APXM uses status grid instead
       helm!.renderer.setGatewayIndicatorsVisible(false);
     },
     onEmpireToggle(active) {
       toggleEmpireDim(active);
+      if (active) {
+        frameToEmpire(helm!.viewport, empireState.getOwnedSystemNaturalIds());
+      }
     },
     onMenuToggle(active) {
       if (active) {
         const anchor = getMenuButton();
         if (!anchor) return;
         showMenu(anchor, {
-          onFleetOverview() {
-            if (isFleetPanelVisible()) { hideFleetPanel(); repositionPanels(); return; }
-            showFleetPanel(empireState, {
-              onShipClick(systemNaturalId, shipId) {
-                // Try transit layer first (ship may be mid-flight)
-                const transitPos = shipTransit?.getShipWorldPosition(shipId) ?? null;
-
-                // Fallback to system position (idle ships)
-                const sys = getSystemByNaturalId(systemNaturalId);
-                if (!sys && !transitPos) return;
-
-                const targetX = transitPos?.x ?? sys!.worldX;
-                const targetY = transitPos?.y ?? sys!.worldY;
-
-                // Save camera ONLY on first selection (don't overwrite on re-click)
-                const vp = helm!.viewport;
-                if (!preShipCamera) {
-                  preShipCamera = { x: vp.center.x, y: vp.center.y, scale: vp.scaled };
-                }
-
-                vp.animate({
-                  position: { x: targetX, y: targetY },
-                  scale: SHIP_ZOOM_SCALE,
-                  time: FRAME_TRANSITION_MS,
-                  ease: 'easeInOutCubic',
-                });
-
-                // Highlight the ship's chevron (on whichever layer it lives)
-                shipIdleMarkers?.setSelectedShip(shipId);
-                shipTransit?.setSelectedShip(shipId);
-                shipSystemView?.setSelectedShip(shipId);
-              },
-              onClose() {
-                // Restore camera and clear selection
-                shipIdleMarkers?.setSelectedShip(null);
-                shipTransit?.setSelectedShip(null);
-                shipSystemView?.setSelectedShip(null);
-                if (preShipCamera) {
-                  const vp = helm!.viewport;
-                  vp.animate({
-                    position: { x: preShipCamera.x, y: preShipCamera.y },
-                    scale: preShipCamera.scale,
-                    time: FRAME_TRANSITION_MS,
-                    ease: 'easeInOutCubic',
-                  });
-                  preShipCamera = null;
-                }
-                repositionPanels();
-              },
-            });
-            repositionPanels();
-          },
-          onBurnStatus() {
-            if (isBurnPanelVisible()) { hideBurnPanel(); repositionPanels(); return; }
-            showBurnPanel(empireState, {
-              onBaseClick(systemNaturalId, planetNaturalId) {
-                const sys = getSystemByNaturalId(systemNaturalId);
-                if (!sys) return;
-                const planets = getPlanetsForSystem(sys.naturalId);
-                const planet = planets?.find(p => p.naturalId === planetNaturalId);
-                if (planet) {
-                  helm!.panToPlanet(sys.id, planet.id);
-                } else {
-                  helm!.panToSystem(sys.id);
-                }
-              },
-              onClose() { repositionPanels(); },
-            });
-            repositionPanels();
-          },
           onSettings() {
             hideSettingsPanel();
             showSettingsPanel(empireState, {
@@ -467,7 +492,7 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
             repositionPanels();
           },
         }, empireState);
-        repositionPanels();
+        setTimeout(repositionPanels, 50);
       } else {
         hideMenu();
         repositionPanels();
@@ -487,8 +512,9 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
   onStateChange(() => {
     const viewLevel = getViewLevel();
 
-    if (viewLevel === 'galaxy' && empireCamera) {
+    if (viewLevel === 'galaxy' && prevViewLevel === 'system' && empireCamera) {
       restoreEmpireCamera(viewport);
+      empireCamera = null;
     }
 
     // Dismiss Helm's native panel when entering system view (zoom-in transition)
@@ -569,15 +595,36 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
         setMenuActive(false);
         return;
       }
-      if (isFleetPanelVisible()) { hideFleetPanel(); return; }
-      if (isBurnPanelVisible()) { hideBurnPanel(); return; }
+      if (isFleetPanelVisible()) { hideFleetPanel(); setFleetActive(false); repositionPanels(); return; }
+      if (isBurnPanelVisible()) { hideBurnPanel(); setBurnActive(false); repositionPanels(); return; }
       if (isManagedPanelVisible()) { hideManagedPanel(); return; }
+    }
+
+    if (e.key === 'B' || e.key === 'b') {
+      toggleBurnPanel();
+      setBurnActive(isBurnPanelVisible());
+    }
+
+    if (e.key === 'F' || e.key === 'f') {
+      toggleFleetPanel();
+      setFleetActive(isFleetPanelVisible());
+    }
+
+    if (e.key === 'G' || e.key === 'g') {
+      const next = !isGatewayActive();
+      setGatewayActive(next);
+      setGatewaysVisible(next);
+      helm!.setGatewaysVisible(next);
+      helm!.renderer.setGatewayIndicatorsVisible(false);
     }
 
     if (e.key === 'E' || e.key === 'e') {
       const next = !isEmpireActive();
       setEmpireActive(next);
       toggleEmpireDim(next);
+      if (next) {
+        frameToEmpire(helm!.viewport, empireState.getOwnedSystemNaturalIds());
+      }
     }
   });
 

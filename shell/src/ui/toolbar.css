@@ -40,6 +40,10 @@
   color: var(--accent, #648cff);
 }
 
+.toolbar-btn.toolbar-btn-icon {
+  font-size: 18px;
+}
+
 .toolbar-btn.toolbar-btn-empire {
   font-size: 24px;
   padding-bottom: 5px;
