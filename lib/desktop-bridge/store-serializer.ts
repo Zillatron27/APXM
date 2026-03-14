@@ -242,6 +242,8 @@ export function deriveProductionSummaries(): ProductionSummary[] {
 }
 
 export function deriveWorkforceSummaries(): WorkforceSummary[] {
+  const { burnThresholds } = useSettingsStore.getState();
+
   return useWorkforceStore.getState().getAll().map((entity) => {
     const planet = extractPlanetInfo(entity.address);
     const systemNaturalId = extractSystemNaturalId(entity.address);
@@ -252,7 +254,7 @@ export function deriveWorkforceSummaries(): WorkforceSummary[] {
       ? populated.reduce((sum, w) => sum + w.satisfaction, 0) / populated.length
       : 1;
 
-    // Use burn engine for status
+    // Use burn engine for status, with user-configured thresholds
     let burnStatus: WorkforceSummary['burnStatus'] = 'unknown';
     let lowestBurnDays: number | null = null;
     try {
@@ -262,8 +264,8 @@ export function deriveWorkforceSummaries(): WorkforceSummary[] {
         const lowest = Math.min(...workforceBurns.map((b) => b.daysRemaining));
         lowestBurnDays = lowest === Infinity ? null : lowest;
         if (lowestBurnDays !== null) {
-          if (lowestBurnDays <= 3) burnStatus = 'critical';
-          else if (lowestBurnDays <= 7) burnStatus = 'warning';
+          if (lowestBurnDays <= burnThresholds.critical) burnStatus = 'critical';
+          else if (lowestBurnDays <= burnThresholds.warning) burnStatus = 'warning';
           else burnStatus = 'ok';
         } else {
           burnStatus = 'ok';
