@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@27bit/helm": "github:Zillatron27/helm#v0.7.0"
+    "@27bit/helm": "github:Zillatron27/helm#v0.7.1"
   },
   "devDependencies": {
     "pixi-viewport": "^6.0.3",
