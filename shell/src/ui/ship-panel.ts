@@ -221,7 +221,9 @@ function render(): void {
         ${renderShip(ship, flight)}
       </div>
       <div class="ship-action">
-        <button data-ship-buffer="SFC ${ship.registration}">Open Flight Control</button>
+        <button data-ship-buffer="SFC ${ship.registration}">SFC</button>
+        <button data-ship-buffer="SHPI ${ship.registration}">SHPI</button>
+        <button data-ship-buffer="SHPF ${ship.registration}">SHPF</button>
       </div>
     </div>
   `;
@@ -238,8 +240,7 @@ function wireListeners(el: HTMLDivElement): void {
   el.querySelector('[data-ship-nav="next"]')?.addEventListener('click', () => {
     if (currentIndex < currentShips.length - 1) { currentIndex++; render(); }
   });
-  const bufBtn = el.querySelector<HTMLButtonElement>('[data-ship-buffer]');
-  if (bufBtn) {
+  for (const bufBtn of el.querySelectorAll<HTMLButtonElement>('[data-ship-buffer]')) {
     bufBtn.addEventListener('click', () => {
       const cmd = bufBtn.dataset.shipBuffer;
       if (cmd && callbacks) callbacks.onBufferCommand(cmd);

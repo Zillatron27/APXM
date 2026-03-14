@@ -281,24 +281,29 @@
   opacity: 0.6;
 }
 
-/* Action button */
+/* Action buttons */
 .ship-action {
   padding: 10px 16px 12px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  gap: 6px;
   flex-shrink: 0;
 }
 
 .ship-action button {
-  width: 100%;
-  padding: 8px;
+  min-width: 52px;
+  padding: 7px 12px;
   background: rgba(255, 140, 0, 0.15);
   border: 1px solid rgba(255, 140, 0, 0.3);
   color: #ff8c00;
   border-radius: 4px;
   cursor: pointer;
   font-family: inherit;
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-align: center;
 }
 
 .ship-action button:hover {
