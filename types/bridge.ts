@@ -149,6 +149,8 @@ export interface BridgeSnapshot {
   screens: ScreenInfo[];
   screenAssignments: Record<string, string>;
   burnThresholds: BurnThresholds;
+  companyName: string | null;
+  primaryCurrency: string | null;
   timestamp: number;
 }
 
@@ -156,7 +158,7 @@ export interface BridgeSnapshot {
 // Incremental Update
 // ============================================================================
 
-export type BridgeEntityType = keyof Omit<BridgeSnapshot, 'timestamp' | 'screenAssignments'>;
+export type BridgeEntityType = keyof Omit<BridgeSnapshot, 'timestamp' | 'screenAssignments' | 'burnThresholds' | 'companyName' | 'primaryCurrency'>;
 
 export interface BridgeUpdate {
   entityType: BridgeEntityType;

@@ -5,9 +5,11 @@
  */
 
 import {
-  themePresets, getActiveThemeId, setTheme,
+  themePresets, getActiveThemeId, setTheme, getTheme,
 } from '@27bit/helm';
 import type { ThemePreset } from '@27bit/helm';
+import type { EmpireState } from '../empire-state';
+import type { CurrencyAmount } from '../types/bridge';
 import './menu.css';
 
 export interface MenuCallbacks {
@@ -20,6 +22,7 @@ export interface MenuCallbacks {
 let menuEl: HTMLDivElement | null = null;
 let clickHandler: ((e: MouseEvent) => void) | null = null;
 let themeExpanded = false;
+let liquidityExpanded = false;
 
 function hexToCss(hex: number): string {
   return `#${hex.toString(16).padStart(6, '0')}`;
@@ -35,6 +38,22 @@ function cleanup(): void {
     menuEl = null;
   }
   themeExpanded = false;
+  liquidityExpanded = false;
+}
+
+function sortBalances(
+  balances: CurrencyAmount[],
+  primaryCurrency: string | null,
+): CurrencyAmount[] {
+  return balances
+    .filter((b) => b.currency !== 'ECD')
+    .sort((a, b) => {
+      if (primaryCurrency) {
+        if (a.currency === primaryCurrency && b.currency !== primaryCurrency) return -1;
+        if (b.currency === primaryCurrency && a.currency !== primaryCurrency) return 1;
+      }
+      return a.currency.localeCompare(b.currency);
+    });
 }
 
 function renderThemeList(container: HTMLDivElement): void {
@@ -71,6 +90,7 @@ function renderThemeList(container: HTMLDivElement): void {
 export function showMenu(
   anchorEl: HTMLElement,
   callbacks: MenuCallbacks,
+  empireState: EmpireState,
 ): void {
   cleanup();
 
@@ -86,6 +106,58 @@ export function showMenu(
   }
   menuEl.style.top = `${top}px`;
   menuEl.style.right = `${right}px`;
+
+  // Company name
+  const companyName = empireState.getCompanyName();
+  if (companyName) {
+    const companyEl = document.createElement('div');
+    companyEl.className = 'menu-company-name';
+    companyEl.textContent = companyName;
+    companyEl.style.color = hexToCss(getTheme().accent);
+    menuEl.appendChild(companyEl);
+  }
+
+  // Liquidity section
+  const balances = sortBalances(empireState.getBalances(), empireState.getPrimaryCurrency());
+  if (balances.length > 0) {
+    const liqHeader = document.createElement('div');
+    liqHeader.className = 'menu-liquidity-header';
+    liqHeader.innerHTML = `
+      <span>Liquidity</span>
+      <span class="menu-liquidity-arrow">\u25B6</span>
+    `;
+
+    const liqList = document.createElement('div');
+    liqList.className = 'menu-liquidity-list';
+
+    for (const bal of balances) {
+      const row = document.createElement('div');
+      row.className = 'menu-liquidity-row';
+      row.innerHTML = `
+        <span class="menu-liquidity-amount">${Math.floor(bal.amount).toLocaleString()}</span>
+        <span class="menu-liquidity-currency">${bal.currency}</span>
+      `;
+      liqList.appendChild(row);
+    }
+
+    liqHeader.addEventListener('click', (e) => {
+      e.stopPropagation();
+      liquidityExpanded = !liquidityExpanded;
+      liqList.classList.toggle('expanded', liquidityExpanded);
+      const arrow = liqHeader.querySelector('.menu-liquidity-arrow');
+      arrow?.classList.toggle('expanded', liquidityExpanded);
+    });
+
+    menuEl.appendChild(liqHeader);
+    menuEl.appendChild(liqList);
+  }
+
+  // Separator between header and menu items
+  if (companyName || balances.length > 0) {
+    const sepHeader = document.createElement('div');
+    sepHeader.className = 'menu-separator';
+    menuEl.appendChild(sepHeader);
+  }
 
   // Fleet Overview
   const fleetItem = document.createElement('div');

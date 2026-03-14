@@ -16,6 +16,7 @@ import {
 } from './entities';
 import { useSiteSourceStore } from './site-data-sources';
 import { useScreensStore, type ScreenInfo } from './screens';
+import { useCompanyStore } from './company';
 
 type MessageHandler = (msg: ProcessedMessage) => void;
 const typeHandlers = new Map<string, MessageHandler>();
@@ -450,6 +451,27 @@ export function initMessageHandlers(): void {
     } else {
       warn('ACCOUNTING_BOOKINGS: unexpected payload structure', payload);
       useConnectionStore.getState().incrementDiscarded();
+    }
+  });
+
+  // ============================================================================
+  // Company
+  // ============================================================================
+
+  typeHandlers.set('COMPANY_DATA', (msg: ProcessedMessage) => {
+    const payload = extractPayload(msg) as {
+      name?: string;
+      code?: string;
+      countryId?: string;
+    };
+    if (typeof payload?.name === 'string') {
+      useCompanyStore.getState().setCompany({
+        name: payload.name,
+        code: payload.code ?? '',
+        countryId: payload.countryId ?? '',
+      });
+    } else {
+      warn('COMPANY_DATA: unexpected payload structure', payload);
     }
   });
 

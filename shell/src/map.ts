@@ -466,7 +466,7 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
             setMenuActive(false);
             repositionPanels();
           },
-        });
+        }, empireState);
         repositionPanels();
       } else {
         hideMenu();

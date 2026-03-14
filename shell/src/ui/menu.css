@@ -31,6 +31,69 @@
   margin: 4px 0;
 }
 
+/* Company name */
+.menu-company-name {
+  padding: 12px 16px 4px;
+  font-family: "Audiowide", sans-serif;
+  font-size: 15px;
+  letter-spacing: 0.5px;
+}
+
+/* Liquidity section */
+.menu-liquidity-header {
+  padding: 8px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.menu-liquidity-header:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.menu-liquidity-arrow {
+  font-size: 13px;
+  opacity: 0.5;
+  transition: transform 0.15s;
+}
+
+.menu-liquidity-arrow.expanded {
+  transform: rotate(90deg);
+}
+
+.menu-liquidity-list {
+  display: none;
+  padding: 0 16px 4px 16px;
+}
+
+.menu-liquidity-list.expanded {
+  display: block;
+}
+
+.menu-liquidity-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 0 3px 12px;
+  font-size: 13px;
+}
+
+.menu-liquidity-amount {
+  text-align: right;
+  flex: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.menu-liquidity-currency {
+  width: 36px;
+  text-align: right;
+  opacity: 0.6;
+  margin-left: 8px;
+}
+
 /* Theme picker section */
 .menu-theme-header {
   padding: 10px 16px;
@@ -46,7 +109,7 @@
 }
 
 .menu-theme-arrow {
-  font-size: 10px;
+  font-size: 13px;
   opacity: 0.5;
   transition: transform 0.15s;
 }

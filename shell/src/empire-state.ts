@@ -40,6 +40,9 @@ export interface EmpireState {
   setScreenAssignment(planetNaturalId: string, screenId: string | null): void;
   getBurnThresholds(): BurnThresholds;
   setBurnThresholds(thresholds: BurnThresholds): void;
+  getCompanyName(): string | null;
+  getPrimaryCurrency(): string | null;
+  getBalances(): BridgeSnapshot['balances'];
   onChange(callback: () => void): () => void;
 }
 
@@ -58,6 +61,8 @@ export function createEmpireState(): EmpireState {
     screens: [],
     screenAssignments: {},
     burnThresholds: DEFAULT_BURN_THRESHOLDS,
+    companyName: null,
+    primaryCurrency: null,
     timestamp: 0,
   };
 
@@ -222,6 +227,18 @@ export function createEmpireState(): EmpireState {
     notify();
   }
 
+  function getCompanyName(): string | null {
+    return state.companyName;
+  }
+
+  function getPrimaryCurrency(): string | null {
+    return state.primaryCurrency;
+  }
+
+  function getBalances(): BridgeSnapshot['balances'] {
+    return state.balances;
+  }
+
   function onChange(callback: () => void): () => void {
     listeners.push(callback);
     return () => {
@@ -237,6 +254,7 @@ export function createEmpireState(): EmpireState {
     getSiteForPlanet, getProductionForPlanet, getWorkforceForPlanet, getStorageForSite,
     getScreens, getAssignedScreenIdForPlanet, getAssignedScreenForPlanet, setScreenAssignment,
     getBurnThresholds, setBurnThresholds,
+    getCompanyName, getPrimaryCurrency, getBalances,
     onChange,
   };
 }

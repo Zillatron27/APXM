@@ -31,6 +31,7 @@ import { useBalancesStore } from '../../stores/entities/balances';
 import { useScreensStore } from '../../stores/screens';
 import { useConnectionStore } from '../../stores/connection';
 import { useSettingsStore } from '../../stores/settings';
+import { useCompanyStore } from '../../stores/company';
 
 type PostFn = (message: ApxmInitMessage | ApxmUpdateMessage) => void;
 
@@ -132,6 +133,24 @@ export function subscribeToStores(post: PostFn): () => void {
     unsubscribers.push(unsubSettings);
     unsubscribers.push(() => {
       if (settingsTimer !== null) clearTimeout(settingsTimer);
+    });
+  }
+
+  // Watch for company data (arrives once on login, triggers snapshot re-send)
+  {
+    let companyTimer: ReturnType<typeof setTimeout> | null = null;
+    const unsubCompany = useCompanyStore.subscribe(() => {
+      if (companyTimer !== null) clearTimeout(companyTimer);
+      companyTimer = setTimeout(() => {
+        companyTimer = null;
+        const freshSnapshot = createSnapshot();
+        post({ type: 'apxm-init', snapshot: freshSnapshot });
+        console.log('[APXM Bridge] Sent apxm-init after company data');
+      }, DEBOUNCE_MS);
+    });
+    unsubscribers.push(unsubCompany);
+    unsubscribers.push(() => {
+      if (companyTimer !== null) clearTimeout(companyTimer);
     });
   }
 
