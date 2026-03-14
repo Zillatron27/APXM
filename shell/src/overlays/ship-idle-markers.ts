@@ -19,6 +19,12 @@ const SYSTEM_VIEW_DIM_ALPHA = 0.05;
 const CHEVRON_SIZE = 5;
 const STACK_OFFSET_Y = -4;
 const HIT_RADIUS = 12;
+// Selection halo — matches Helm's planet selection style
+const HALO_RADIUS = 10;
+const HALO_COLOUR = 0x3399ff;
+const HALO_ALPHA = 0.7;
+const HALO_STROKE = 2.0;
+const HALO_ARC_SPAN = Math.PI * 0.7;
 
 const SHIP_SLOT = 1;
 /** Extra downward nudge so stacked chevrons don't overlap gateway (slot 0) */
@@ -39,6 +45,8 @@ interface IdleEntry {
 export interface ShipIdleMarkerLayer {
   refresh(): void;
   destroy(): void;
+  /** Highlight the chevron for a specific ship's system. Pass null to clear. */
+  setSelectedShip(shipId: string | null): void;
   container: Container;
 }
 
@@ -51,6 +59,39 @@ export function createShipIdleMarkers(
   container.alpha = SHIP_ALPHA;
 
   let entries: IdleEntry[] = [];
+  let selectedShipId: string | null = null;
+  let selectionRing: Graphics | null = null;
+
+  function clearSelectionRing(): void {
+    if (selectionRing) {
+      selectionRing.destroy();
+      selectionRing = null;
+    }
+  }
+
+  function applySelectionRing(): void {
+    clearSelectionRing();
+    if (!selectedShipId) return;
+
+    for (const entry of entries) {
+      if (entry.ships.some(s => s.shipId === selectedShipId)) {
+        selectionRing = new Graphics();
+        // Right arc
+        selectionRing.arc(0, 0, HALO_RADIUS, -HALO_ARC_SPAN / 2, HALO_ARC_SPAN / 2);
+        selectionRing.stroke({ width: HALO_STROKE, color: HALO_COLOUR, alpha: HALO_ALPHA });
+        // Left arc
+        selectionRing.arc(0, 0, HALO_RADIUS, Math.PI - HALO_ARC_SPAN / 2, Math.PI + HALO_ARC_SPAN / 2);
+        selectionRing.stroke({ width: HALO_STROKE, color: HALO_COLOUR, alpha: HALO_ALPHA });
+        entry.graphic.addChild(selectionRing);
+        break;
+      }
+    }
+  }
+
+  function setSelectedShip(shipId: string | null): void {
+    selectedShipId = shipId;
+    applySelectionRing();
+  }
 
   function refresh(): void {
     container.removeChildren();
@@ -104,6 +145,10 @@ export function createShipIdleMarkers(
 
       container.addChild(marker);
     }
+
+    // Re-apply selection ring after rebuild
+    selectionRing = null;
+    applySelectionRing();
   }
 
   onStateChange(() => {
@@ -114,5 +159,5 @@ export function createShipIdleMarkers(
     }
   });
 
-  return { refresh, destroy: () => container.destroy({ children: true }), container };
+  return { refresh, destroy: () => container.destroy({ children: true }), setSelectedShip, container };
 }

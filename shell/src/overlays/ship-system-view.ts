@@ -29,6 +29,13 @@ const EDGE_PADDING = 30;
 const SHIP_SLOT = 1;
 const SHIP_SLOT_NUDGE_Y = 3;
 
+// Selection halo — matches Helm's planet selection style
+const HALO_RADIUS = 10;
+const HALO_COLOUR = 0x3399ff;
+const HALO_ALPHA = 0.7;
+const HALO_STROKE = 2.0;
+const HALO_ARC_SPAN = Math.PI * 0.7;
+
 /** Central star fallback: below star name, laid out horizontally */
 const STAR_OFFSET_Y = 80;
 const STAR_SHIP_GAP_X = 16;
@@ -59,6 +66,7 @@ interface StlEntry {
 export interface ShipSystemViewLayer {
   refresh(): void;
   tick(): void;
+  setSelectedShip(shipId: string | null): void;
   destroy(): void;
   container: Container;
 }
@@ -77,9 +85,55 @@ export function createShipSystemView(
   let entries: SystemShipEntry[] = [];
   let stlEntries: StlEntry[] = [];
   let retryTimer: ReturnType<typeof setInterval> | null = null;
+  let selectedShipId: string | null = null;
+  let selectionRing: Graphics | null = null;
   const pathGraphics = new Graphics();
   pathGraphics.eventMode = 'none';
   container.addChild(pathGraphics);
+
+  function clearSelectionRing(): void {
+    if (selectionRing) {
+      selectionRing.destroy();
+      selectionRing = null;
+    }
+  }
+
+  function drawSelectionRing(parent: Container): void {
+    selectionRing = new Graphics();
+    selectionRing.arc(0, 0, HALO_RADIUS, -HALO_ARC_SPAN / 2, HALO_ARC_SPAN / 2);
+    selectionRing.stroke({ width: HALO_STROKE, color: HALO_COLOUR, alpha: HALO_ALPHA });
+    selectionRing.arc(0, 0, HALO_RADIUS, Math.PI - HALO_ARC_SPAN / 2, Math.PI + HALO_ARC_SPAN / 2);
+    selectionRing.stroke({ width: HALO_STROKE, color: HALO_COLOUR, alpha: HALO_ALPHA });
+    parent.addChild(selectionRing);
+  }
+
+  function applySelectionRing(): void {
+    clearSelectionRing();
+    if (!selectedShipId) return;
+
+    // Check docked / edge ship entries
+    for (const entry of entries) {
+      if (entry.ships.some(s => s.shipId === selectedShipId)) {
+        // Attach to the chevron Graphics (first child of the group container)
+        const chevron = entry.graphic.getChildAt(0) as Graphics;
+        drawSelectionRing(chevron);
+        return;
+      }
+    }
+
+    // Check STL transit entries
+    for (const entry of stlEntries) {
+      if (entry.ship.shipId === selectedShipId) {
+        drawSelectionRing(entry.graphic);
+        return;
+      }
+    }
+  }
+
+  function setSelectedShip(shipId: string | null): void {
+    selectedShipId = shipId;
+    applySelectionRing();
+  }
 
   function clearRetry(): void {
     if (retryTimer !== null) {
@@ -399,6 +453,10 @@ export function createShipSystemView(
 
     // Initial STL positioning
     tick();
+
+    // Re-apply selection ring after rebuild
+    selectionRing = null;
+    applySelectionRing();
   }
 
   function tick(): void {
@@ -435,6 +493,7 @@ export function createShipSystemView(
   return {
     refresh,
     tick,
+    setSelectedShip,
     destroy() {
       clearRetry();
       container.destroy({ children: true });

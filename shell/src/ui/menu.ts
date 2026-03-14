@@ -163,9 +163,11 @@ export function showMenu(
   document.body.appendChild(menuEl);
 
   // Click-outside dismissal + Escape key
+  // Skip the anchor button — its own toggle handler manages open/close
   setTimeout(() => {
     clickHandler = (e: MouseEvent) => {
-      if (menuEl && !menuEl.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (menuEl && !menuEl.contains(target) && !anchorEl.contains(target)) {
         cleanup();
         callbacks.onDismiss();
       }

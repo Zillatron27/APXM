@@ -13,8 +13,9 @@
   font-family: "IBM Plex Mono", monospace;
   font-size: 14px;
   color: var(--text-primary, #e0e0e0);
-  top: 60px;
-  left: 12px;
+  top: 54px;
+  right: 12px;
+  transition: right 0.15s ease;
 }
 
 .burn-panel-header {

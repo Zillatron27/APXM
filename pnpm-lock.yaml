@@ -10,7 +10,7 @@ importers:
     dependencies:
       '@prun/link':
         specifier: git+ssh://git@github.com/Zillatron27/PrUn-Link.git#v1.0.0
-        version: git+https://git@github.com:Zillatron27/PrUn-Link.git#680286a197b9e7f8faf494e38d44dc23a5198814(@types/node@25.1.0)(jiti@1.21.7)(rollup@4.57.1)
+        version: git+https://git@github.com:Zillatron27/PrUn-Link.git#f9c6e794dd05f8302eb246728fb95430d66f01c4(@types/node@25.1.0)(jiti@1.21.7)(rollup@4.57.1)
       '@wxt-dev/module-react':
         specifier: ^1.1.5
         version: 1.1.5(vite@7.3.1(@types/node@25.1.0)(jiti@1.21.7))(wxt@0.20.13(@types/node@25.1.0)(jiti@1.21.7)(rollup@4.57.1))
@@ -58,8 +58,8 @@ importers:
   shell:
     dependencies:
       '@27bit/helm':
-        specifier: git+https://github.com/Zillatron27/helm.git#v0.7.0
-        version: https://codeload.github.com/Zillatron27/helm/tar.gz/43d09fcb159b705527cfdeacf9b3a485e81fa05b
+        specifier: github:Zillatron27/helm#v0.7.0
+        version: https://codeload.github.com/Zillatron27/helm/tar.gz/e49df5ec4d1e3df3c55a683f37bf164aac8f4e8d
     devDependencies:
       pixi-viewport:
         specifier: ^6.0.3
@@ -79,8 +79,8 @@ packages:
   '@1natsu/wait-element@4.1.2':
     resolution: {integrity: sha512-qWxSJD+Q5b8bKOvESFifvfZ92DuMsY+03SBNjTO34ipJLP6mZ9yK4bQz/vlh48aEQXoJfaZBqUwKL5BdI5iiWw==}
 
-  '@27bit/helm@https://codeload.github.com/Zillatron27/helm/tar.gz/43d09fcb159b705527cfdeacf9b3a485e81fa05b':
-    resolution: {tarball: https://codeload.github.com/Zillatron27/helm/tar.gz/43d09fcb159b705527cfdeacf9b3a485e81fa05b}
+  '@27bit/helm@https://codeload.github.com/Zillatron27/helm/tar.gz/e49df5ec4d1e3df3c55a683f37bf164aac8f4e8d':
+    resolution: {tarball: https://codeload.github.com/Zillatron27/helm/tar.gz/e49df5ec4d1e3df3c55a683f37bf164aac8f4e8d}
     version: 0.7.0
 
   '@acemir/cssom@0.9.31':
@@ -612,8 +612,8 @@ packages:
     resolution: {integrity: sha512-h104Kh26rR8tm+a3Qkc5S4VLYint3FE48as7+/5oCEcKR2idC/pF1G6AhIXKI+eHPJa/3J9i5z0Al47IeGHPkA==}
     engines: {node: '>=12'}
 
-  '@prun/link@git+https://git@github.com:Zillatron27/PrUn-Link.git#680286a197b9e7f8faf494e38d44dc23a5198814':
-    resolution: {commit: 680286a197b9e7f8faf494e38d44dc23a5198814, repo: git@github.com:Zillatron27/PrUn-Link.git, type: git}
+  '@prun/link@git+https://git@github.com:Zillatron27/PrUn-Link.git#f9c6e794dd05f8302eb246728fb95430d66f01c4':
+    resolution: {commit: f9c6e794dd05f8302eb246728fb95430d66f01c4, repo: git@github.com:Zillatron27/PrUn-Link.git, type: git}
     version: 1.0.0
 
   '@rolldown/pluginutils@1.0.0-beta.53':
@@ -2634,7 +2634,7 @@ snapshots:
       defu: 6.1.4
       many-keys-map: 2.0.1
 
-  '@27bit/helm@https://codeload.github.com/Zillatron27/helm/tar.gz/43d09fcb159b705527cfdeacf9b3a485e81fa05b':
+  '@27bit/helm@https://codeload.github.com/Zillatron27/helm/tar.gz/e49df5ec4d1e3df3c55a683f37bf164aac8f4e8d':
     dependencies:
       pixi-viewport: 6.0.3(pixi.js@8.17.0)
       pixi.js: 8.17.0
@@ -3031,7 +3031,7 @@ snapshots:
       '@pnpm/network.ca-file': 1.0.2
       config-chain: 1.1.13
 
-  '@prun/link@git+https://git@github.com:Zillatron27/PrUn-Link.git#680286a197b9e7f8faf494e38d44dc23a5198814(@types/node@25.1.0)(jiti@1.21.7)(rollup@4.57.1)':
+  '@prun/link@git+https://git@github.com:Zillatron27/PrUn-Link.git#f9c6e794dd05f8302eb246728fb95430d66f01c4(@types/node@25.1.0)(jiti@1.21.7)(rollup@4.57.1)':
     dependencies:
       engine.io-parser: 5.2.3
       socket.io-parser: 4.2.4

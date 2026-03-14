@@ -7,7 +7,7 @@
 
 import { useScreensStore } from '../stores/screens';
 import { openBuffer } from './buffer-opener';
-import { setInputValue, waitForElement } from './buffer-refresh/dom-helpers';
+import { getCommandInput, setInputValue, waitForElement } from './buffer-refresh/dom-helpers';
 
 const BUTTON_ID = 'apxm-apex-button';
 const CS_FORM_TIMEOUT_MS = 3000;
@@ -80,17 +80,13 @@ async function handleClick(): Promise<void> {
     return;
   }
 
-  // Wait for the CS form to appear, then pre-fill fields
-  // The CS form renders inputs: Name, Description, CMD
+  // Wait for the CS form to appear, then pre-fill the Name field
   const formContainer = await waitForElement(() => {
-    // Look for an input that appeared after the CS buffer opened
-    // CS form has multiple inputs; find the container
     const inputs = document.querySelectorAll<HTMLInputElement>(
       '#container input[type="text"], #container input:not([type])'
     );
-    // Need at least 2 visible inputs (Name + CMD) — Description may be textarea
     const visible = Array.from(inputs).filter(i => i.offsetParent !== null);
-    if (visible.length >= 2) return visible[0]!;
+    if (visible.length >= 1) return visible[0]!;
     return null;
   }, CS_FORM_TIMEOUT_MS);
 
@@ -99,21 +95,45 @@ async function handleClick(): Promise<void> {
     return;
   }
 
-  // Find all visible inputs in the CS form area
   const allInputs = document.querySelectorAll<HTMLInputElement>(
     '#container input[type="text"], #container input:not([type])'
   );
   const visibleInputs = Array.from(allInputs).filter(i => i.offsetParent !== null);
 
-  // First input = Name, third input = CMD (skip Description)
   if (visibleInputs.length >= 1) {
     setInputValue(visibleInputs[0]!, 'APXM');
   }
-  if (visibleInputs.length >= 3) {
-    setInputValue(visibleInputs[2]!, 'XIT WEB apxm.27bit.dev');
-  }
 
   console.log('[APXM] Pre-filled CS form — user needs to click CREATE');
+
+  // Watch for the APXM screen to be created, then navigate and populate buffer
+  const WATCH_TIMEOUT_MS = 30000;
+  const startTime = Date.now();
+  const unsub = useScreensStore.subscribe((state) => {
+    const newScreen = state.screens.find(s => s.name.toLowerCase() === 'apxm');
+    if (!newScreen) return;
+
+    unsub();
+
+    if (Date.now() - startTime > WATCH_TIMEOUT_MS) return;
+
+    // Navigate to the new screen
+    location.hash = `#screen=${newScreen.id}`;
+
+    // Wait for the empty buffer's command input to appear, then fill it
+    setTimeout(async () => {
+      const input = await waitForElement(getCommandInput, CS_FORM_TIMEOUT_MS);
+      if (input) {
+        setInputValue(input, 'XIT WEB apxm.27bit.dev');
+        console.log('[APXM] Navigated to new screen and populated buffer command');
+      } else {
+        console.warn('[APXM] Could not find command input on new screen');
+      }
+    }, 500);
+  });
+
+  // Clean up subscription if user never creates the screen
+  setTimeout(() => unsub(), WATCH_TIMEOUT_MS);
 }
 
 function injectButton(): void {

@@ -13,8 +13,9 @@
   font-family: "IBM Plex Mono", monospace;
   font-size: 14px;
   color: var(--text-primary, #e0e0e0);
-  top: 60px;
-  left: 12px;
+  top: 54px;
+  right: 12px;
+  transition: right 0.15s ease;
 }
 
 .fleet-panel-header {
@@ -70,12 +71,21 @@
 }
 
 .fleet-ship-status {
-  font-size: 10px;
   flex-shrink: 0;
 }
 
-.fleet-ship-status.idle { color: #4caf50; }
-.fleet-ship-status.transit { color: #ff8c00; }
+.fleet-ship-status.idle {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4caf50;
+  font-size: 0;
+}
+
+.fleet-ship-status.transit {
+  color: #ff8c00;
+  font-size: 22px;
+}
 
 .fleet-ship-info {
   flex: 1;
@@ -98,8 +108,8 @@
 }
 
 .fleet-ship-location {
-  font-size: 12px;
-  opacity: 0.5;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
   margin-top: 2px;
   white-space: nowrap;
   overflow: hidden;
@@ -107,10 +117,10 @@
 }
 
 .fleet-section-label {
-  font-size: 11px;
+  font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  opacity: 0.3;
+  color: rgba(255, 255, 255, 0.7);
   padding: 8px 16px 4px;
 }
 

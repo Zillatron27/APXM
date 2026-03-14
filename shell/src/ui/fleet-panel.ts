@@ -130,17 +130,6 @@ export function showFleetPanel(
 ): void {
   cleanup();
 
-  // Backdrop
-  backdropEl = document.createElement('div');
-  backdropEl.style.cssText = 'position:fixed;inset:0;z-index:49;background:transparent;';
-  backdropEl.addEventListener('pointerdown', (e) => {
-    e.stopPropagation();
-    e.preventDefault();
-    cleanup();
-    callbacks.onClose();
-  });
-  document.body.appendChild(backdropEl);
-
   // Panel
   panelEl = document.createElement('div');
   panelEl.className = 'fleet-panel';
@@ -186,4 +175,16 @@ export function hideFleetPanel(): void {
 
 export function isFleetPanelVisible(): boolean {
   return panelEl !== null;
+}
+
+export function setFleetPanelMenuOpen(open: boolean): void {
+  panelEl?.classList.toggle('menu-open', open);
+}
+
+export function getFleetPanelWidth(): number {
+  return panelEl ? panelEl.offsetWidth : 0;
+}
+
+export function setFleetPanelRightOffset(px: number): void {
+  if (panelEl) panelEl.style.right = `${px}px`;
 }

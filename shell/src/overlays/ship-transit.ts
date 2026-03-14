@@ -23,6 +23,13 @@ const CHEVRON_SIZE = 6;
 const HIT_RADIUS = 12;
 const HOVER_OUT_DEBOUNCE_MS = 100;
 
+// Selection halo — matches Helm's planet selection style
+const HALO_RADIUS = 10;
+const HALO_COLOUR = 0x3399ff;
+const HALO_ALPHA = 0.7;
+const HALO_STROKE = 2.0;
+const HALO_ARC_SPAN = Math.PI * 0.7;
+
 /** Segment types where the ship actually moves between systems */
 const TRAVEL_SEGMENT_TYPES = new Set(['TRANSIT', 'JUMP', 'JUMP_GATEWAY', 'FLOAT']);
 
@@ -53,6 +60,8 @@ export interface ShipTransitLayer {
   refresh(): void;
   tick(): void;
   getHoveredWorldPos(): { x: number; y: number } | null;
+  getShipWorldPosition(shipId: string): { x: number; y: number } | null;
+  setSelectedShip(shipId: string | null): void;
   destroy(): void;
   container: Container;
 }
@@ -70,6 +79,37 @@ export function createShipTransitLayer(
   let entries: TransitEntry[] = [];
   let hoveredEntry: TransitEntry | null = null;
   let hoverOutTimer: ReturnType<typeof setTimeout> | null = null;
+  let selectedShipId: string | null = null;
+  let selectionRing: Graphics | null = null;
+
+  function clearSelectionRing(): void {
+    if (selectionRing) {
+      selectionRing.destroy();
+      selectionRing = null;
+    }
+  }
+
+  function applySelectionRing(): void {
+    clearSelectionRing();
+    if (!selectedShipId) return;
+
+    for (const entry of entries) {
+      if (entry.ship.shipId === selectedShipId) {
+        selectionRing = new Graphics();
+        selectionRing.arc(0, 0, HALO_RADIUS, -HALO_ARC_SPAN / 2, HALO_ARC_SPAN / 2);
+        selectionRing.stroke({ width: HALO_STROKE, color: HALO_COLOUR, alpha: HALO_ALPHA });
+        selectionRing.arc(0, 0, HALO_RADIUS, Math.PI - HALO_ARC_SPAN / 2, Math.PI + HALO_ARC_SPAN / 2);
+        selectionRing.stroke({ width: HALO_STROKE, color: HALO_COLOUR, alpha: HALO_ALPHA });
+        entry.graphic.addChild(selectionRing);
+        break;
+      }
+    }
+  }
+
+  function setSelectedShip(shipId: string | null): void {
+    selectedShipId = shipId;
+    applySelectionRing();
+  }
 
   const pathGraphics = new Graphics();
   container.addChild(pathGraphics);
@@ -178,6 +218,10 @@ export function createShipTransitLayer(
         callbacks.onClick([entry.ship], e.global.x, e.global.y);
       });
     }
+
+    // Re-apply selection ring after rebuild
+    selectionRing = null;
+    applySelectionRing();
 
     tick();
   }
@@ -322,6 +366,15 @@ export function createShipTransitLayer(
     return { x: hoveredEntry.graphic.x, y: hoveredEntry.graphic.y };
   }
 
+  function getShipWorldPosition(shipId: string): { x: number; y: number } | null {
+    for (const entry of entries) {
+      if (entry.ship.shipId === shipId && entry.graphic.visible) {
+        return { x: entry.graphic.x, y: entry.graphic.y };
+      }
+    }
+    return null;
+  }
+
   onStateChange(() => {
     if (getViewLevel() === 'system') {
       container.alpha = SYSTEM_VIEW_DIM_ALPHA;
@@ -330,5 +383,5 @@ export function createShipTransitLayer(
     }
   });
 
-  return { refresh, tick, getHoveredWorldPos, destroy: () => container.destroy({ children: true }), container };
+  return { refresh, tick, getHoveredWorldPos, getShipWorldPosition, setSelectedShip, destroy: () => container.destroy({ children: true }), container };
 }

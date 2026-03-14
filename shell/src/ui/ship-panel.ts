@@ -15,6 +15,7 @@ import './ship-panel.css';
 
 export interface ShipPanelCallbacks {
   onBufferCommand(command: string): void;
+  onShipChange?(shipId: string): void;
   onClose(): void;
 }
 
@@ -194,6 +195,7 @@ function render(): void {
   const ship = currentShips[currentIndex];
   if (!ship) return;
   trackedShipId = ship.shipId;
+  if (callbacks?.onShipChange) callbacks.onShipChange(ship.shipId);
   const flight = currentFlights.find(f => f.shipId === ship.shipId);
 
   const multi = currentShips.length > 1;

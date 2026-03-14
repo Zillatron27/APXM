@@ -98,7 +98,7 @@ function render(empireState: EmpireState, callbacks: BurnPanelCallbacks): void {
 
   let html = '';
   for (const row of rows) {
-    const daysText = row.days !== null ? `${row.days}d` : '\u2014';
+    const daysText = row.days !== null ? `${Math.floor(row.days * 10) / 10}d` : '\u2014';
     const daysClass = row.status === 'critical' ? ' critical' : row.status === 'warning' ? ' warning' : '';
     html += `
       <div class="burn-row" data-system="${esc(row.systemNaturalId)}" data-planet="${esc(row.planetNaturalId)}">
@@ -129,17 +129,6 @@ export function showBurnPanel(
   callbacks: BurnPanelCallbacks,
 ): void {
   cleanup();
-
-  // Backdrop
-  backdropEl = document.createElement('div');
-  backdropEl.style.cssText = 'position:fixed;inset:0;z-index:49;background:transparent;';
-  backdropEl.addEventListener('pointerdown', (e) => {
-    e.stopPropagation();
-    e.preventDefault();
-    cleanup();
-    callbacks.onClose();
-  });
-  document.body.appendChild(backdropEl);
 
   // Panel
   panelEl = document.createElement('div');
@@ -186,4 +175,16 @@ export function hideBurnPanel(): void {
 
 export function isBurnPanelVisible(): boolean {
   return panelEl !== null;
+}
+
+export function setBurnPanelMenuOpen(open: boolean): void {
+  panelEl?.classList.toggle('menu-open', open);
+}
+
+export function getBurnPanelWidth(): number {
+  return panelEl ? panelEl.offsetWidth : 0;
+}
+
+export function setBurnPanelRightOffset(px: number): void {
+  if (panelEl) panelEl.style.right = `${px}px`;
 }
