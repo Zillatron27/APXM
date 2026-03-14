@@ -28,6 +28,21 @@ let gatewayActive = true;
 let empireActive = false;
 let menuActive = false;
 
+const BURN_ICON_SVG = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+  <path d="M12 2C12 2 7 8 7 13C7 15.5 8.5 17.5 10 18.5C9.5 17 10 15 12 13C14 15 14.5 17 14 18.5C15.5 17.5 17 15.5 17 13C17 8 12 2 12 2Z" fill="currentColor"/>
+</svg>`;
+
+const FLEET_ICON_SVG = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <polyline points="7,12 12,7 17,12"/>
+  <polyline points="7,17 12,12 17,17"/>
+</svg>`;
+
+const EMPIRE_ICON_SVG = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+  <circle cx="12" cy="12" r="3" fill="currentColor"/>
+  <circle cx="12" cy="12" r="6.5" stroke="currentColor" stroke-width="1.5" fill="none" opacity="0.7"/>
+  <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.2" fill="none" opacity="0.4"/>
+</svg>`;
+
 const GATEWAY_ICON_SVG = `<svg width="26" height="26" viewBox="0 0 26 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
   <circle cx="4" cy="16" r="3"/>
   <circle cx="22" cy="16" r="3"/>
@@ -56,16 +71,14 @@ export function createToolbar(callbacks: ToolbarCallbacks): HTMLDivElement {
   toolbarEl = document.createElement('div');
   toolbarEl.className = 'apxm-toolbar';
 
-  burnBtn = createButton('\u{1F525}', 'Burn status (B)');
-  burnBtn.classList.add('toolbar-btn-icon');
+  burnBtn = createIconButton(BURN_ICON_SVG, 'Burn status (B)');
   burnBtn.addEventListener('click', () => {
     burnActive = !burnActive;
     burnBtn!.classList.toggle('active', burnActive);
     callbacks.onBurnToggle(burnActive);
   });
 
-  fleetBtn = createButton('\u{1F6A2}', 'Fleet overview (F)');
-  fleetBtn.classList.add('toolbar-btn-icon');
+  fleetBtn = createIconButton(FLEET_ICON_SVG, 'Fleet overview (F)');
   fleetBtn.addEventListener('click', () => {
     fleetActive = !fleetActive;
     fleetBtn!.classList.toggle('active', fleetActive);
@@ -80,8 +93,7 @@ export function createToolbar(callbacks: ToolbarCallbacks): HTMLDivElement {
     callbacks.onGatewayToggle(gatewayActive);
   });
 
-  empireBtn = createButton('\u25D0', 'Toggle empire highlight (E)');
-  empireBtn.classList.add('toolbar-btn-empire');
+  empireBtn = createIconButton(EMPIRE_ICON_SVG, 'Toggle empire highlight (E)');
   empireBtn.addEventListener('click', () => {
     empireActive = !empireActive;
     empireBtn!.classList.toggle('active', empireActive);
