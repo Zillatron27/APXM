@@ -20,6 +20,7 @@ import {
   deriveScreens,
   deriveBurnThresholds,
   deriveWarehouses,
+  deriveSiteBurnSummaries,
 } from './store-serializer';
 import { useSitesStore } from '../../stores/entities/sites';
 import { useShipsStore } from '../../stores/entities/ships';
@@ -34,6 +35,7 @@ import { useConnectionStore } from '../../stores/connection';
 import { useSettingsStore } from '../../stores/settings';
 import { useCompanyStore } from '../../stores/company';
 import { useWarehouseStore } from '../../stores/warehouses';
+import { onRprunDetected } from '../rprun-detect';
 
 type PostFn = (message: ApxmInitMessage | ApxmUpdateMessage) => void;
 
@@ -121,6 +123,30 @@ export function subscribeToStores(post: PostFn): () => void {
     });
   }
 
+  // Watch workforce + storage + production for siteBurns updates
+  // (burn data depends on all three stores — dedicated watcher, not per-store binding)
+  {
+    let burnTimer: ReturnType<typeof setTimeout> | null = null;
+    const postBurnUpdate = () => {
+      if (burnTimer !== null) clearTimeout(burnTimer);
+      burnTimer = setTimeout(() => {
+        burnTimer = null;
+        post({
+          type: 'apxm-update',
+          update: {
+            entityType: 'siteBurns',
+            data: deriveSiteBurnSummaries() as ApxmUpdateMessage['update']['data'],
+            timestamp: Date.now(),
+          },
+        });
+      }, DEBOUNCE_MS);
+    };
+    unsubscribers.push(useWorkforceStore.subscribe(postBurnUpdate));
+    unsubscribers.push(useStorageStore.subscribe(postBurnUpdate));
+    unsubscribers.push(useProductionStore.subscribe(postBurnUpdate));
+    unsubscribers.push(() => { if (burnTimer !== null) clearTimeout(burnTimer); });
+  }
+
   // Watch for settings changes (e.g. burn thresholds changed on mobile UI)
   {
     let settingsTimer: ReturnType<typeof setTimeout> | null = null;
@@ -155,6 +181,16 @@ export function subscribeToStores(post: PostFn): () => void {
     unsubscribers.push(() => {
       if (companyTimer !== null) clearTimeout(companyTimer);
     });
+  }
+
+  // Watch for rprun detection (may fire after initial snapshot if rprun loads late)
+  {
+    const unsubRprun = onRprunDetected(() => {
+      const freshSnapshot = createSnapshot();
+      post({ type: 'apxm-init', snapshot: freshSnapshot });
+      console.log('[APXM Bridge] Sent apxm-init after rprun detected');
+    });
+    unsubscribers.push(unsubRprun);
   }
 
   // Watch for reconnect — re-send full snapshot when stores repopulate

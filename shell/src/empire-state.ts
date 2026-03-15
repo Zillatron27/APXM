@@ -9,7 +9,7 @@
 import type {
   BridgeSnapshot, BridgeUpdate, WorkforceSummary, ShipSummary, FlightSummary,
   SiteSummary, ProductionSummary, StorageSummary, ScreenInfo, BurnThresholds,
-  WarehouseLocation,
+  WarehouseLocation, BridgeSiteBurnSummary,
 } from './types/bridge';
 
 const BURN_PRIORITY: Record<WorkforceSummary['burnStatus'], number> = {
@@ -47,6 +47,10 @@ export interface EmpireState {
   hasWarehouse(systemNaturalId: string): boolean;
   getWarehouse(systemNaturalId: string): WarehouseLocation | undefined;
   getWarehouses(): WarehouseLocation[];
+  getSiteBurns(): BridgeSiteBurnSummary[];
+  getSiteBurn(planetNaturalId: string): BridgeSiteBurnSummary | undefined;
+  isRprunDetected(): boolean;
+  isRprunFeaturesDisabled(): boolean;
   onChange(callback: () => void): () => void;
 }
 
@@ -68,6 +72,9 @@ export function createEmpireState(): EmpireState {
     companyName: null,
     primaryCurrency: null,
     warehouses: [],
+    siteBurns: [],
+    rprunDetected: false,
+    rprunFeaturesDisabled: false,
     timestamp: 0,
   };
 
@@ -256,6 +263,22 @@ export function createEmpireState(): EmpireState {
     return state.warehouses;
   }
 
+  function getSiteBurns(): BridgeSiteBurnSummary[] {
+    return state.siteBurns;
+  }
+
+  function getSiteBurn(planetNaturalId: string): BridgeSiteBurnSummary | undefined {
+    return state.siteBurns.find((b) => b.planetNaturalId === planetNaturalId);
+  }
+
+  function isRprunDetected(): boolean {
+    return state.rprunDetected;
+  }
+
+  function isRprunFeaturesDisabled(): boolean {
+    return state.rprunFeaturesDisabled;
+  }
+
   function onChange(callback: () => void): () => void {
     listeners.push(callback);
     return () => {
@@ -273,6 +296,8 @@ export function createEmpireState(): EmpireState {
     getBurnThresholds, setBurnThresholds,
     getCompanyName, getPrimaryCurrency, getBalances,
     hasWarehouse, getWarehouse, getWarehouses,
+    getSiteBurns, getSiteBurn,
+    isRprunDetected, isRprunFeaturesDisabled,
     onChange,
   };
 }

@@ -25,4 +25,6 @@ export type {
   CurrencyAmount,
   ScreenInfo,
   WarehouseLocation,
+  BridgeSiteBurnSummary,
+  BurnMaterialSummary,
 } from '@apxm/bridge';

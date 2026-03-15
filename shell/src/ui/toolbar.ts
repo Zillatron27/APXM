@@ -9,6 +9,7 @@ import './toolbar.css';
 export interface ToolbarCallbacks {
   onBurnToggle(active: boolean): void;
   onFleetToggle(active: boolean): void;
+  onWarehouseToggle(active: boolean): void;
   onGatewayToggle(active: boolean): void;
   onEmpireToggle(active: boolean): void;
   onMenuToggle(active: boolean): void;
@@ -18,12 +19,14 @@ let toolbarEl: HTMLDivElement | null = null;
 
 let burnBtn: HTMLButtonElement | null = null;
 let fleetBtn: HTMLButtonElement | null = null;
+let warehouseBtn: HTMLButtonElement | null = null;
 let gatewayBtn: HTMLButtonElement | null = null;
 let empireBtn: HTMLButtonElement | null = null;
 let menuBtn: HTMLButtonElement | null = null;
 
 let burnActive = false;
 let fleetActive = false;
+let warehouseActive = false;
 let gatewayActive = true;
 let empireActive = false;
 let menuActive = false;
@@ -41,6 +44,12 @@ const EMPIRE_ICON_SVG = `<svg width="24" height="24" viewBox="0 0 24 24" fill="n
   <circle cx="12" cy="12" r="3" fill="currentColor"/>
   <circle cx="12" cy="12" r="6.5" stroke="currentColor" stroke-width="1.5" fill="none" opacity="0.7"/>
   <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.2" fill="none" opacity="0.4"/>
+</svg>`;
+
+const WAREHOUSE_ICON_SVG = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M21 8L12 3L3 8"/>
+  <rect x="4" y="8" width="16" height="13" rx="1"/>
+  <path d="M9 21V14h6v7"/>
 </svg>`;
 
 const GATEWAY_ICON_SVG = `<svg width="26" height="26" viewBox="0 0 26 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -85,6 +94,13 @@ export function createToolbar(callbacks: ToolbarCallbacks): HTMLDivElement {
     callbacks.onFleetToggle(fleetActive);
   });
 
+  warehouseBtn = createIconButton(WAREHOUSE_ICON_SVG, 'Warehouses (W)');
+  warehouseBtn.addEventListener('click', () => {
+    warehouseActive = !warehouseActive;
+    warehouseBtn!.classList.toggle('active', warehouseActive);
+    callbacks.onWarehouseToggle(warehouseActive);
+  });
+
   gatewayBtn = createIconButton(GATEWAY_ICON_SVG, 'Toggle gateways (G)');
   gatewayBtn.classList.add('active'); // gateways visible by default
   gatewayBtn.addEventListener('click', () => {
@@ -110,6 +126,7 @@ export function createToolbar(callbacks: ToolbarCallbacks): HTMLDivElement {
 
   toolbarEl.appendChild(burnBtn);
   toolbarEl.appendChild(fleetBtn);
+  toolbarEl.appendChild(warehouseBtn);
   toolbarEl.appendChild(gatewayBtn);
   toolbarEl.appendChild(empireBtn);
   toolbarEl.appendChild(menuBtn);
@@ -133,6 +150,19 @@ export function setFleetActive(active: boolean): void {
 
 export function isFleetActive(): boolean {
   return fleetActive;
+}
+
+export function setWarehouseActive(active: boolean): void {
+  warehouseActive = active;
+  warehouseBtn?.classList.toggle('active', active);
+}
+
+export function isWarehouseActive(): boolean {
+  return warehouseActive;
+}
+
+export function getWarehouseButton(): HTMLButtonElement | null {
+  return warehouseBtn;
 }
 
 export function setGatewayActive(active: boolean): void {

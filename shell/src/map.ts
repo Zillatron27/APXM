@@ -31,10 +31,11 @@ import { showTooltip, hideTooltip, updateTooltipPosition } from './ui/ship-toolt
 import { showPanel, updatePanel } from './ui/ship-panel';
 import { showBasePanel, updateBasePanel } from './ui/base-panel';
 import { isManagedPanelVisible, hideManagedPanel } from './ui/panel-manager';
-import { createToolbar, setMenuActive, setEmpireActive, isEmpireActive, setGatewayActive, isGatewayActive, setBurnActive, setFleetActive, getMenuButton } from './ui/toolbar';
-import { showMenu, hideMenu, isMenuVisible, getMenuRightEdge } from './ui/menu';
-import { showFleetPanel, hideFleetPanel, isFleetPanelVisible, getFleetPanelWidth, setFleetPanelRightOffset } from './ui/fleet-panel';
-import { showBurnPanel, hideBurnPanel, isBurnPanelVisible, getBurnPanelWidth, setBurnPanelRightOffset } from './ui/burn-panel';
+import { createToolbar, setMenuActive, setEmpireActive, isEmpireActive, setGatewayActive, isGatewayActive, setBurnActive, setFleetActive, setWarehouseActive, getMenuButton, getWarehouseButton } from './ui/toolbar';
+import { showWarehouseDropdown, hideWarehouseDropdown, isWarehouseDropdownVisible } from './ui/warehouse-dropdown';
+import { showMenu, hideMenu, isMenuVisible } from './ui/menu';
+import { showFleetPanel, hideFleetPanel, isFleetPanelVisible } from './ui/fleet-panel';
+import { showBurnPanel, hideBurnPanel, isBurnPanelVisible } from './ui/burn-panel';
 import { showSettingsPanel, hideSettingsPanel } from './ui/settings-panel';
 import { getBrightSystems, clearBrightCache } from './ui/empire-dim';
 
@@ -170,24 +171,6 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
     if (isFleetPanelVisible()) hideFleetPanel();
     if (isBurnPanelVisible()) hideBurnPanel();
     hideSettingsPanel();
-  }
-
-  const PANEL_GAP = 8;
-  const BASE_RIGHT = 12;
-
-  /** Reposition all open panels based on whether the menu is open. */
-  function repositionPanels(): void {
-    const menuEdge = getMenuRightEdge();
-    let right = menuEdge > 0 ? menuEdge + PANEL_GAP : BASE_RIGHT;
-
-    // Stack panels left-to-right: first fleet, then burn
-    if (isFleetPanelVisible()) {
-      setFleetPanelRightOffset(right);
-      right += getFleetPanelWidth() + PANEL_GAP;
-    }
-    if (isBurnPanelVisible()) {
-      setBurnPanelRightOffset(right);
-    }
   }
 
   function processMessage(event: MessageEvent): void {
@@ -373,10 +356,12 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
     if (isFleetPanelVisible()) {
       hideFleetPanel();
       setFleetActive(false);
-      repositionPanels();
-      return;
+            return;
     }
     showFleetPanel(empireState, {
+      onBufferCommand(command) {
+        window.parent.postMessage({ type: 'apxm-buffer-command', command }, '*');
+      },
       onShipClick(systemNaturalId, shipId) {
         const transitPos = shipTransit?.getShipWorldPosition(shipId) ?? null;
         const sys = getSystemByNaturalId(systemNaturalId);
@@ -416,20 +401,20 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
           preShipCamera = null;
         }
         setFleetActive(false);
-        repositionPanels();
-      },
+              },
     });
-    repositionPanels();
-  }
+      }
 
   function toggleBurnPanel(): void {
     if (isBurnPanelVisible()) {
       hideBurnPanel();
       setBurnActive(false);
-      repositionPanels();
-      return;
+            return;
     }
     showBurnPanel(empireState, {
+      onBufferCommand(command) {
+        window.parent.postMessage({ type: 'apxm-buffer-command', command }, '*');
+      },
       onBaseClick(systemNaturalId, planetNaturalId) {
         const sys = getSystemByNaturalId(systemNaturalId);
         if (!sys) return;
@@ -443,20 +428,34 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
       },
       onClose() {
         setBurnActive(false);
-        repositionPanels();
-      },
+              },
     });
-    repositionPanels();
-  }
+      }
 
   const toolbarEl = createToolbar({
     onBurnToggle(active) {
       if (active) toggleBurnPanel();
-      else { hideBurnPanel(); repositionPanels(); }
+      else { hideBurnPanel(); }
     },
     onFleetToggle(active) {
       if (active) toggleFleetPanel();
-      else { hideFleetPanel(); repositionPanels(); }
+      else { hideFleetPanel(); }
+    },
+    onWarehouseToggle(active) {
+      if (active) {
+        const anchor = getWarehouseButton();
+        if (!anchor) return;
+        showWarehouseDropdown(anchor, empireState, {
+          onBufferCommand(command) {
+            window.parent.postMessage({ type: 'apxm-buffer-command', command }, '*');
+          },
+          onDismiss() {
+            setWarehouseActive(false);
+          },
+        });
+      } else {
+        hideWarehouseDropdown();
+      }
     },
     onGatewayToggle(active) {
       setGatewaysVisible(active);
@@ -484,18 +483,22 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
                 };
                 window.parent.postMessage(msg, '*');
               },
+              onRprunToggle(disabled) {
+                const msg: ApxmSettingsUpdateMessage = {
+                  type: 'apxm-settings-update',
+                  settings: { rprunFeaturesDisabled: disabled },
+                };
+                window.parent.postMessage(msg, '*');
+              },
               onClose() { /* panel cleans itself up */ },
             });
           },
           onDismiss() {
             setMenuActive(false);
-            repositionPanels();
-          },
+                      },
         }, empireState);
-        setTimeout(repositionPanels, 50);
       } else {
         hideMenu();
-        repositionPanels();
       }
     },
   });
@@ -595,8 +598,9 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
         setMenuActive(false);
         return;
       }
-      if (isFleetPanelVisible()) { hideFleetPanel(); setFleetActive(false); repositionPanels(); return; }
-      if (isBurnPanelVisible()) { hideBurnPanel(); setBurnActive(false); repositionPanels(); return; }
+      if (isWarehouseDropdownVisible()) { hideWarehouseDropdown(); setWarehouseActive(false); return; }
+      if (isFleetPanelVisible()) { hideFleetPanel(); setFleetActive(false); return; }
+      if (isBurnPanelVisible()) { hideBurnPanel(); setBurnActive(false); return; }
       if (isManagedPanelVisible()) { hideManagedPanel(); return; }
     }
 
@@ -608,6 +612,26 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
     if (e.key === 'F' || e.key === 'f') {
       toggleFleetPanel();
       setFleetActive(isFleetPanelVisible());
+    }
+
+    if (e.key === 'W' || e.key === 'w') {
+      if (isWarehouseDropdownVisible()) {
+        hideWarehouseDropdown();
+        setWarehouseActive(false);
+      } else {
+        const anchor = getWarehouseButton();
+        if (anchor) {
+          setWarehouseActive(true);
+          showWarehouseDropdown(anchor, empireState, {
+            onBufferCommand(command) {
+              window.parent.postMessage({ type: 'apxm-buffer-command', command }, '*');
+            },
+            onDismiss() {
+              setWarehouseActive(false);
+            },
+          });
+        }
+      }
     }
 
     if (e.key === 'G' || e.key === 'g') {

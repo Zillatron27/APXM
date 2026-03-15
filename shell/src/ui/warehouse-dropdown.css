@@ -1,0 +1,54 @@
+/* Warehouse dropdown — lists warehouses with INV buttons */
+
+.warehouse-dropdown {
+  position: fixed;
+  z-index: 45;
+  min-width: 200px;
+  background: rgba(var(--bg-secondary-rgb, 20, 20, 30), 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 14px;
+  color: var(--text-primary, #e0e0e0);
+  padding: 4px 0;
+}
+
+.warehouse-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 16px;
+}
+
+.warehouse-row:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.warehouse-name {
+  font-size: 14px;
+}
+
+.warehouse-inv-btn {
+  background: none;
+  border: 1px solid rgba(255, 140, 0, 0.4);
+  color: #ff8c00;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 13px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.warehouse-inv-btn:hover {
+  background: rgba(255, 140, 0, 0.15);
+  border-color: #ff8c00;
+}
+
+.warehouse-empty {
+  padding: 12px 16px;
+  text-align: center;
+  opacity: 0.4;
+}

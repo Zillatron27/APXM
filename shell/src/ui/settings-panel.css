@@ -115,3 +115,10 @@
   opacity: 0.3;
   cursor: default;
 }
+
+.settings-toggle-field input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #ff8c00;
+  cursor: pointer;
+}

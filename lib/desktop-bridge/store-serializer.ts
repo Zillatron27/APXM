@@ -18,6 +18,8 @@ import type {
   CurrencyAmount,
   ScreenInfo,
   BridgeSnapshot,
+  BridgeSiteBurnSummary,
+  BurnMaterialSummary,
 } from '../../types/bridge';
 import { useSitesStore } from '../../stores/entities/sites';
 import { useShipsStore } from '../../stores/entities/ships';
@@ -32,6 +34,7 @@ import { useSettingsStore } from '../../stores/settings';
 import { useCompanyStore } from '../../stores/company';
 import { useWarehouseStore } from '../../stores/warehouses';
 import { calculateSiteBurn } from '../../core/burn';
+import { isRprunDetected } from '../rprun-detect';
 
 // ============================================================================
 // Address Resolution Helpers
@@ -288,6 +291,58 @@ export function deriveWorkforceSummaries(): WorkforceSummary[] {
   });
 }
 
+export function deriveSiteBurnSummaries(): BridgeSiteBurnSummary[] {
+  const { burnThresholds } = useSettingsStore.getState();
+
+  return useWorkforceStore.getState().getAll().map((entity) => {
+    const planet = extractPlanetInfo(entity.address);
+    const systemNaturalId = extractSystemNaturalId(entity.address);
+
+    let burns: BurnMaterialSummary[] = [];
+    let burnStatus: BridgeSiteBurnSummary['burnStatus'] = 'unknown';
+    let lowestBurnDays: number | null = null;
+
+    try {
+      const siteBurn = calculateSiteBurn(entity.siteId);
+      burns = siteBurn.burns.map((b) => ({
+        materialTicker: b.materialTicker,
+        materialName: b.materialName ?? null,
+        type: b.type,
+        inventoryAmount: b.inventoryAmount,
+        dailyAmount: b.dailyAmount,
+        daysRemaining: b.daysRemaining,
+        need: b.need,
+        urgency: b.urgency,
+      }));
+
+      const consumingBurns = siteBurn.burns.filter((b) => b.type === 'workforce' || b.type === 'input');
+      if (consumingBurns.length > 0) {
+        const lowest = Math.min(...consumingBurns.map((b) => b.daysRemaining));
+        lowestBurnDays = lowest === Infinity ? null : lowest;
+        if (lowestBurnDays !== null) {
+          if (lowestBurnDays <= burnThresholds.critical) burnStatus = 'critical';
+          else if (lowestBurnDays <= burnThresholds.warning) burnStatus = 'warning';
+          else burnStatus = 'ok';
+        } else {
+          burnStatus = 'ok';
+        }
+      }
+    } catch {
+      // Burn calculation may fail if stores are partially populated
+    }
+
+    return {
+      siteId: entity.siteId,
+      planetNaturalId: planet?.naturalId ?? null,
+      systemNaturalId,
+      planetName: planet?.name ?? null,
+      burns,
+      burnStatus,
+      lowestBurnDays,
+    };
+  });
+}
+
 export function deriveContractSummaries(): ContractSummary[] {
   return useContractsStore.getState().getAll().map((contract) => {
     const dueDateTimestamp = contract.dueDate?.timestamp ?? null;
@@ -362,6 +417,9 @@ export function createSnapshot(): BridgeSnapshot {
     companyName,
     primaryCurrency,
     warehouses: deriveWarehouses(),
+    siteBurns: deriveSiteBurnSummaries(),
+    rprunDetected: isRprunDetected(),
+    rprunFeaturesDisabled: useSettingsStore.getState().rprunFeaturesDisabled,
     timestamp: Date.now(),
   };
 }

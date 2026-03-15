@@ -3,8 +3,7 @@
 .fleet-panel {
   position: fixed;
   z-index: 50;
-  width: 360px;
-  max-height: 70vh;
+  width: 400px;
   display: flex;
   flex-direction: column;
   background: rgba(var(--bg-secondary-rgb, 20, 20, 30), 0.97);
@@ -13,35 +12,51 @@
   font-family: "IBM Plex Mono", monospace;
   font-size: 14px;
   color: var(--text-primary, #e0e0e0);
-  top: 54px;
-  right: 12px;
-  transition: right 0.15s ease;
 }
 
 .fleet-panel-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
+  gap: 6px;
+  padding: 8px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
+  cursor: grab;
 }
 
 .fleet-panel-header h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
+}
+
+.fleet-acts-btn {
+  background: none;
+  border: 1px solid rgba(255, 140, 0, 0.4);
+  color: #ff8c00;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 13px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.fleet-acts-btn:hover {
+  background: rgba(255, 140, 0, 0.15);
+  border-color: #ff8c00;
 }
 
 .fleet-panel-close {
   background: none;
   border: none;
   color: var(--text-primary, #e0e0e0);
-  font-size: 18px;
+  font-size: 20px;
   cursor: pointer;
   opacity: 0.5;
-  padding: 4px 6px;
+  padding: 2px 4px;
   line-height: 1;
+  margin-left: auto;
 }
 
 .fleet-panel-close:hover {
@@ -50,14 +65,15 @@
 
 .fleet-panel-body {
   overflow-y: auto;
+  height: 40vh;
   padding: 0;
 }
 
 .fleet-ship-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
+  gap: 8px;
+  padding: 6px 12px;
   cursor: pointer;
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
@@ -75,8 +91,8 @@
 }
 
 .fleet-ship-status.idle {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   background: #4caf50;
   font-size: 0;
@@ -84,7 +100,7 @@
 
 .fleet-ship-status.transit {
   color: #ff8c00;
-  font-size: 22px;
+  font-size: 20px;
 }
 
 .fleet-ship-info {
@@ -94,23 +110,16 @@
 
 .fleet-ship-name {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 15px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.fleet-ship-reg {
-  opacity: 0.4;
-  font-size: 12px;
-  margin-left: 6px;
-  font-weight: 400;
-}
-
 .fleet-ship-location {
-  font-size: 13px;
+  font-size: 14px;
   color: rgba(255, 255, 255, 0.7);
-  margin-top: 2px;
+  margin-top: 1px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -121,11 +130,154 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: rgba(255, 255, 255, 0.7);
-  padding: 8px 16px 4px;
+  padding: 6px 12px 3px;
+}
+
+.fleet-ship-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.fleet-action-btn {
+  background: none;
+  border: 1px solid rgba(255, 140, 0, 0.4);
+  color: #ff8c00;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 13px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.fleet-action-btn:hover {
+  background: rgba(255, 140, 0, 0.15);
+  border-color: #ff8c00;
+}
+
+/* Transit rows use flex-column for cargo summary below the top row */
+.fleet-ship-row.transit-row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+}
+
+.fleet-ship-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Ship detail: fuel, cargo bars, cargo tiles */
+.fleet-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 3px 0 1px 18px;
+}
+
+.fleet-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.fleet-bar-label {
+  opacity: 0.5;
+  width: 10px;
+  flex-shrink: 0;
+}
+
+.fleet-bar {
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.fleet-cargo-fill {
+  height: 100%;
+  background: #ff8c00;
+  border-radius: 3px;
+}
+
+.fleet-fuel-fill {
+  height: 100%;
+  background: #4caf50;
+  border-radius: 3px;
+}
+
+.fleet-bar-text {
+  font-size: 11px;
+  opacity: 0.5;
+  white-space: nowrap;
+  min-width: 80px;
+}
+
+.fleet-detail-sep {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+  margin: 2px 0;
+}
+
+.fleet-tiles-spaced {
+  margin-top: 4px;
+}
+
+.fleet-cargo-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.fleet-cargo-tile {
+  font-size: 11px;
+  border: 1px solid;
+  border-radius: 2px;
+  padding: 0 3px;
+  white-space: nowrap;
 }
 
 .fleet-empty {
-  padding: 20px 16px;
+  padding: 16px 12px;
   text-align: center;
   opacity: 0.4;
+}
+
+/* Pin button */
+.panel-pin-btn {
+  background: none;
+  border: none;
+  color: var(--text-primary, #e0e0e0);
+  opacity: 0.3;
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.panel-pin-btn:hover { opacity: 0.6; }
+.panel-pin-btn.pinned { opacity: 1; color: #ff8c00; }
+
+/* Resize handle */
+.panel-resize-handle {
+  height: 6px;
+  cursor: ns-resize;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.panel-resize-handle::after {
+  content: '';
+  position: absolute;
+  left: 30%;
+  right: 30%;
+  top: 2px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 1px;
 }

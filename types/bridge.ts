@@ -140,6 +140,27 @@ export interface WarehouseLocation {
   stationNaturalId: string | null;
 }
 
+export interface BurnMaterialSummary {
+  materialTicker: string;
+  materialName: string | null;
+  type: 'input' | 'output' | 'workforce';
+  inventoryAmount: number;
+  dailyAmount: number;
+  daysRemaining: number;
+  need: number;
+  urgency: 'critical' | 'warning' | 'ok' | 'surplus';
+}
+
+export interface BridgeSiteBurnSummary {
+  siteId: string;
+  planetNaturalId: string | null;
+  systemNaturalId: string | null;
+  planetName: string | null;
+  burns: BurnMaterialSummary[];
+  burnStatus: 'critical' | 'warning' | 'ok' | 'unknown';
+  lowestBurnDays: number | null;
+}
+
 // ============================================================================
 // Full Snapshot (sent on init and reconnect)
 // ============================================================================
@@ -159,6 +180,9 @@ export interface BridgeSnapshot {
   companyName: string | null;
   primaryCurrency: string | null;
   warehouses: WarehouseLocation[];
+  siteBurns: BridgeSiteBurnSummary[];
+  rprunDetected: boolean;
+  rprunFeaturesDisabled: boolean;
   timestamp: number;
 }
 
@@ -166,7 +190,7 @@ export interface BridgeSnapshot {
 // Incremental Update
 // ============================================================================
 
-export type BridgeEntityType = keyof Omit<BridgeSnapshot, 'timestamp' | 'screenAssignments' | 'burnThresholds' | 'companyName' | 'primaryCurrency'>;
+export type BridgeEntityType = keyof Omit<BridgeSnapshot, 'timestamp' | 'screenAssignments' | 'burnThresholds' | 'companyName' | 'primaryCurrency' | 'rprunDetected' | 'rprunFeaturesDisabled'>;
 
 export interface BridgeUpdate {
   entityType: BridgeEntityType;
@@ -180,7 +204,8 @@ export interface BridgeUpdate {
     | ContractSummary[]
     | CurrencyAmount[]
     | ScreenInfo[]
-    | WarehouseLocation[];
+    | WarehouseLocation[]
+    | BridgeSiteBurnSummary[];
   timestamp: number;
 }
 
@@ -227,7 +252,8 @@ export interface ApxmScreenAssignMessage {
 export interface ApxmSettingsUpdateMessage {
   type: 'apxm-settings-update';
   settings: {
-    burnThresholds: BurnThresholds;
+    burnThresholds?: BurnThresholds;
+    rprunFeaturesDisabled?: boolean;
   };
 }
 

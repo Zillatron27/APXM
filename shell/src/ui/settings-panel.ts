@@ -10,6 +10,7 @@ import './settings-panel.css';
 
 export interface SettingsPanelCallbacks {
   onSave(thresholds: BurnThresholds): void;
+  onRprunToggle(disabled: boolean): void;
   onClose(): void;
 }
 
@@ -79,6 +80,13 @@ export function showSettingsPanel(
       <div class="settings-save-row">
         <button class="settings-save-btn" id="settings-save">Save</button>
       </div>
+      ${empireState.isRprunDetected() ? `
+        <div class="settings-section-label" style="margin-top: 12px">rprun Integration</div>
+        <div class="settings-field settings-toggle-field">
+          <label for="settings-rprun-disable">Disable rprun features</label>
+          <input type="checkbox" id="settings-rprun-disable" ${empireState.isRprunFeaturesDisabled() ? 'checked' : ''}>
+        </div>
+      ` : ''}
     </div>
   `;
 
@@ -126,6 +134,14 @@ export function showSettingsPanel(
       callbacks.onClose();
     }
   });
+
+  // rprun features toggle
+  const rprunCheckbox = panelEl.querySelector('#settings-rprun-disable') as HTMLInputElement | null;
+  if (rprunCheckbox) {
+    rprunCheckbox.addEventListener('change', () => {
+      callbacks.onRprunToggle(rprunCheckbox.checked);
+    });
+  }
 
   // Escape key
   const escHandler = (e: KeyboardEvent) => {

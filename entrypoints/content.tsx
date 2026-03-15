@@ -14,6 +14,7 @@ import { initRefreshMode, isAutoRefreshEnabled } from '../lib/buffer-refresh';
 import { executeBatchRefresh } from '../lib/buffer-refresh';
 import { initDesktopBridge } from '../lib/desktop-bridge';
 import { initApxmButton } from '../lib/apxm-button';
+import { initRprunDetection } from '../lib/rprun-detect';
 import { useSitesStore } from '../stores/entities';
 import { useSiteSourceStore } from '../stores/site-data-sources';
 import '../assets/styles.css';
@@ -171,6 +172,13 @@ export default defineContentScript({
     // Desktop bridge: start iframe detection and store subscriptions
     if (!isMobile) {
       initDesktopBridge();
+      // Detect rprun after first WebSocket data arrives (both APEX and rprun loaded by then)
+      const unsubRprunInit = useConnectionStore.subscribe((state) => {
+        if (state.connected) {
+          unsubRprunInit();
+          initRprunDetection();
+        }
+      });
     }
 
     if (isDesktopBridgeMode) {

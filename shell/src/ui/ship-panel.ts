@@ -221,9 +221,9 @@ function render(): void {
         ${renderShip(ship, flight)}
       </div>
       <div class="ship-action">
-        <button data-ship-buffer="SFC ${ship.registration}">SFC</button>
-        <button data-ship-buffer="SHPI ${ship.registration}">SHPI</button>
-        <button data-ship-buffer="SHPF ${ship.registration}">SHPF</button>
+        <button data-ship-buffer="SFC ${ship.registration}">Fly</button>
+        <button data-ship-buffer="SHPI ${ship.registration}">Cargo</button>
+        <button data-ship-buffer="SHPF ${ship.registration}">Fuel</button>
       </div>
     </div>
   `;

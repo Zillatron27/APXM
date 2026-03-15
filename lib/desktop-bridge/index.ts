@@ -174,19 +174,25 @@ function handleIncomingMessages(event: MessageEvent): void {
 
   if (data.type === 'apxm-settings-update') {
     const settings = data.settings;
-    if (settings && typeof settings === 'object' && settings.burnThresholds) {
-      const bt = settings.burnThresholds as BurnThresholds;
-      // Validate: critical < warning <= resupply, all > 0
-      if (
-        typeof bt.critical === 'number' && typeof bt.warning === 'number' &&
-        typeof bt.resupply === 'number' &&
-        bt.critical > 0 && bt.warning > 0 && bt.resupply > 0 &&
-        bt.critical < bt.warning && bt.warning <= bt.resupply
-      ) {
-        useSettingsStore.getState().setBurnThresholds(bt);
-        console.log('[APXM Bridge] Applied burn threshold update from shell:', bt);
-      } else {
-        console.warn('[APXM Bridge] Rejected invalid burn thresholds from shell:', bt);
+    if (settings && typeof settings === 'object') {
+      if (settings.burnThresholds) {
+        const bt = settings.burnThresholds as BurnThresholds;
+        // Validate: critical < warning <= resupply, all > 0
+        if (
+          typeof bt.critical === 'number' && typeof bt.warning === 'number' &&
+          typeof bt.resupply === 'number' &&
+          bt.critical > 0 && bt.warning > 0 && bt.resupply > 0 &&
+          bt.critical < bt.warning && bt.warning <= bt.resupply
+        ) {
+          useSettingsStore.getState().setBurnThresholds(bt);
+          console.log('[APXM Bridge] Applied burn threshold update from shell:', bt);
+        } else {
+          console.warn('[APXM Bridge] Rejected invalid burn thresholds from shell:', bt);
+        }
+      }
+      if (typeof settings.rprunFeaturesDisabled === 'boolean') {
+        useSettingsStore.getState().setRprunFeaturesDisabled(settings.rprunFeaturesDisabled);
+        console.log('[APXM Bridge] Applied rprun features disabled:', settings.rprunFeaturesDisabled);
       }
     }
   }

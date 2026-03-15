@@ -3,8 +3,7 @@
 .burn-panel {
   position: fixed;
   z-index: 50;
-  width: 340px;
-  max-height: 70vh;
+  width: 400px;
   display: flex;
   flex-direction: column;
   background: rgba(var(--bg-secondary-rgb, 20, 20, 30), 0.97);
@@ -13,66 +12,131 @@
   font-family: "IBM Plex Mono", monospace;
   font-size: 14px;
   color: var(--text-primary, #e0e0e0);
-  top: 54px;
-  right: 12px;
-  transition: right 0.15s ease;
 }
 
 .burn-panel-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
+  gap: 6px;
+  padding: 8px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
+  cursor: grab;
 }
 
 .burn-panel-header h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
+  white-space: nowrap;
 }
+
+.burn-acts-btn {
+  background: none;
+  border: 1px solid rgba(255, 140, 0, 0.4);
+  color: #ff8c00;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 13px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.burn-acts-btn:hover {
+  background: rgba(255, 140, 0, 0.15);
+  border-color: #ff8c00;
+}
+
+.burn-filter-group {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.burn-filter-btn {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.3);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 13px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.burn-filter-btn.active.critical { color: #f44336; border-color: rgba(244, 67, 54, 0.5); }
+.burn-filter-btn.active.warning { color: #ff9800; border-color: rgba(255, 152, 0, 0.5); }
+.burn-filter-btn.active.ok { color: #4caf50; border-color: rgba(76, 175, 80, 0.5); }
+.burn-filter-btn.active.surplus { color: #888; border-color: rgba(136, 136, 136, 0.5); }
 
 .burn-panel-close {
   background: none;
   border: none;
   color: var(--text-primary, #e0e0e0);
-  font-size: 18px;
+  font-size: 20px;
   cursor: pointer;
   opacity: 0.5;
-  padding: 4px 6px;
+  padding: 2px 4px;
   line-height: 1;
+  flex-shrink: 0;
 }
 
 .burn-panel-close:hover {
   opacity: 1;
 }
 
+.burn-panel-toolbar {
+  display: flex;
+  gap: 6px;
+  padding: 4px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.burn-expand-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.burn-expand-btn:hover {
+  color: rgba(255, 255, 255, 0.7);
+}
+
 .burn-panel-body {
   overflow-y: auto;
+  height: 40vh;
   padding: 0;
 }
 
 .burn-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
-  cursor: pointer;
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-}
-
-.burn-row:hover {
-  background: rgba(255, 255, 255, 0.05);
 }
 
 .burn-row:last-child {
   border-bottom: none;
 }
 
+.burn-row-collapsed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+
+.burn-row-collapsed:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
 .burn-dot {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -89,7 +153,7 @@
 
 .burn-planet-name {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 15px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -97,22 +161,159 @@
 
 .burn-planet-id {
   opacity: 0.4;
-  font-size: 12px;
+  font-size: 13px;
   margin-left: 6px;
   font-weight: 400;
 }
 
-.burn-days {
+.burn-row-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.burn-row-actions {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.burn-inline-btn {
+  background: none;
+  border: 1px solid rgba(255, 140, 0, 0.4);
+  color: #ff8c00;
+  font-family: "IBM Plex Mono", monospace;
   font-size: 13px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.burn-inline-btn:hover {
+  background: rgba(255, 140, 0, 0.15);
+  border-color: #ff8c00;
+}
+
+.burn-days {
+  font-size: 15px;
   opacity: 0.7;
   white-space: nowrap;
+  flex-shrink: 0;
+  width: 40px;
+  text-align: right;
 }
 
 .burn-days.critical { color: #f44336; }
 .burn-days.warning { color: #ff9800; }
 
+/* Expanded material detail */
+.burn-row-detail {
+  padding: 0 12px 6px 28px;
+}
+
+.burn-mat-table {
+  font-size: 14px;
+}
+
+.burn-mat-header {
+  display: flex;
+  gap: 4px;
+  opacity: 0.5;
+  padding-bottom: 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 1px;
+}
+
+.burn-mat-row {
+  display: flex;
+  gap: 4px;
+  padding: 2px 0;
+  align-items: center;
+}
+
+.burn-mat-row.critical { background: rgba(244, 67, 54, 0.06); }
+.burn-mat-row.warning { background: rgba(255, 152, 0, 0.06); }
+
+.burn-mat-col.ticker { flex: 0 0 auto; }
+
+.burn-mat-ticker {
+  display: inline-block;
+  width: calc(3ch + 8px);
+  box-sizing: border-box;
+  text-align: center;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.burn-mat-col.inv { flex: 1; text-align: right; }
+.burn-mat-col.rate { flex: 1; text-align: right; }
+.burn-mat-col.days { flex: 1; text-align: right; }
+.burn-mat-col.need { flex: 1; text-align: right; }
+.burn-mat-col.buy { flex: 0 0 36px; text-align: center; }
+
+.burn-buy-btn {
+  background: none;
+  border: 1px solid rgba(255, 140, 0, 0.4);
+  color: #ff8c00;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 13px;
+  padding: 0 4px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.burn-buy-btn:hover {
+  background: rgba(255, 140, 0, 0.15);
+  border-color: #ff8c00;
+}
+
+.burn-mat-empty {
+  opacity: 0.4;
+  font-size: 14px;
+  padding: 4px 0;
+}
+
 .burn-empty {
-  padding: 20px 16px;
+  padding: 16px 12px;
   text-align: center;
   opacity: 0.4;
+}
+
+/* Pin button */
+.panel-pin-btn {
+  background: none;
+  border: none;
+  color: var(--text-primary, #e0e0e0);
+  opacity: 0.3;
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.panel-pin-btn:hover { opacity: 0.6; }
+.panel-pin-btn.pinned { opacity: 1; color: #ff8c00; }
+
+/* Resize handle */
+.panel-resize-handle {
+  height: 6px;
+  cursor: ns-resize;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.panel-resize-handle::after {
+  content: '';
+  position: absolute;
+  left: 30%;
+  right: 30%;
+  top: 2px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 1px;
 }
