@@ -7,6 +7,7 @@
 
 import { showManagedPanel, hideManagedPanel, isManagedPanelActive } from './panel-manager';
 import { showScreenPicker, hideScreenPicker } from './screen-picker';
+import { esc } from './panel-utils';
 import type { EmpireState } from '../empire-state';
 import type { ScreenInfo } from '../types/bridge';
 import './base-panel.css';
@@ -32,11 +33,6 @@ function ensureContainer(): HTMLDivElement {
   return container;
 }
 
-function esc(text: string): string {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
 
 function storageClass(pct: number): string {
   if (pct < 70) return 'storage-ok';

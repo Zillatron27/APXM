@@ -33,7 +33,7 @@ import { useScreensStore } from '../../stores/screens';
 import { useSettingsStore } from '../../stores/settings';
 import { useCompanyStore } from '../../stores/company';
 import { useWarehouseStore } from '../../stores/warehouses';
-import { calculateSiteBurn } from '../../core/burn';
+import { calculateSiteBurn, classifyBurnStatus } from '../../core/burn';
 import { isRprunDetected } from '../rprun-detect';
 
 // ============================================================================
@@ -264,18 +264,9 @@ export function deriveWorkforceSummaries(): WorkforceSummary[] {
     let lowestBurnDays: number | null = null;
     try {
       const siteBurn = calculateSiteBurn(entity.siteId);
-      const consumingBurns = siteBurn.burns.filter((b) => b.type === 'workforce' || b.type === 'input');
-      if (consumingBurns.length > 0) {
-        const lowest = Math.min(...consumingBurns.map((b) => b.daysRemaining));
-        lowestBurnDays = lowest === Infinity ? null : lowest;
-        if (lowestBurnDays !== null) {
-          if (lowestBurnDays <= burnThresholds.critical) burnStatus = 'critical';
-          else if (lowestBurnDays <= burnThresholds.warning) burnStatus = 'warning';
-          else burnStatus = 'ok';
-        } else {
-          burnStatus = 'ok';
-        }
-      }
+      const result = classifyBurnStatus(siteBurn.burns, burnThresholds);
+      burnStatus = result.burnStatus;
+      lowestBurnDays = result.lowestBurnDays;
     } catch {
       // Burn calculation may fail if stores are partially populated
     }
@@ -315,18 +306,9 @@ export function deriveSiteBurnSummaries(): BridgeSiteBurnSummary[] {
         urgency: b.urgency,
       }));
 
-      const consumingBurns = siteBurn.burns.filter((b) => b.type === 'workforce' || b.type === 'input');
-      if (consumingBurns.length > 0) {
-        const lowest = Math.min(...consumingBurns.map((b) => b.daysRemaining));
-        lowestBurnDays = lowest === Infinity ? null : lowest;
-        if (lowestBurnDays !== null) {
-          if (lowestBurnDays <= burnThresholds.critical) burnStatus = 'critical';
-          else if (lowestBurnDays <= burnThresholds.warning) burnStatus = 'warning';
-          else burnStatus = 'ok';
-        } else {
-          burnStatus = 'ok';
-        }
-      }
+      const result = classifyBurnStatus(siteBurn.burns, burnThresholds);
+      burnStatus = result.burnStatus;
+      lowestBurnDays = result.lowestBurnDays;
     } catch {
       // Burn calculation may fail if stores are partially populated
     }

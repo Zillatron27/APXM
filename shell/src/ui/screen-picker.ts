@@ -6,15 +6,10 @@
  */
 
 import type { ScreenInfo } from '../types/bridge';
+import { esc } from './panel-utils';
 
 let pickerEl: HTMLDivElement | null = null;
 let clickHandler: ((e: MouseEvent) => void) | null = null;
-
-function esc(text: string): string {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
 
 function cleanup(): void {
   if (clickHandler) {

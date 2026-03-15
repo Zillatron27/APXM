@@ -5,10 +5,10 @@
  * Multi-ship groups get prev/next navigation.
  */
 
-import { getSystemByNaturalId, getCxForSystem, getActiveThemeId, onThemeChange, offThemeChange } from '@27bit/helm';
+import { onThemeChange, offThemeChange } from '@27bit/helm';
 import { getCategoryColors } from './material-colors';
 import { MATERIAL_CATEGORIES } from './material-categories';
-import type { MaterialTheme } from './material-colors';
+import { systemDisplayName, getTheme } from './panel-utils';
 import type { ShipSummary, FlightSummary } from '../types/bridge';
 import { showManagedPanel, hideManagedPanel, isManagedPanelActive } from './panel-manager';
 import './ship-panel.css';
@@ -27,24 +27,12 @@ let currentIndex = 0;
 let trackedShipId: string | null = null;
 let themeListener: (() => void) | null = null;
 
-function getTheme(): MaterialTheme {
-  return getActiveThemeId() === 'prun-classic' ? 'prun' : 'rprun';
-}
-
 function ensureContainer(): HTMLDivElement {
   if (container) return container;
   container = document.createElement('div');
   container.id = 'ship-panel-container';
   document.body.appendChild(container);
   return container;
-}
-
-function systemName(naturalId: string | null): string {
-  if (!naturalId) return '???';
-  const sys = getSystemByNaturalId(naturalId);
-  if (!sys) return naturalId;
-  const cx = getCxForSystem(sys.id);
-  return cx ? cx.ComexCode : sys.naturalId;
 }
 
 function formatLocalTime(ms: number): string {
@@ -90,8 +78,8 @@ function renderShip(ship: ShipSummary, flight: FlightSummary | undefined): strin
 
   // Flight
   if (flight) {
-    const origin = systemName(flight.originSystemNaturalId);
-    const dest = systemName(flight.destinationSystemNaturalId);
+    const origin = systemDisplayName(flight.originSystemNaturalId);
+    const dest = systemDisplayName(flight.destinationSystemNaturalId);
     const eta = formatEta(flight.arrivalTimestamp);
     const seg = flight.segments[flight.currentSegmentIndex];
     const segInfo = seg ? `${seg.type} — segment ${flight.currentSegmentIndex + 1}/${flight.segments.length}` : '';

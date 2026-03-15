@@ -5,7 +5,7 @@
  * Positioned near cursor, clamped to viewport edges.
  */
 
-import { getSystemByNaturalId, getCxForSystem } from '@27bit/helm';
+import { systemDisplayName } from './panel-utils';
 import type { ShipSummary, FlightSummary } from '../types/bridge';
 
 const OFFSET_X = 16;
@@ -54,31 +54,23 @@ function formatEta(arrivalMs: number): string {
   return `${days}d ${hours % 24}h (${local})`;
 }
 
-function systemName(naturalId: string | null): string {
-  if (!naturalId) return '???';
-  const sys = getSystemByNaturalId(naturalId);
-  if (!sys) return naturalId;
-  const cx = getCxForSystem(sys.id);
-  return cx ? cx.ComexCode : sys.naturalId;
-}
-
 function buildContent(ships: ShipSummary[], flights: FlightSummary[]): string {
   if (ships.length === 1) {
     const ship = ships[0];
     const flight = flights.find(f => f.shipId === ship.shipId);
     const name = `<strong>${ship.name}</strong> <span style="opacity:0.6">(${ship.registration})</span>`;
     if (flight) {
-      const dest = systemName(flight.destinationSystemNaturalId);
+      const dest = systemDisplayName(flight.destinationSystemNaturalId);
       const eta = formatEta(flight.arrivalTimestamp);
       return `${name}<br>In transit to ${dest} — ETA ${eta}`;
     }
-    const loc = systemName(ship.locationSystemNaturalId);
+    const loc = systemDisplayName(ship.locationSystemNaturalId);
     return `${name}<br>Idle at ${loc}`;
   }
 
   // Multiple ships
   const loc = ships[0].locationSystemNaturalId;
-  const sysLabel = loc ? systemName(loc) : 'location';
+  const sysLabel = loc ? systemDisplayName(loc) : 'location';
   const lines = ships.map(s => `  ${s.name} (${s.registration})`).join('<br>');
   return `<strong>${ships.length} ships at ${sysLabel}</strong><br>${lines}`;
 }

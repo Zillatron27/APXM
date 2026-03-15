@@ -248,36 +248,3 @@
   opacity: 0.4;
 }
 
-/* Pin button */
-.panel-pin-btn {
-  background: none;
-  border: none;
-  color: var(--text-primary, #e0e0e0);
-  opacity: 0.3;
-  cursor: pointer;
-  padding: 2px 4px;
-  line-height: 1;
-  flex-shrink: 0;
-}
-
-.panel-pin-btn:hover { opacity: 0.6; }
-.panel-pin-btn.pinned { opacity: 1; color: #ff8c00; }
-
-/* Resize handle */
-.panel-resize-handle {
-  height: 6px;
-  cursor: ns-resize;
-  flex-shrink: 0;
-  position: relative;
-}
-
-.panel-resize-handle::after {
-  content: '';
-  position: absolute;
-  left: 30%;
-  right: 30%;
-  top: 2px;
-  height: 2px;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 1px;
-}

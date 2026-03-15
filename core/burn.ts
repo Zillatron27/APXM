@@ -20,6 +20,27 @@ import { useSitesStore } from '../stores/entities/sites';
 export type BurnType = 'input' | 'output' | 'workforce';
 export type Urgency = 'critical' | 'warning' | 'ok' | 'surplus';
 
+/**
+ * Classifies overall burn status from an array of BurnRates.
+ * Filters to consuming types (workforce + input), finds lowest days remaining,
+ * and returns status + days.
+ */
+export function classifyBurnStatus(
+  burns: ReadonlyArray<{ type: BurnType; daysRemaining: number }>,
+  thresholds: BurnThresholds,
+): { burnStatus: 'critical' | 'warning' | 'ok' | 'unknown'; lowestBurnDays: number | null } {
+  const consuming = burns.filter((b) => b.type === 'workforce' || b.type === 'input');
+  if (consuming.length === 0) return { burnStatus: 'unknown', lowestBurnDays: null };
+
+  const lowest = Math.min(...consuming.map((b) => b.daysRemaining));
+  const lowestBurnDays = lowest === Infinity ? null : lowest;
+
+  if (lowestBurnDays === null) return { burnStatus: 'ok', lowestBurnDays: null };
+  if (lowestBurnDays <= thresholds.critical) return { burnStatus: 'critical', lowestBurnDays };
+  if (lowestBurnDays <= thresholds.warning) return { burnStatus: 'warning', lowestBurnDays };
+  return { burnStatus: 'ok', lowestBurnDays };
+}
+
 export interface BurnRate {
   materialTicker: string;
   materialName?: string;
