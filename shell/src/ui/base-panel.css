@@ -52,13 +52,6 @@
   font-weight: 400;
 }
 
-.base-panel-header .base-label {
-  font-size: 13px;
-  opacity: 0.4;
-  display: block;
-  margin-top: 2px;
-}
-
 .base-panel-close {
   background: none;
   border: none;
