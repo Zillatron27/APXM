@@ -4,7 +4,7 @@
  * Positioned below the toolbar button, closes on outside click or Escape.
  */
 
-import { getSystemByNaturalId, getCxForSystem } from '@27bit/helm';
+import { esc, systemDisplayName } from './panel-utils';
 import type { EmpireState } from '../empire-state';
 import './warehouse-dropdown.css';
 
@@ -15,22 +15,10 @@ export interface WarehouseDropdownCallbacks {
 
 let dropdownEl: HTMLDivElement | null = null;
 let clickHandler: ((e: MouseEvent) => void) | null = null;
-
-function esc(text: string): string {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
-function systemDisplayName(naturalId: string | null): string {
-  if (!naturalId) return '???';
-  const sys = getSystemByNaturalId(naturalId);
-  if (!sys) return naturalId;
-  const cx = getCxForSystem(sys.id);
-  return cx ? cx.ComexCode : sys.naturalId;
-}
+let escHandler: ((e: KeyboardEvent) => void) | null = null;
 
 function cleanup(): void {
+  if (escHandler) { document.removeEventListener('keydown', escHandler); escHandler = null; }
   if (clickHandler) {
     document.removeEventListener('pointerdown', clickHandler);
     clickHandler = null;
@@ -105,11 +93,10 @@ export function showWarehouseDropdown(
   }, 0);
 
   // Escape dismiss
-  const escHandler = (e: KeyboardEvent) => {
+  escHandler = (e: KeyboardEvent) => {
     if (e.key === 'Escape') {
       cleanup();
       callbacks.onDismiss();
-      document.removeEventListener('keydown', escHandler);
     }
   };
   document.addEventListener('keydown', escHandler);

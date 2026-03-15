@@ -19,6 +19,7 @@ export interface MenuCallbacks {
 
 let menuEl: HTMLDivElement | null = null;
 let clickHandler: ((e: MouseEvent) => void) | null = null;
+let escHandler: ((e: KeyboardEvent) => void) | null = null;
 let themeExpanded = false;
 let liquidityExpanded = false;
 
@@ -27,6 +28,7 @@ function hexToCss(hex: number): string {
 }
 
 function cleanup(): void {
+  if (escHandler) { document.removeEventListener('keydown', escHandler); escHandler = null; }
   if (clickHandler) {
     document.removeEventListener('pointerdown', clickHandler);
     clickHandler = null;
@@ -216,11 +218,10 @@ export function showMenu(
     document.addEventListener('pointerdown', clickHandler);
   }, 0);
 
-  const escHandler = (e: KeyboardEvent) => {
+  escHandler = (e: KeyboardEvent) => {
     if (e.key === 'Escape') {
       cleanup();
       callbacks.onDismiss();
-      document.removeEventListener('keydown', escHandler);
     }
   };
   document.addEventListener('keydown', escHandler);

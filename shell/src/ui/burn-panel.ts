@@ -6,13 +6,13 @@
  * Inline action buttons open APEX buffers.
  */
 
-import { getActiveThemeId } from '@27bit/helm';
 import { getCategoryColors } from './material-colors';
 import { MATERIAL_CATEGORIES } from './material-categories';
-import type { MaterialTheme } from './material-colors';
+import { esc, getTheme } from './panel-utils';
 import type { BridgeSiteBurnSummary, BurnMaterialSummary } from '../types/bridge';
 import type { EmpireState } from '../empire-state';
-import { makeDraggable, makeResizable, constrainToViewport, loadLayout, saveLayout, type PanelLayout } from './panel-drag';
+import { makeDraggable, makeResizable, constrainToViewport, loadLayout, saveLayout, PIN_SVG, type PanelLayout } from './panel-drag';
+import './panel-common.css';
 import './burn-panel.css';
 
 export interface BurnPanelCallbacks {
@@ -33,16 +33,17 @@ const expandedPlanets = new Set<string>();
 const activeFilters = new Set<string>(['critical', 'warning', 'ok', 'surplus']);
 
 const LAYOUT_KEY = 'apxm-burn-layout';
-const PIN_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/></svg>';
 
 let panelEl: HTMLDivElement | null = null;
 let backdropEl: HTMLDivElement | null = null;
 let unsubscribe: (() => void) | null = null;
 let dragCleanup: (() => void) | null = null;
 let resizeCleanup: (() => void) | null = null;
+let escHandler: ((e: KeyboardEvent) => void) | null = null;
 let pinned = false;
 
 function cleanup(): void {
+  if (escHandler) { document.removeEventListener('keydown', escHandler); escHandler = null; }
   if (dragCleanup) { dragCleanup(); dragCleanup = null; }
   if (resizeCleanup) { resizeCleanup(); resizeCleanup = null; }
   if (unsubscribe) { unsubscribe(); unsubscribe = null; }
@@ -64,16 +65,6 @@ function currentLayout(): PanelLayout | null {
 function persistLayout(): void {
   const layout = currentLayout();
   if (layout) saveLayout(LAYOUT_KEY, layout);
-}
-
-function esc(text: string): string {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
-function getTheme(): MaterialTheme {
-  return getActiveThemeId() === 'prun-classic' ? 'prun' : 'rprun';
 }
 
 function formatDays(days: number | null): string {
@@ -346,11 +337,10 @@ export function showBurnPanel(
   });
 
   // Escape key (gated on pin state)
-  const escHandler = (e: KeyboardEvent) => {
+  escHandler = (e: KeyboardEvent) => {
     if (e.key === 'Escape' && !pinned) {
       cleanup();
       callbacks.onClose();
-      document.removeEventListener('keydown', escHandler);
     }
   };
   document.addEventListener('keydown', escHandler);

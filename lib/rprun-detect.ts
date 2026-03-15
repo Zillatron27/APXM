@@ -8,12 +8,20 @@
 let detected = false;
 let checked = false;
 let observer: MutationObserver | null = null;
+let fallbackTimeout: ReturnType<typeof setTimeout> | null = null;
 const listeners: Array<() => void> = [];
 
 const RPRUN_SELECTOR = '[data-tooltip="Refined PrUn version."]';
 
 function check(): boolean {
   return document.querySelector(RPRUN_SELECTOR) !== null;
+}
+
+function notifyDetected(): void {
+  detected = true;
+  if (observer) { observer.disconnect(); observer = null; }
+  if (fallbackTimeout !== null) { clearTimeout(fallbackTimeout); fallbackTimeout = null; }
+  for (const cb of listeners) cb();
 }
 
 /** Returns current detection state. */
@@ -45,19 +53,13 @@ export function initRprunDetection(): void {
   checked = true;
 
   if (check()) {
-    detected = true;
-    for (const cb of listeners) cb();
+    notifyDetected();
     return;
   }
 
   // rprun may load slightly after APEX — watch for it
   observer = new MutationObserver(() => {
-    if (check()) {
-      detected = true;
-      observer?.disconnect();
-      observer = null;
-      for (const cb of listeners) cb();
-    }
+    if (check()) notifyDetected();
   });
 
   observer.observe(document.body, {
@@ -66,7 +68,8 @@ export function initRprunDetection(): void {
   });
 
   // Stop watching after 30 seconds — rprun won't load this late
-  setTimeout(() => {
+  fallbackTimeout = setTimeout(() => {
+    fallbackTimeout = null;
     if (observer) {
       observer.disconnect();
       observer = null;

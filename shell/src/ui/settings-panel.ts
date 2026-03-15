@@ -16,8 +16,10 @@ export interface SettingsPanelCallbacks {
 
 let panelEl: HTMLDivElement | null = null;
 let backdropEl: HTMLDivElement | null = null;
+let escHandler: ((e: KeyboardEvent) => void) | null = null;
 
 function cleanup(): void {
+  if (escHandler) { document.removeEventListener('keydown', escHandler); escHandler = null; }
   if (backdropEl) {
     backdropEl.remove();
     backdropEl = null;
@@ -144,11 +146,10 @@ export function showSettingsPanel(
   }
 
   // Escape key
-  const escHandler = (e: KeyboardEvent) => {
+  escHandler = (e: KeyboardEvent) => {
     if (e.key === 'Escape') {
       cleanup();
       callbacks.onClose();
-      document.removeEventListener('keydown', escHandler);
     }
   };
   document.addEventListener('keydown', escHandler);
