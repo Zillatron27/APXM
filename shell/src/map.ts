@@ -9,11 +9,10 @@
 import {
   createMap, getSystemByNaturalId, getSystemById, getPlanetsForSystem,
   onStateChange, getViewLevel, getSelectedEntity, setSelectedEntity,
-  getFocusedSystemId, setGatewaysVisible, onThemeChange,
+  getFocusedSystemId, setGatewaysVisible,
 } from '@27bit/helm';
 import type { HelmInstance } from '@27bit/helm';
-import { Ticker, Graphics } from 'pixi.js';
-import type { Viewport } from 'pixi-viewport';
+import { Graphics } from 'pixi.js';
 import type { ApxmInitMessage, ApxmUpdateMessage, ApxmSettingsUpdateMessage } from './types/bridge';
 import { createEmpireState } from './empire-state';
 import { createEmpireOverlay } from './empire-overlay';
@@ -82,7 +81,7 @@ let empireCamera: { x: number; y: number; scale: number } | null = null;
 /** Saved camera state before ship selection zoom */
 let preShipCamera: { x: number; y: number; scale: number } | null = null;
 
-function frameToEmpire(viewport: Viewport, naturalIds: string[]): void {
+function frameToEmpire(helm: HelmInstance, naturalIds: string[]): void {
   if (naturalIds.length === 0) return;
 
   let minX = Infinity, maxX = -Infinity;
@@ -110,22 +109,18 @@ function frameToEmpire(viewport: Viewport, naturalIds: string[]): void {
 
   empireCamera = { x: centreX, y: centreY, scale: targetScale };
 
-  viewport.animate({
-    position: { x: centreX, y: centreY },
-    scale: targetScale,
-    time: FRAME_TRANSITION_MS,
-    ease: 'easeInOutCubic',
+  helm.animateCamera({
+    x: centreX, y: centreY, scale: targetScale,
+    timeMs: FRAME_TRANSITION_MS,
   });
 }
 
-function restoreEmpireCamera(viewport: Viewport): void {
+function restoreEmpireCamera(helm: HelmInstance): void {
   if (!empireCamera) return;
 
-  viewport.animate({
-    position: { x: empireCamera.x, y: empireCamera.y },
-    scale: empireCamera.scale,
-    time: FRAME_TRANSITION_MS,
-    ease: 'easeInOutCubic',
+  helm.animateCamera({
+    x: empireCamera.x, y: empireCamera.y, scale: empireCamera.scale,
+    timeMs: FRAME_TRANSITION_MS,
   });
 }
 
@@ -188,7 +183,7 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
       updatePanel(msg.snapshot.ships, msg.snapshot.flights);
       updateBasePanel(empireState);
       if (!initialFrameDone) {
-        frameToEmpire(helm!.viewport, empireState.getOwnedSystemNaturalIds());
+        frameToEmpire(helm!, empireState.getOwnedSystemNaturalIds());
         initialFrameDone = true;
       }
       // Re-apply empire dim with potentially new site data
@@ -236,8 +231,6 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
 
   helm = await createMap(container);
 
-  const viewport = helm.viewport;
-
   // Ship interaction callbacks shared by idle + transit layers
   const shipCallbacks: ShipInteractionCallbacks = {
     onHover(ships, screenX, screenY) {
@@ -255,7 +248,7 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
         .map(s => empireState.getFlightForShip(s.shipId))
         .filter((f): f is NonNullable<typeof f> => !!f);
       // Hide Helm's native panel without clearing entity selection
-      setTimeout(() => helm!.panelManager.hide(), 0);
+      setTimeout(() => helm!.hideNativePanel(), 0);
       // If no entity selected, set focused system as guard so Helm's
       // cascade step 1 (deselect) absorbs the dismiss click
       if (!getSelectedEntity() && getViewLevel() === 'system') {
@@ -286,33 +279,45 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
     },
   };
 
-  overlay = createEmpireOverlay(helm.viewport, empireState, resolvers);
+  // Create overlay layers via Bridge API — Helm manages z-ordering
+  const empireGalaxyLayer = helm.createOverlayLayer('empire-galaxy', 10);
+  empireGalaxyLayer.eventMode = 'none';
+  const empireWarehouseLayer = helm.createOverlayLayer('empire-warehouse', 10.5);
+  empireWarehouseLayer.eventMode = 'static';
+  empireWarehouseLayer.interactiveChildren = true;
+  const empireSystemLayer = helm.createOverlayLayer('empire-system', 20.5);
+  empireSystemLayer.eventMode = 'none';
+  overlay = createEmpireOverlay(empireGalaxyLayer, empireWarehouseLayer, empireSystemLayer, empireState, resolvers);
 
-  // Hide Helm's native gateway indicator dots, render via status grid instead
-  helm.renderer.setGatewayIndicatorsVisible(false);
+  helm.setGatewayIndicatorsVisible(false);
+  const gatewayLayer = helm.createOverlayLayer('gateways', 11);
   gatewayMarkers = createGatewayMarkers(empireState);
   gatewayMarkers.refresh();
-  // Insert after empire overlay (index 2) → index 3
-  helm.viewport.addChildAt(gatewayMarkers.container, 3);
+  gatewayLayer.addChild(gatewayMarkers.container);
 
+  const idleLayer = helm.createOverlayLayer('ships-idle', 12);
   shipIdleMarkers = createShipIdleMarkers(empireState, shipCallbacks);
   shipIdleMarkers.refresh();
-  helm.viewport.addChildAt(shipIdleMarkers.container, 4);
+  idleLayer.addChild(shipIdleMarkers.container);
 
-  shipTransit = createShipTransitLayer(empireState, resolvers, helm.viewport, shipCallbacks);
+  const transitLayer = helm.createOverlayLayer('ships-transit', 13);
+  shipTransit = createShipTransitLayer(empireState, resolvers, {
+    worldToScreen: (wx, wy) => helm!.worldToScreen(wx, wy),
+    getScale: () => helm!.getCameraState().scale,
+  }, shipCallbacks);
   shipTransit.refresh();
-  helm.viewport.addChildAt(shipTransit.container, 5);
+  transitLayer.addChild(shipTransit.container);
 
-  shipSystemView = createShipSystemView(empireState, resolvers, helm.viewport, shipCallbacks);
+  const sysViewLayer = helm.createOverlayLayer('ships-system', 20);
+  shipSystemView = createShipSystemView(empireState, resolvers, shipCallbacks);
   shipSystemView.refresh();
-  // Append on top — must be above Helm's system-level planet hit areas
-  helm.viewport.addChild(shipSystemView.container);
+  sysViewLayer.addChild(shipSystemView.container);
 
-  // System selection halo — visual ring around selected system in galaxy view
+  const haloLayer = helm.createOverlayLayer('selection-halo', 21);
   const systemSelectionHalo = new Graphics();
   systemSelectionHalo.eventMode = 'none';
   systemSelectionHalo.visible = false;
-  helm.viewport.addChild(systemSelectionHalo);
+  haloLayer.addChild(systemSelectionHalo);
 
   function updateSystemSelectionHalo(): void {
     systemSelectionHalo.clear();
@@ -335,18 +340,17 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
   }
 
   // Per-frame ticker for transit ship interpolation
-  const tickerFn = () => {
+  helm.onTick(() => {
     shipTransit!.tick();
     shipSystemView!.tick();
 
     // Update tooltip position for moving transit ships
     const worldPos = shipTransit!.getHoveredWorldPos();
     if (worldPos) {
-      const screen = viewport.toScreen(worldPos.x, worldPos.y);
+      const screen = helm!.worldToScreen(worldPos.x, worldPos.y);
       updateTooltipPosition(screen.x, screen.y);
     }
-  };
-  Ticker.shared.add(tickerFn);
+  });
 
   // ============================================================================
   // Toolbar + Menu
@@ -370,16 +374,14 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
         const targetX = transitPos?.x ?? sys!.worldX;
         const targetY = transitPos?.y ?? sys!.worldY;
 
-        const vp = helm!.viewport;
         if (!preShipCamera) {
-          preShipCamera = { x: vp.center.x, y: vp.center.y, scale: vp.scaled };
+          const cam = helm!.getCameraState();
+          preShipCamera = { x: cam.x, y: cam.y, scale: cam.scale };
         }
 
-        vp.animate({
-          position: { x: targetX, y: targetY },
-          scale: SHIP_ZOOM_SCALE,
-          time: FRAME_TRANSITION_MS,
-          ease: 'easeInOutCubic',
+        helm!.animateCamera({
+          x: targetX, y: targetY, scale: SHIP_ZOOM_SCALE,
+          timeMs: FRAME_TRANSITION_MS,
         });
 
         shipIdleMarkers?.setSelectedShip(shipId);
@@ -391,12 +393,9 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
         shipTransit?.setSelectedShip(null);
         shipSystemView?.setSelectedShip(null);
         if (preShipCamera) {
-          const vp = helm!.viewport;
-          vp.animate({
-            position: { x: preShipCamera.x, y: preShipCamera.y },
-            scale: preShipCamera.scale,
-            time: FRAME_TRANSITION_MS,
-            ease: 'easeInOutCubic',
+          helm!.animateCamera({
+            x: preShipCamera.x, y: preShipCamera.y, scale: preShipCamera.scale,
+            timeMs: FRAME_TRANSITION_MS,
           });
           preShipCamera = null;
         }
@@ -460,12 +459,12 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
     onGatewayToggle(active) {
       setGatewaysVisible(active);
       helm!.setGatewaysVisible(active);
-      helm!.renderer.setGatewayIndicatorsVisible(false);
+      helm!.setGatewayIndicatorsVisible(false);
     },
     onEmpireToggle(active) {
       toggleEmpireDim(active);
       if (active) {
-        frameToEmpire(helm!.viewport, empireState.getOwnedSystemNaturalIds());
+        frameToEmpire(helm!, empireState.getOwnedSystemNaturalIds());
       }
     },
     onMenuToggle(active) {
@@ -510,22 +509,50 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
     // Defer dim application until first data arrives (no owned systems yet)
   }
 
-  // Panel coordination: entity selection drives panel lifecycle
-  let prevViewLevel = getViewLevel();
-  onStateChange(() => {
-    const viewLevel = getViewLevel();
+  // Bridge API: lifecycle events
+  helm.onSystemViewEnter(() => {
+    helm!.hideNativePanel();
+  });
 
-    if (viewLevel === 'galaxy' && prevViewLevel === 'system' && empireCamera) {
-      restoreEmpireCamera(viewport);
+  helm.onSystemViewExit(() => {
+    if (empireCamera) {
+      restoreEmpireCamera(helm!);
       empireCamera = null;
     }
+  });
 
-    // Dismiss Helm's native panel when entering system view (zoom-in transition)
-    if (viewLevel === 'system' && prevViewLevel === 'galaxy') {
-      setTimeout(() => helm!.panelManager.hide(), 0);
-    }
-    prevViewLevel = viewLevel;
+  // Bridge API: planet click interception
+  helm.onPlanetClick((planetNaturalId, screenX, screenY) => {
+    const site = empireState.getSiteForPlanet(planetNaturalId);
+    if (!site) return false;
 
+    // Resolve planet display name
+    const focusedId = getFocusedSystemId();
+    if (!focusedId) return false;
+    const system = getSystemById(focusedId);
+    if (!system) return false;
+    const planets = getPlanetsForSystem(system.naturalId);
+    const planet = planets?.find(p => p.naturalId === planetNaturalId);
+    const displayName = planet?.name || planetNaturalId;
+
+    showBasePanel(planetNaturalId, displayName, screenX, screenY, empireState, {
+      onBufferCommand(command) {
+        window.parent.postMessage({ type: 'apxm-buffer-command', command }, '*');
+      },
+      onScreenSwitch(screenId) {
+        window.parent.postMessage({ type: 'apxm-screen-switch', screenId }, '*');
+      },
+      onScreenAssign(pNid, screenId) {
+        empireState.setScreenAssignment(pNid, screenId);
+        window.parent.postMessage({ type: 'apxm-screen-assign', planetNaturalId: pNid, screenId }, '*');
+      },
+      onClose() {},
+    });
+    return true;
+  });
+
+  // Entity selection drives panel lifecycle
+  onStateChange(() => {
     updateSystemSelectionHalo();
 
     const entity = getSelectedEntity();
@@ -536,54 +563,10 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
       return;
     }
 
-    if (entity.type === 'planet') {
-      // Resolve Helm UUID to naturalId
-      const focusedId = getFocusedSystemId();
-      if (!focusedId) return;
-      const system = getSystemById(focusedId);
-      if (!system) return;
-      const planets = getPlanetsForSystem(system.naturalId);
-      const planet = planets?.find((p) => p.id === entity.id || p.naturalId === entity.id);
-      if (!planet) return;
-
-      const site = empireState.getSiteForPlanet(planet.naturalId);
-      if (site) {
-        // Owned planet — suppress Helm's panel and show base panel
-        // setTimeout(0) ensures our hide fires after Helm's own onStateChange renders
-        setTimeout(() => helm!.panelManager.hide(), 0);
-
-        // Calculate planet screen position from world coordinates
-        const planetAngle = (planet.orbitIndex / Math.max(planets!.length, 1)) * Math.PI * 2 - Math.PI / 2;
-        const planetWorldX = system.worldX + Math.cos(planetAngle) * planet.ringRadius;
-        const planetWorldY = system.worldY + Math.sin(planetAngle) * planet.ringRadius;
-        const screenPos = viewport.toScreen(planetWorldX, planetWorldY);
-
-        showBasePanel(planet.naturalId, planet.name || planet.naturalId, screenPos.x, screenPos.y, empireState, {
-          onBufferCommand(command) {
-            window.parent.postMessage({ type: 'apxm-buffer-command', command }, '*');
-          },
-          onScreenSwitch(screenId) {
-            window.parent.postMessage({ type: 'apxm-screen-switch', screenId }, '*');
-          },
-          onScreenAssign(planetNaturalId, screenId) {
-            empireState.setScreenAssignment(planetNaturalId, screenId);
-            window.parent.postMessage({ type: 'apxm-screen-assign', planetNaturalId, screenId }, '*');
-          },
-          onClose() {
-            // No-op — panel handles its own DOM cleanup
-          },
-        });
-        return;
-      }
-      // Not owned — close any APXM panel, let Helm show its native panel
-      if (isManagedPanelVisible()) hideManagedPanel();
-      return;
-    }
-
     // System guard entity in system view while panel is open — don't close
     if (entity.type === 'system' && getViewLevel() === 'system' && isManagedPanelVisible()) return;
     // Other entity selection — close any APXM panel
-    if (isManagedPanelVisible()) hideManagedPanel();
+    if (entity.type !== 'planet' && isManagedPanelVisible()) hideManagedPanel();
   });
 
   // Keyboard shortcuts
@@ -639,7 +622,7 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
       setGatewayActive(next);
       setGatewaysVisible(next);
       helm!.setGatewaysVisible(next);
-      helm!.renderer.setGatewayIndicatorsVisible(false);
+      helm!.setGatewayIndicatorsVisible(false);
     }
 
     if (e.key === 'E' || e.key === 'e') {
@@ -647,7 +630,7 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
       setEmpireActive(next);
       toggleEmpireDim(next);
       if (next) {
-        frameToEmpire(helm!.viewport, empireState.getOwnedSystemNaturalIds());
+        frameToEmpire(helm!, empireState.getOwnedSystemNaturalIds());
       }
     }
   });

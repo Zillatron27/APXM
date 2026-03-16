@@ -14,7 +14,11 @@ import type { ShipInteractionCallbacks } from './ship-idle-markers';
 import type { EmpireState } from '../empire-state';
 import type { SystemResolvers } from '../empire-overlay';
 import type { ShipSummary, FlightSummary } from '../types/bridge';
-import type { Viewport } from 'pixi-viewport';
+
+export interface CameraAccess {
+  worldToScreen(worldX: number, worldY: number): { x: number; y: number };
+  getScale(): number;
+}
 
 const SHIP_COLOUR = 0xff8c00;
 const TRANSIT_ALPHA = 0.8;
@@ -69,7 +73,7 @@ export interface ShipTransitLayer {
 export function createShipTransitLayer(
   empireState: EmpireState,
   resolvers: SystemResolvers,
-  viewport: Viewport,
+  camera: CameraAccess,
   callbacks: ShipInteractionCallbacks,
 ): ShipTransitLayer {
   const container = new Container();
@@ -228,7 +232,7 @@ export function createShipTransitLayer(
 
   function tick(): void {
     const now = Date.now();
-    const scale = viewport.scale.x;
+    const scale = camera.getScale();
 
     // Fade at full galaxy zoom
     if (scale < FADE_OUT_SCALE) {
@@ -356,7 +360,7 @@ export function createShipTransitLayer(
     // Update tooltip position for hovered transit ship (ship moves each frame)
     if (hoveredEntry && hoveredEntry.graphic.visible) {
       const worldPos = hoveredEntry.graphic.position;
-      const screen = viewport.toScreen(worldPos.x, worldPos.y);
+      const screen = camera.worldToScreen(worldPos.x, worldPos.y);
       callbacks.onHover([hoveredEntry.ship], screen.x, screen.y);
     }
   }

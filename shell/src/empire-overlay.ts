@@ -7,8 +7,8 @@
  * red (critical), orange (unknown/no data).
  */
 
-import { Container, Graphics, Circle } from 'pixi.js';
-import type { Viewport } from 'pixi-viewport';
+import { Graphics, Circle } from 'pixi.js';
+import type { Container } from '@27bit/helm';
 import { onStateChange, getViewLevel, getFocusedSystemId, getCxForSystem, getSystemByNaturalId } from '@27bit/helm';
 import type { EmpireState } from './empire-state';
 import { showTextTooltip, hideTooltip } from './ui/ship-tooltip';
@@ -61,26 +61,12 @@ export interface SystemResolvers {
 }
 
 export function createEmpireOverlay(
-  viewport: Viewport,
+  galaxyContainer: Container,
+  warehouseContainer: Container,
+  systemContainer: Container,
   empireState: EmpireState,
   resolvers: SystemResolvers,
 ): EmpireOverlay {
-  const galaxyContainer = new Container();
-  galaxyContainer.eventMode = 'none';
-
-  const warehouseContainer = new Container();
-  warehouseContainer.eventMode = 'static';
-  warehouseContainer.interactiveChildren = true;
-
-  const systemContainer = new Container();
-  systemContainer.eventMode = 'none';
-
-  // Insert galaxy overlay between Galaxy[1] and System[2→3]
-  viewport.addChildAt(galaxyContainer, 2);
-  // Warehouse dots above galaxy overlay (interactive)
-  viewport.addChildAt(warehouseContainer, 3);
-  // System overlay on top of everything
-  viewport.addChild(systemContainer);
 
   function refreshGalaxy(): void {
     galaxyContainer.removeChildren();

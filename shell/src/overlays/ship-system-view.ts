@@ -18,7 +18,6 @@ import type { ShipInteractionCallbacks } from './ship-idle-markers';
 import type { EmpireState } from '../empire-state';
 import type { SystemResolvers, PlanetInfo } from '../empire-overlay';
 import type { ShipSummary, FlightSummary, FlightSegmentSummary } from '../types/bridge';
-import type { Viewport } from 'pixi-viewport';
 
 const SHIP_COLOUR = 0xff8c00;
 const SYSTEM_VIEW_ALPHA = 0.85;
@@ -74,7 +73,6 @@ export interface ShipSystemViewLayer {
 export function createShipSystemView(
   empireState: EmpireState,
   resolvers: SystemResolvers,
-  viewport: Viewport,
   callbacks: ShipInteractionCallbacks,
 ): ShipSystemViewLayer {
   const container = new Container();
