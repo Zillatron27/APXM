@@ -144,15 +144,22 @@ export function findCardByCommand(cmd: string): HTMLElement | null {
 /** Find the command input element in the add-card form. */
 export function getCommandInput(): HTMLInputElement | null {
   // APEX may render the add-card form in a portal outside #container
-  const inputs = document.querySelectorAll('input[type="text"], input:not([type])');
-  for (const input of inputs) {
-    const el = input as HTMLInputElement;
-    // Must be visible (offsetParent !== null) and not our own shadow DOM input
-    if (el.offsetParent !== null && !el.closest('apxm-overlay')) {
+  const inputs = document.querySelectorAll<HTMLInputElement>('input[type="text"], input:not([type])');
+  let fallback: HTMLInputElement | null = null;
+
+  for (const el of inputs) {
+    if (el.offsetParent === null || el.closest('apxm-overlay')) continue;
+
+    // Prefer the new-buffer command input by its placeholder text
+    const ph = el.placeholder?.toLowerCase() ?? '';
+    if (ph.includes('command') || ph.includes('buffer')) {
       return el;
     }
+
+    // Track first visible input as fallback
+    if (!fallback) fallback = el;
   }
-  return null;
+  return fallback;
 }
 
 // -- Style management --
