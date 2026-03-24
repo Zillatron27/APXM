@@ -48,14 +48,14 @@ Requires APXM extension installed. Without the extension, you'll be directed to 
 
 Overlays the APEX mobile interface with a touch-focused UI while the underlying game client keeps running.
 
-- **Staus Dashboard** — at-a-glance summaries of bases, fleet and contracts. Drill-down to full views.
+- **Status Dashboard** — at-a-glance summaries of bases, fleet and contracts. Drill-down to full views.
 - **Burn tracking** — per-site material burn rates with urgency indicators (critical/warning/ok). Purchase need calculation with resupply targets. Configurable thresholds.
 - **Fleet overview** — ship status, destinations, ETA countdowns.
 - **Contract monitoring** — active contracts with condition status and deadlines.
 - **FIO integration** — auto-fetches data from the FIO REST API on startup if credentials are configured.
 - **Buffer refresh** — per-site data refresh without switching back to APEX.
 
-## Technial Stuff
+## Technical Stuff
 
 APXM intercepts the WebSocket connection between APEX and the game server using a main-world content script injected before Prun loads. Messages are decoded through Socket.IO's double-encoding layer (engine.io + socket.io framing) and fed into typed Zustand stores. The React UI (mobile) and postMessage bridge (desktop) render from those stores.
 
