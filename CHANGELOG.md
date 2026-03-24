@@ -1,5 +1,30 @@
 # APXM Changelog
 
+## 0.1.2-b8 — Fleet & Burn Panel Polish (2026-03-24)
+
+### Features
+
+- **Fleet panel filter buttons** — IDLE and TRANSIT toggle filters in the header, matching burn panel pattern
+- **Fleet panel collapsible sections** — Idle and In Transit sections are individually collapsible with chevron indicators and ship counts. Collapse All / Expand All toolbar button
+- **Fleet panel sort** — dropdown selector with ETA (default), Name (alphabetical), and Cargo (weight capacity, largest first) sort modes
+- **Burn panel sort** — cycle toggle between Burn (urgency, default) and A–Z (alphabetical by planet name)
+- **Ship location names** — fleet panel now shows friendly planet names (e.g. "Agamemnon", "Phobos") for idle ships using Helm's FIO planet search index, instead of raw natural IDs (e.g. "ZV-759d")
+
+### Bug Fixes
+
+- **CX station labels** — `systemDisplayName` now returns the station NaturalId (e.g. "ANT") instead of ComexCode (e.g. "AI1"). FIO data has NaturalId as the human-friendly label. Affects all CX labels: fleet panel, ship panel, ship tooltips, warehouse dropdown, transit routes
+- **Burn panel infinity display** — materials with infinite days remaining (net positive production) now show ∞ instead of — (em dash). The `formatDays` function already handled Infinity correctly but the caller was converting Infinity to null before passing it
+- **Fleet sort dropdown focus** — select element blurs after value change to prevent stealing Escape key from panel dismiss
+
+### Tests (283 → 303)
+
+- **classifyBurnStatus** — 10 new tests: empty input, all-Infinity consuming, threshold boundary conditions (at/below/above critical and warning), output type exclusion, mixed workforce+input priority
+- **Entity store batch mode** — 9 new tests: mutations don't trigger Zustand subscribers during batch, single flush on endBatch, shadow state reads during batch, no-op endBatch, setAll/removeOne/clear/setFetched in batch mode
+- **Empire state** — `makeSnapshot` test helper updated with all current BridgeSnapshot fields (screens, screenAssignments, burnThresholds, companyName, primaryCurrency, warehouses, siteBurns, rprunDetected, rprunFeaturesDisabled)
+- **useSiteStaleness** — extracted `deriveStaleness()` as a testable pure function, eliminated drifted test copy that had different return shape from the actual hook. Tests now call the real derivation logic
+
+---
+
 ## 0.1.2 — Buffer Refresh & Caching (2026-02-11)
 
 ### Features
