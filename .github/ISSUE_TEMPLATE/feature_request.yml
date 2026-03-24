@@ -1,0 +1,31 @@
+name: Feature Request
+description: Suggest something you'd like to see
+labels: ["enhancement", "tester-feedback"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What would you like?
+      description: Describe the feature or improvement.
+      placeholder: "e.g. Show production completion times on the burn panel so I can see what's about to resolve"
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Why is this useful?
+      description: What problem does this solve or what workflow does it improve?
+      placeholder: "e.g. When checking burns I often need to know if a production order is about to deliver the materials I'm short on"
+    validations:
+      required: false
+  - type: dropdown
+    id: view
+    attributes:
+      label: Which view does this relate to?
+      options:
+        - Desktop View (galaxy map)
+        - Mobile View
+        - Both
+        - General / other
+    validations:
+      required: false
