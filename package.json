@@ -15,7 +15,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "packageManager": "pnpm@10.28.2",
   "dependencies": {
     "@prun/link": "git+ssh://git@github.com/Zillatron27/PrUn-Link.git#v1.0.0",
