@@ -1,14 +1,14 @@
 /**
  * APXM Button — injects a styled button into APEX's toolbar area.
  *
- * On click: if an APXM screen exists, navigate to it.
- * If not, open a Create Screen (CS) buffer with pre-filled fields.
+ * On click: copies the XIT WEB command to clipboard.
+ * On hover: shows APXM version.
  */
 
-import { useScreensStore } from '../stores/screens';
-import { openBuffer } from './buffer-opener';
+import { BUILD_VERSION } from './constants';
 
 const BUTTON_ID = 'apxm-apex-button';
+const BUFFER_COMMAND = 'XIT WEB https://apxm.27bit.dev';
 
 /** Find the APEX toolbar anchor point for button insertion. */
 function findAnchor(): HTMLElement | null {
@@ -31,6 +31,7 @@ function createApxmButton(): HTMLButtonElement {
   const btn = document.createElement('button');
   btn.id = BUTTON_ID;
   btn.textContent = 'APXM';
+  btn.title = `APXM ${BUILD_VERSION}`;
   btn.style.cssText = `
     font-family: "Droid Sans Mono", monospace;
     font-size: 11px;
@@ -56,36 +57,24 @@ function createApxmButton(): HTMLButtonElement {
     btn.style.borderColor = 'rgba(255, 255, 255, 0.15)';
   });
 
-  btn.addEventListener('click', handleClick);
+  btn.addEventListener('click', () => {
+    navigator.clipboard.writeText(BUFFER_COMMAND).then(() => {
+      const original = btn.textContent;
+      btn.textContent = 'COPIED';
+      setTimeout(() => { btn.textContent = original; }, 1500);
+    });
+  });
+
   return btn;
 }
 
-async function handleClick(): Promise<void> {
-  // If an APXM screen exists, switch to it
-  const screens = useScreensStore.getState().screens;
-  const apxmScreen = screens.find(s => s.name.toLowerCase() === 'apxm');
-
-  if (apxmScreen) {
-    location.hash = `#screen=${apxmScreen.id}`;
-    return;
-  }
-
-  // Otherwise open a buffer with the APXM desktop view
-  const opened = await openBuffer('XIT WEB apxm.27bit.dev');
-  if (!opened) {
-    console.warn('[APXM] Failed to open APXM buffer');
-  }
-}
-
 function injectButton(): void {
-  // Don't inject if already present
   if (document.getElementById(BUTTON_ID)) return;
 
   const anchor = findAnchor();
   if (!anchor) return;
 
   const btn = createApxmButton();
-  // Insert adjacent to the anchor
   anchor.parentElement?.insertBefore(btn, anchor.nextSibling);
 }
 
@@ -93,12 +82,9 @@ let observer: MutationObserver | null = null;
 
 /** Initialize APXM button injection with MutationObserver for re-injection. */
 export function initApxmButton(): void {
-  // Initial injection attempt
   injectButton();
 
-  // Watch for DOM changes that may rebuild the APEX toolbar
   observer = new MutationObserver(() => {
-    // Re-inject if button was removed (APEX toolbar rebuilds on screen switches)
     if (!document.getElementById(BUTTON_ID)) {
       injectButton();
     }

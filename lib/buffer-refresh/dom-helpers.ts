@@ -150,10 +150,20 @@ export function getCommandInput(): HTMLInputElement | null {
   for (const el of inputs) {
     if (el.offsetParent === null || el.closest('apxm-overlay')) continue;
 
-    // Prefer the new-buffer command input by its placeholder text
+    // Check the input's own placeholder attribute
     const ph = el.placeholder?.toLowerCase() ?? '';
     if (ph.includes('command') || ph.includes('buffer')) {
       return el;
+    }
+
+    // APEX renders placeholder text as a sibling/nearby element, not as an HTML
+    // placeholder attribute. Check the parent container for "command" text.
+    const parent = el.parentElement;
+    if (parent) {
+      const parentText = parent.textContent?.toLowerCase() ?? '';
+      if (parentText.includes('enter content command') || parentText.includes('command')) {
+        return el;
+      }
     }
 
     // Track first visible input as fallback
