@@ -7,7 +7,7 @@
 
 import { getCategoryColors } from './material-colors';
 import { MATERIAL_CATEGORIES } from './material-categories';
-import { esc, systemDisplayName, getTheme } from './panel-utils';
+import { esc, systemDisplayName, shipLocationName, getTheme } from './panel-utils';
 import type { ShipSummary } from '../types/bridge';
 import type { EmpireState } from '../empire-state';
 import { makeDraggable, makeResizable, constrainToViewport, loadLayout, saveLayout, PIN_SVG, type PanelLayout } from './panel-drag';
@@ -88,6 +88,12 @@ export interface FleetPanelCallbacks {
 
 const LAYOUT_KEY = 'apxm-fleet-layout';
 
+// Persist across re-renders within panel lifecycle
+const activeFilters = new Set<string>(['idle', 'transit']);
+const collapsedSections = new Set<string>();
+type SortMode = 'eta' | 'name' | 'cargo';
+let sortMode: SortMode = 'eta';
+
 let panelEl: HTMLDivElement | null = null;
 let backdropEl: HTMLDivElement | null = null;
 let unsubscribe: (() => void) | null = null;
@@ -131,6 +137,16 @@ function persistLayout(): void {
   if (layout) saveLayout(LAYOUT_KEY, layout);
 }
 
+function renderFilterToggles(): string {
+  const filters: Array<{ key: string; label: string; cssClass: string }> = [
+    { key: 'idle', label: 'IDLE', cssClass: 'idle' },
+    { key: 'transit', label: 'TRANSIT', cssClass: 'transit' },
+  ];
+  return filters.map(f =>
+    `<button class="fleet-filter-btn ${f.cssClass}${activeFilters.has(f.key) ? ' active' : ''}" data-fleet-filter="${f.key}">${f.label}</button>`
+  ).join('');
+}
+
 function render(empireState: EmpireState, callbacks: FleetPanelCallbacks): void {
   if (!panelEl) return;
 
@@ -138,24 +154,56 @@ function render(empireState: EmpireState, callbacks: FleetPanelCallbacks): void 
   if (!body) return;
 
   const idleBySystem = empireState.getIdleShipsBySystem();
+
+  function shipSort(a: ShipSummary, b: ShipSummary): number {
+    if (sortMode === 'name') return a.name.localeCompare(b.name);
+    if (sortMode === 'cargo') {
+      const aCap = a.cargo?.weightCapacity ?? 0;
+      const bCap = b.cargo?.weightCapacity ?? 0;
+      return bCap - aCap; // largest first
+    }
+    return 0; // eta — default order preserved
+  }
+
   const inTransit = empireState.getInTransitShips()
-    .sort((a, b) => a.flight.arrivalTimestamp - b.flight.arrivalTimestamp);
+    .sort((a, b) => sortMode === 'eta'
+      ? a.flight.arrivalTimestamp - b.flight.arrivalTimestamp
+      : shipSort(a.ship, b.ship));
+
+  // Flatten idle ships for sorting
+  const idleShips: Array<{ systemId: string; ship: ShipSummary }> = [];
+  for (const [systemId, ships] of idleBySystem) {
+    for (const ship of ships) {
+      idleShips.push({ systemId, ship });
+    }
+  }
+  if (sortMode !== 'eta') {
+    idleShips.sort((a, b) => shipSort(a.ship, b.ship));
+  }
 
   let html = '';
+  const showIdle = activeFilters.has('idle');
+  const showTransit = activeFilters.has('transit');
+  const idleCollapsed = collapsedSections.has('idle');
+  const transitCollapsed = collapsedSections.has('transit');
 
-  // Idle ships by system
-  if (idleBySystem.size > 0) {
-    html += '<div class="fleet-section-label">Idle</div>';
-    for (const [systemId, ships] of idleBySystem) {
-      for (const ship of ships) {
+  // Idle ships
+  if (showIdle && idleShips.length > 0) {
+    html += `<div class="fleet-section-label" data-fleet-section="idle">
+      <span class="fleet-section-chevron">${idleCollapsed ? '\u25B6' : '\u25BC'}</span>
+      Idle <span class="fleet-section-count">(${idleShips.length})</span>
+    </div>`;
+    if (!idleCollapsed) {
+      for (const { systemId, ship } of idleShips) {
         const detail = hasShipDetail(ship);
+        const location = shipLocationName(ship);
         html += `
           <div class="fleet-ship-row${detail ? ' transit-row' : ''}" data-system="${esc(systemId)}" data-ship="${esc(ship.shipId)}">
             ${detail ? '<div class="fleet-ship-top">' : ''}
             <span class="fleet-ship-status idle">\u25CF</span>
             <div class="fleet-ship-info">
               <div class="fleet-ship-name">${esc(ship.name)}</div>
-              <div class="fleet-ship-location">${esc(systemDisplayName(systemId))}</div>
+              <div class="fleet-ship-location">${esc(location)}</div>
             </div>
             <div class="fleet-ship-actions">
               <button class="fleet-action-btn" data-fleet-buffer="SFC ${esc(ship.registration)}">Fly</button>
@@ -170,38 +218,60 @@ function render(empireState: EmpireState, callbacks: FleetPanelCallbacks): void 
   }
 
   // Transit ships
-  if (inTransit.length > 0) {
-    html += '<div class="fleet-section-label">In Transit</div>';
-    for (const { ship, flight } of inTransit) {
-      const from = systemDisplayName(flight.originSystemNaturalId);
-      const to = systemDisplayName(flight.destinationSystemNaturalId);
-      const eta = formatEta(flight.arrivalTimestamp);
-      // Use destination system for click-to-pan
-      const targetSystem = flight.destinationSystemNaturalId ?? flight.originSystemNaturalId ?? '';
-      html += `
-        <div class="fleet-ship-row transit-row" data-system="${esc(targetSystem)}" data-ship="${esc(ship.shipId)}">
-          <div class="fleet-ship-top">
-            <span class="fleet-ship-status transit">\u2192</span>
-            <div class="fleet-ship-info">
-              <div class="fleet-ship-name">${esc(ship.name)}</div>
-              <div class="fleet-ship-location">${esc(from)} \u2192 ${esc(to)} (${esc(eta)})</div>
+  if (showTransit && inTransit.length > 0) {
+    html += `<div class="fleet-section-label" data-fleet-section="transit">
+      <span class="fleet-section-chevron">${transitCollapsed ? '\u25B6' : '\u25BC'}</span>
+      In Transit <span class="fleet-section-count">(${inTransit.length})</span>
+    </div>`;
+    if (!transitCollapsed) {
+      for (const { ship, flight } of inTransit) {
+        const from = systemDisplayName(flight.originSystemNaturalId);
+        const to = systemDisplayName(flight.destinationSystemNaturalId);
+        const eta = formatEta(flight.arrivalTimestamp);
+        // Use destination system for click-to-pan
+        const targetSystem = flight.destinationSystemNaturalId ?? flight.originSystemNaturalId ?? '';
+        html += `
+          <div class="fleet-ship-row transit-row" data-system="${esc(targetSystem)}" data-ship="${esc(ship.shipId)}">
+            <div class="fleet-ship-top">
+              <span class="fleet-ship-status transit">\u2192</span>
+              <div class="fleet-ship-info">
+                <div class="fleet-ship-name">${esc(ship.name)}</div>
+                <div class="fleet-ship-location">${esc(from)} \u2192 ${esc(to)} (${esc(eta)})</div>
+              </div>
+              <div class="fleet-ship-actions">
+                <button class="fleet-action-btn" data-fleet-buffer="SFC ${esc(ship.registration)}">Fly</button>
+                <button class="fleet-action-btn" data-fleet-buffer="SHPI ${esc(ship.registration)}">Cargo</button>
+                <button class="fleet-action-btn" data-fleet-buffer="SHPF ${esc(ship.registration)}">Fuel</button>
+              </div>
             </div>
-            <div class="fleet-ship-actions">
-              <button class="fleet-action-btn" data-fleet-buffer="SFC ${esc(ship.registration)}">Fly</button>
-              <button class="fleet-action-btn" data-fleet-buffer="SHPI ${esc(ship.registration)}">Cargo</button>
-              <button class="fleet-action-btn" data-fleet-buffer="SHPF ${esc(ship.registration)}">Fuel</button>
-            </div>
-          </div>
-          ${renderShipDetail(ship)}
-        </div>`;
+            ${renderShipDetail(ship)}
+          </div>`;
+      }
     }
   }
 
-  if (idleBySystem.size === 0 && inTransit.length === 0) {
+  const totalShips = idleBySystem.size > 0 || inTransit.length > 0;
+  const nothingVisible = !totalShips || (!showIdle && !showTransit);
+  if (nothingVisible) {
     html = '<div class="fleet-empty">No ships</div>';
   }
 
   body.innerHTML = html;
+
+  // Wire section header collapse toggles
+  body.querySelectorAll<HTMLElement>('.fleet-section-label[data-fleet-section]').forEach((label) => {
+    label.addEventListener('click', () => {
+      const section = label.dataset.fleetSection;
+      if (!section) return;
+      if (collapsedSections.has(section)) {
+        collapsedSections.delete(section);
+      } else {
+        collapsedSections.add(section);
+      }
+      updateExpandToggleText();
+      render(empireState, callbacks);
+    });
+  });
 
   // Wire click handlers
   body.querySelectorAll<HTMLElement>('.fleet-ship-row').forEach((row) => {
@@ -224,6 +294,11 @@ function render(empireState: EmpireState, callbacks: FleetPanelCallbacks): void 
   });
 }
 
+function updateExpandToggleText(): void {
+  const toggle = panelEl?.querySelector('#fleet-expand-toggle');
+  if (toggle) toggle.textContent = collapsedSections.size > 0 ? 'Expand All' : 'Collapse All';
+}
+
 export function showFleetPanel(
   empireState: EmpireState,
   callbacks: FleetPanelCallbacks,
@@ -240,8 +315,18 @@ export function showFleetPanel(
     <div class="fleet-panel-header">
       <h3>Fleet Overview</h3>
       ${showActs ? '<button class="fleet-acts-btn">ACTS</button>' : ''}
+      <div class="fleet-filter-group">${renderFilterToggles()}</div>
       <button class="panel-pin-btn${pinned ? ' pinned' : ''}">${PIN_SVG}</button>
       <button class="fleet-panel-close">\u00D7</button>
+    </div>
+    <div class="fleet-panel-toolbar">
+      <button class="fleet-expand-btn" id="fleet-expand-toggle">Collapse All</button>
+      <span class="fleet-sort-label">Sort:</span>
+      <select class="fleet-sort-select" id="fleet-sort-select">
+        <option value="eta"${sortMode === 'eta' ? ' selected' : ''}>ETA</option>
+        <option value="name"${sortMode === 'name' ? ' selected' : ''}>Name</option>
+        <option value="cargo"${sortMode === 'cargo' ? ' selected' : ''}>Cargo</option>
+      </select>
     </div>
     <div class="fleet-panel-body"></div>
   `;
@@ -261,6 +346,39 @@ export function showFleetPanel(
       callbacks.onBufferCommand('XIT ACTION');
     });
   }
+
+  // Wire filter toggles (once, not per-render)
+  panelEl.querySelectorAll<HTMLButtonElement>('[data-fleet-filter]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.fleetFilter;
+      if (!key) return;
+      if (activeFilters.has(key)) activeFilters.delete(key);
+      else activeFilters.add(key);
+      btn.classList.toggle('active', activeFilters.has(key));
+      render(empireState, callbacks);
+    });
+  });
+
+  // Wire expand/collapse toggle
+  const expandToggle = panelEl.querySelector('#fleet-expand-toggle') as HTMLButtonElement;
+  expandToggle.addEventListener('click', () => {
+    if (collapsedSections.size > 0) {
+      collapsedSections.clear();
+    } else {
+      collapsedSections.add('idle');
+      collapsedSections.add('transit');
+    }
+    updateExpandToggleText();
+    render(empireState, callbacks);
+  });
+
+  // Wire sort dropdown
+  const sortSelect = panelEl.querySelector('#fleet-sort-select') as HTMLSelectElement;
+  sortSelect.addEventListener('change', () => {
+    sortMode = sortSelect.value as SortMode;
+    sortSelect.blur();
+    render(empireState, callbacks);
+  });
 
   const headerEl = panelEl.querySelector('.fleet-panel-header') as HTMLElement;
   const bodyEl = panelEl.querySelector('.fleet-panel-body') as HTMLElement;

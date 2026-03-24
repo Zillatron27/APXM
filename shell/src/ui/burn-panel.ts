@@ -31,6 +31,7 @@ const STATUS_PRIORITY: Record<string, number> = {
 // Persist across re-renders within panel lifecycle
 const expandedPlanets = new Set<string>();
 const activeFilters = new Set<string>(['critical', 'warning', 'ok', 'surplus']);
+let burnSortAlpha = false;
 
 const LAYOUT_KEY = 'apxm-burn-layout';
 
@@ -115,7 +116,7 @@ function renderMaterialRows(burns: BurnMaterialSummary[]): string {
   for (const b of sorted) {
     const slug = MATERIAL_CATEGORIES[b.materialTicker.toUpperCase()] ?? '';
     const c = getCategoryColors(slug, theme);
-    const daysText = formatDays(b.daysRemaining === Infinity ? null : b.daysRemaining);
+    const daysText = formatDays(b.daysRemaining);
     const rateText = b.dailyAmount !== 0 ? b.dailyAmount.toFixed(1) : '\u2014';
     const needText = b.need > 0 ? Math.ceil(b.need).toLocaleString() : '\u2014';
     const urgencyClass = b.urgency;
@@ -143,8 +144,13 @@ function render(empireState: EmpireState, callbacks: BurnPanelCallbacks): void {
 
   const siteBurns = empireState.getSiteBurns();
 
-  // Sort by urgency, then by days ascending
   const sorted = [...siteBurns].sort((a, b) => {
+    if (burnSortAlpha) {
+      const nameA = a.planetName ?? a.planetNaturalId ?? '';
+      const nameB = b.planetName ?? b.planetNaturalId ?? '';
+      return nameA.localeCompare(nameB);
+    }
+    // Default: urgency then days ascending
     const pa = STATUS_PRIORITY[a.burnStatus] ?? 0;
     const pb = STATUS_PRIORITY[b.burnStatus] ?? 0;
     if (pa !== pb) return pb - pa;
@@ -249,6 +255,7 @@ export function showBurnPanel(
     </div>
     <div class="burn-panel-toolbar">
       <button class="burn-expand-btn" id="burn-expand-toggle">Expand All</button>
+      <span class="burn-sort-label">Sort:</span><button class="burn-sort-btn" id="burn-sort-toggle">${burnSortAlpha ? 'A\u2013Z' : 'Burn'}</button>
     </div>
     <div class="burn-panel-body"></div>
   `;
@@ -293,6 +300,14 @@ export function showBurnPanel(
       }
     }
     expandToggle.textContent = expandedPlanets.size > 0 ? 'Collapse All' : 'Expand All';
+    render(empireState, callbacks);
+  });
+
+  // Wire sort toggle
+  const sortToggle = panelEl.querySelector('#burn-sort-toggle') as HTMLButtonElement;
+  sortToggle.addEventListener('click', () => {
+    burnSortAlpha = !burnSortAlpha;
+    sortToggle.textContent = burnSortAlpha ? 'A\u2013Z' : 'Burn';
     render(empireState, callbacks);
   });
 

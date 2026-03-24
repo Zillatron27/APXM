@@ -47,6 +47,26 @@
   border-color: #ff8c00;
 }
 
+.fleet-filter-group {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.fleet-filter-btn {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.3);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 13px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.fleet-filter-btn.active.idle { color: #4caf50; border-color: rgba(76, 175, 80, 0.5); }
+.fleet-filter-btn.active.transit { color: #ff8c00; border-color: rgba(255, 140, 0, 0.5); }
+
 .fleet-panel-close {
   background: none;
   border: none;
@@ -56,11 +76,55 @@
   opacity: 0.5;
   padding: 2px 4px;
   line-height: 1;
-  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .fleet-panel-close:hover {
   opacity: 1;
+}
+
+.fleet-panel-toolbar {
+  display: flex;
+  gap: 6px;
+  padding: 4px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.fleet-expand-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.fleet-expand-btn:hover {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.fleet-sort-label {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 12px;
+  margin-left: auto;
+}
+
+.fleet-sort-select {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.5);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+  padding: 0 2px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.fleet-sort-select option {
+  background: #14141e;
+  color: #e0e0e0;
 }
 
 .fleet-panel-body {
@@ -131,6 +195,21 @@
   letter-spacing: 0.08em;
   color: rgba(255, 255, 255, 0.7);
   padding: 6px 12px 3px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.fleet-section-label:hover {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.fleet-section-chevron {
+  font-size: 10px;
+  margin-right: 4px;
+}
+
+.fleet-section-count {
+  opacity: 0.5;
 }
 
 .fleet-ship-actions {

@@ -104,8 +104,27 @@
   cursor: pointer;
 }
 
-.burn-expand-btn:hover {
+.burn-expand-btn:hover,
+.burn-sort-btn:hover {
   color: rgba(255, 255, 255, 0.7);
+}
+
+.burn-sort-label {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 12px;
+  margin-left: auto;
+}
+
+.burn-sort-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+  padding: 0;
+  cursor: pointer;
+  min-width: 4ch;
+  text-align: left;
 }
 
 .burn-panel-body {

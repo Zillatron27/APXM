@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createEntityStore } from '../create-entity-store';
 
 interface TestEntity {
@@ -207,6 +207,127 @@ describe('createEntityStore', () => {
 
     it('returns undefined when not found', () => {
       expect(store.getState().getById('nonexistent')).toBeUndefined();
+    });
+  });
+
+  describe('batch mode', () => {
+    it('does not trigger Zustand set during batch', () => {
+      const listener = vi.fn();
+      store.subscribe(listener);
+
+      store.beginBatch();
+      store.getState().setOne({ id: '1', name: 'one', value: 1 });
+      store.getState().setOne({ id: '2', name: 'two', value: 2 });
+
+      // Zustand subscriber should NOT have fired yet
+      expect(listener).not.toHaveBeenCalled();
+      // But Zustand's committed state should still be empty
+      expect(store.getState().entities.size).toBe(0);
+
+      store.endBatch();
+    });
+
+    it('flushes accumulated mutations on endBatch', () => {
+      store.beginBatch();
+      store.getState().setOne({ id: '1', name: 'one', value: 1 });
+      store.getState().setMany([
+        { id: '2', name: 'two', value: 2 },
+        { id: '3', name: 'three', value: 3 },
+      ]);
+      store.endBatch();
+
+      expect(store.getState().entities.size).toBe(3);
+      expect(store.getState().getById('1')?.name).toBe('one');
+      expect(store.getState().getById('3')?.name).toBe('three');
+    });
+
+    it('fires Zustand subscriber exactly once on endBatch', () => {
+      const listener = vi.fn();
+      store.subscribe(listener);
+
+      store.beginBatch();
+      store.getState().setOne({ id: '1', name: 'one', value: 1 });
+      store.getState().setOne({ id: '2', name: 'two', value: 2 });
+      store.getState().setOne({ id: '3', name: 'three', value: 3 });
+      store.endBatch();
+
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it('reads from shadow state during batch', () => {
+      store.beginBatch();
+      store.getState().setOne({ id: '1', name: 'one', value: 1 });
+
+      // getById should read from shadow, not committed state
+      expect(store.getState().getById('1')?.name).toBe('one');
+      // getAll should also read from shadow
+      expect(store.getState().getAll()).toHaveLength(1);
+
+      store.endBatch();
+    });
+
+    it('endBatch is a no-op when no mutations occurred', () => {
+      const listener = vi.fn();
+      store.subscribe(listener);
+
+      store.beginBatch();
+      store.endBatch();
+
+      expect(listener).not.toHaveBeenCalled();
+    });
+
+    it('handles setAll during batch', () => {
+      store.getState().setOne({ id: '1', name: 'one', value: 1 });
+
+      store.beginBatch();
+      store.getState().setAll([
+        { id: '2', name: 'two', value: 2 },
+        { id: '3', name: 'three', value: 3 },
+      ]);
+      store.endBatch();
+
+      expect(store.getState().entities.size).toBe(2);
+      expect(store.getState().getById('1')).toBeUndefined();
+      expect(store.getState().getById('2')?.name).toBe('two');
+    });
+
+    it('handles removeOne during batch', () => {
+      store.getState().setAll([
+        { id: '1', name: 'one', value: 1 },
+        { id: '2', name: 'two', value: 2 },
+      ]);
+
+      store.beginBatch();
+      store.getState().removeOne('1');
+      store.endBatch();
+
+      expect(store.getState().entities.size).toBe(1);
+      expect(store.getState().getById('1')).toBeUndefined();
+      expect(store.getState().getById('2')?.name).toBe('two');
+    });
+
+    it('handles clear during batch', () => {
+      store.getState().setAll([
+        { id: '1', name: 'one', value: 1 },
+        { id: '2', name: 'two', value: 2 },
+      ]);
+
+      store.beginBatch();
+      store.getState().clear();
+      store.endBatch();
+
+      expect(store.getState().entities.size).toBe(0);
+      expect(store.getState().fetched).toBe(false);
+      expect(store.getState().dataSource).toBeNull();
+    });
+
+    it('handles setFetched during batch', () => {
+      store.beginBatch();
+      store.getState().setFetched('websocket');
+      store.endBatch();
+
+      expect(store.getState().fetched).toBe(true);
+      expect(store.getState().dataSource).toBe('websocket');
     });
   });
 });

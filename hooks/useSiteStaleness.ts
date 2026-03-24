@@ -1,25 +1,20 @@
 import { formatRelativeTime } from '../lib/format-time';
 import { useTick } from './useTick';
-import { useSiteSourceStore } from '../stores/site-data-sources';
+import { useSiteSourceStore, type SiteSourceEntry } from '../stores/site-data-sources';
 
-interface StalenessResult {
+export interface StalenessResult {
   text: string;
   isStale: boolean;
   colorClass: string;
 }
 
+export const STALE_THRESHOLD_MS = 5 * 60 * 60 * 1000;
+
 /**
- * Derives staleness text and state for a specific site from the per-site
- * source tracking store. Each site independently tracks its data provenance
- * (cache → FIO → websocket) so a buffer refresh for one site doesn't affect
- * the indicator for other sites.
+ * Pure derivation of staleness state from a site source entry.
+ * Extracted for testability — no React hooks, no store access.
  */
-export function useSiteStaleness(siteId: string): StalenessResult {
-  const entry = useSiteSourceStore((s) => s.entries.get(siteId));
-
-  // Re-render every 30s to keep relative time fresh
-  useTick(30000);
-
+export function deriveStaleness(entry: SiteSourceEntry | undefined): StalenessResult {
   if (!entry || !entry.source) {
     return { text: 'awaiting burn data', isStale: true, colorClass: 'text-apxm-text/40' };
   }
@@ -44,11 +39,25 @@ export function useSiteStaleness(siteId: string): StalenessResult {
 
   // websocket
   const ageMs = Date.now() - updatedAt;
-  const STALE_THRESHOLD_MS = 5 * 60 * 60 * 1000;
   const stale = ageMs > STALE_THRESHOLD_MS;
   return {
     text: `updated ${formatRelativeTime(updatedAt)} ago`,
     isStale: stale,
     colorClass: stale ? 'text-apxm-text/40' : 'text-apxm-text/50',
   };
+}
+
+/**
+ * Derives staleness text and state for a specific site from the per-site
+ * source tracking store. Each site independently tracks its data provenance
+ * (cache → FIO → websocket) so a buffer refresh for one site doesn't affect
+ * the indicator for other sites.
+ */
+export function useSiteStaleness(siteId: string): StalenessResult {
+  const entry = useSiteSourceStore((s) => s.entries.get(siteId));
+
+  // Re-render every 30s to keep relative time fresh
+  useTick(30000);
+
+  return deriveStaleness(entry);
 }
