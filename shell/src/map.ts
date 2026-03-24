@@ -30,7 +30,7 @@ import { showTooltip, hideTooltip, updateTooltipPosition } from './ui/ship-toolt
 import { showPanel, updatePanel } from './ui/ship-panel';
 import { showBasePanel, updateBasePanel } from './ui/base-panel';
 import { isManagedPanelVisible, hideManagedPanel } from './ui/panel-manager';
-import { createToolbar, setMenuActive, setEmpireActive, isEmpireActive, setGatewayActive, isGatewayActive, setBurnActive, setFleetActive, setWarehouseActive, getMenuButton, getWarehouseButton } from './ui/toolbar';
+import { createToolbar, setMenuActive, setEmpireActive, isEmpireActive, setGatewayActive, isGatewayActive, setBurnActive, isBurnActive, setFleetActive, isFleetActive, setWarehouseActive, getMenuButton, getWarehouseButton } from './ui/toolbar';
 import { showWarehouseDropdown, hideWarehouseDropdown, isWarehouseDropdownVisible } from './ui/warehouse-dropdown';
 import { showMenu, hideMenu, isMenuVisible } from './ui/menu';
 import { showFleetPanel, hideFleetPanel, isFleetPanelVisible } from './ui/fleet-panel';
@@ -508,6 +508,10 @@ export async function initMap(container: HTMLElement, earlyMessages: MessageEven
     setEmpireActive(true);
     // Defer dim application until first data arrives (no owned systems yet)
   }
+
+  // Restore persisted burn/fleet panel state
+  if (isBurnActive()) toggleBurnPanel();
+  if (isFleetActive()) toggleFleetPanel();
 
   // Bridge API: lifecycle events
   helm.onSystemViewEnter(() => {

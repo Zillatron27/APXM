@@ -24,6 +24,21 @@ let gatewayBtn: HTMLButtonElement | null = null;
 let empireBtn: HTMLButtonElement | null = null;
 let menuBtn: HTMLButtonElement | null = null;
 
+const BURN_STORAGE_KEY = 'apxm-burn-active';
+const FLEET_STORAGE_KEY = 'apxm-fleet-active';
+
+function loadPersistedState(key: string): boolean {
+  try {
+    return localStorage.getItem(key) === 'true';
+  } catch { return false; }
+}
+
+function persistState(key: string, active: boolean): void {
+  try {
+    localStorage.setItem(key, String(active));
+  } catch { /* localStorage unavailable */ }
+}
+
 let burnActive = false;
 let fleetActive = false;
 let warehouseActive = false;
@@ -84,6 +99,7 @@ export function createToolbar(callbacks: ToolbarCallbacks): HTMLDivElement {
   burnBtn.addEventListener('click', () => {
     burnActive = !burnActive;
     burnBtn!.classList.toggle('active', burnActive);
+    persistState(BURN_STORAGE_KEY, burnActive);
     callbacks.onBurnToggle(burnActive);
   });
 
@@ -91,6 +107,7 @@ export function createToolbar(callbacks: ToolbarCallbacks): HTMLDivElement {
   fleetBtn.addEventListener('click', () => {
     fleetActive = !fleetActive;
     fleetBtn!.classList.toggle('active', fleetActive);
+    persistState(FLEET_STORAGE_KEY, fleetActive);
     callbacks.onFleetToggle(fleetActive);
   });
 
@@ -131,12 +148,19 @@ export function createToolbar(callbacks: ToolbarCallbacks): HTMLDivElement {
   toolbarEl.appendChild(empireBtn);
   toolbarEl.appendChild(menuBtn);
 
+  // Restore persisted panel states
+  burnActive = loadPersistedState(BURN_STORAGE_KEY);
+  fleetActive = loadPersistedState(FLEET_STORAGE_KEY);
+  if (burnActive) burnBtn.classList.add('active');
+  if (fleetActive) fleetBtn.classList.add('active');
+
   return toolbarEl;
 }
 
 export function setBurnActive(active: boolean): void {
   burnActive = active;
   burnBtn?.classList.toggle('active', active);
+  persistState(BURN_STORAGE_KEY, active);
 }
 
 export function isBurnActive(): boolean {
@@ -146,6 +170,7 @@ export function isBurnActive(): boolean {
 export function setFleetActive(active: boolean): void {
   fleetActive = active;
   fleetBtn?.classList.toggle('active', active);
+  persistState(FLEET_STORAGE_KEY, active);
 }
 
 export function isFleetActive(): boolean {
