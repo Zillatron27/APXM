@@ -348,8 +348,10 @@ export function calculateSiteBurn(siteId: string): SiteBurnSummary {
     const inventoryAmount = inventory.get(ticker) ?? 0;
 
     // Days remaining calculation
+    // Near-zero net rates (< 0.001 units/day) are floating-point noise from
+    // balanced production chains — treat as effectively zero consumption.
     let daysRemaining: number;
-    if (dailyAmount >= 0) {
+    if (dailyAmount >= 0 || Math.abs(dailyAmount) < 0.001) {
       daysRemaining = Infinity;
     } else {
       daysRemaining =
