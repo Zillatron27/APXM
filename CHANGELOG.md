@@ -1,5 +1,29 @@
 # APXM Changelog
 
+## 0.2.0-beta1.1 — Burn Fixes & Desktop Polish (2026-03-30)
+
+### Bug Fixes
+
+- **Burn calculation: exclude started orders** (#12) — started (in-progress) production orders are no longer included in rate calculations. Their inputs are already deducted from inventory; including them double-counted rates for materials both produced and consumed on the same planet
+- **Burn display: near-zero net rates** — floating-point noise from balanced production chains no longer produces billion-day countdowns. Net rates below 0.001 units/day are treated as zero
+- **Planet name derivation** (#13) — unnamed planets in named systems now display derived names (e.g. "Metis b" instead of "LS-014b") in burn view, fleet view, and desktop bridge data
+- **ACTS button reactivity** — ACTS buttons in burn/fleet panel headers now show/hide immediately when rprun features setting changes, without needing to close and reopen the panel
+- **Liquidity panel state** — expanded/collapsed state persists across menu close/reopen
+
+### Features
+
+- **Panel settings persistence** — burn and fleet panel filter toggles, sort mode, expand/collapse state, and section collapse all survive page refresh
+- **Larger ship chevrons** — chevrons scaled up at all zoom levels for visibility. Status grid cells enlarged to match
+- **Liquidity alignment** — amounts left-justified to match menu style
+
+### Internal
+
+- Shared address utility (`lib/address.ts`) consolidates three redundant name resolution functions
+- Bump `@27bit/helm` v0.8.0 → v0.10.1
+- Tests: 308 → 320
+
+---
+
 ## 0.1.2-b8 — Fleet & Burn Panel Polish (2026-03-24)
 
 ### Features

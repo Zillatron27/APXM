@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@27bit/helm':
-        specifier: github:Zillatron27/helm#v0.8.0
-        version: https://codeload.github.com/Zillatron27/helm/tar.gz/18e635031219d82a4b3a386e686afb864fd6288f
+        specifier: github:Zillatron27/helm#v0.10.1
+        version: https://codeload.github.com/Zillatron27/helm/tar.gz/16b9a3fd0b852ca1e71b5e2b7e06b38a07985ffc
     devDependencies:
       pixi.js:
         specifier: ^8.17.0
@@ -24,9 +24,9 @@ importers:
 
 packages:
 
-  '@27bit/helm@https://codeload.github.com/Zillatron27/helm/tar.gz/18e635031219d82a4b3a386e686afb864fd6288f':
-    resolution: {tarball: https://codeload.github.com/Zillatron27/helm/tar.gz/18e635031219d82a4b3a386e686afb864fd6288f}
-    version: 0.8.0
+  '@27bit/helm@https://codeload.github.com/Zillatron27/helm/tar.gz/16b9a3fd0b852ca1e71b5e2b7e06b38a07985ffc':
+    resolution: {tarball: https://codeload.github.com/Zillatron27/helm/tar.gz/16b9a3fd0b852ca1e71b5e2b7e06b38a07985ffc}
+    version: 0.10.1
 
   '@esbuild/aix-ppc64@0.25.12':
     resolution: {integrity: sha512-Hhmwd6CInZ3dwpuGTF8fJG6yoWmsToE+vYgD4nytZVxcu1ulHpUQRAB1UJ8+N1Am3Mz4+xOByoQoSZf4D+CpkA==}
@@ -463,7 +463,7 @@ packages:
 
 snapshots:
 
-  '@27bit/helm@https://codeload.github.com/Zillatron27/helm/tar.gz/18e635031219d82a4b3a386e686afb864fd6288f':
+  '@27bit/helm@https://codeload.github.com/Zillatron27/helm/tar.gz/16b9a3fd0b852ca1e71b5e2b7e06b38a07985ffc':
     dependencies:
       pixi-viewport: 6.0.3(pixi.js@8.17.1)
       pixi.js: 8.17.1
