@@ -38,7 +38,6 @@ function cleanup(): void {
     menuEl = null;
   }
   themeExpanded = false;
-  liquidityExpanded = false;
 }
 
 function sortBalances(
@@ -124,11 +123,11 @@ export function showMenu(
     liqHeader.className = 'menu-liquidity-header';
     liqHeader.innerHTML = `
       <span>Liquidity</span>
-      <span class="menu-liquidity-arrow">\u25B6</span>
+      <span class="menu-liquidity-arrow${liquidityExpanded ? ' expanded' : ''}">\u25B6</span>
     `;
 
     const liqList = document.createElement('div');
-    liqList.className = 'menu-liquidity-list';
+    liqList.className = `menu-liquidity-list${liquidityExpanded ? ' expanded' : ''}`;
 
     for (const bal of balances) {
       const row = document.createElement('div');
