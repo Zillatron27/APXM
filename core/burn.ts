@@ -85,15 +85,19 @@ interface WorkforceRateEntry {
 const MS_PER_DAY = 86400000;
 
 /**
- * Returns recurring orders only if any exist, else all orders.
- * If ANY order is recurring, use ONLY recurring orders (steady-state production plan).
+ * Returns the orders that represent the ongoing production plan for rate calculation.
+ * Started orders are excluded — when an order starts executing, its inputs are immediately
+ * deducted from inventory and it's no longer part of the queue. Including them would
+ * double-count rates for materials that are both produced and consumed on the same planet.
+ * Of the remaining queued orders, recurring orders take priority (steady-state plan).
  */
 export function getOrdersForCalculation(
   orders: PrunApi.ProductionOrder[]
 ): PrunApi.ProductionOrder[] {
   if (orders.length === 0) return [];
-  const recurring = orders.filter((o) => o.recurring);
-  return recurring.length > 0 ? recurring : orders;
+  const queued = orders.filter((o) => !o.started);
+  const recurring = queued.filter((o) => o.recurring);
+  return recurring.length > 0 ? recurring : queued;
 }
 
 /**

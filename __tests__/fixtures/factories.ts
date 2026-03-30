@@ -269,8 +269,8 @@ export function createProductionOrder(
     inputs: [createMaterialAmountValue()],
     outputs: [createMaterialAmountValue()],
     created: createDateTime(),
-    started: createDateTime(),
-    completion: createDateTime(Date.now() + 3600000),
+    started: null,
+    completion: null,
     duration: createTimeSpan(3600000),
     lastUpdated: createDateTime(),
     completed: 50,
@@ -496,7 +496,8 @@ export function createOrderWithIO(
   inputs: Array<{ ticker: string; name?: string; amount: number }>,
   outputs: Array<{ ticker: string; name?: string; amount: number }>,
   durationMs: number,
-  recurring: boolean = false
+  recurring: boolean = false,
+  started: PrunApi.DateTime | null = null
 ): PrunApi.ProductionOrder {
   return createProductionOrder({
     inputs: inputs.map((input) =>
@@ -513,5 +514,6 @@ export function createOrderWithIO(
     ),
     duration: createTimeSpan(durationMs),
     recurring,
+    started,
   });
 }

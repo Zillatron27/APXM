@@ -36,6 +36,7 @@ import {
   resetIdCounter,
   createStorageWithItems,
   createOrderWithIO,
+  createDateTime,
 } from '../../__tests__/fixtures/factories';
 import type { WorkforceEntity } from '../../stores/entities/workforce';
 
@@ -86,6 +87,49 @@ describe('burn.ts', () => {
         createProductionOrder({ recurring: true }),
       ];
       expect(getOrdersForCalculation(orders)).toHaveLength(2);
+    });
+
+    it('excludes started orders from recurring filter', () => {
+      const orders = [
+        createProductionOrder({ recurring: true, started: createDateTime() }),
+        createProductionOrder({ recurring: true }),
+        createProductionOrder({ recurring: true }),
+        createProductionOrder({ recurring: false }),
+      ];
+      const result = getOrdersForCalculation(orders);
+      expect(result).toHaveLength(2);
+      expect(result.every((o) => o.recurring && !o.started)).toBe(true);
+    });
+
+    it('excludes started orders from non-recurring fallback', () => {
+      const orders = [
+        createProductionOrder({ recurring: false, started: createDateTime() }),
+        createProductionOrder({ recurring: false }),
+        createProductionOrder({ recurring: false }),
+      ];
+      const result = getOrdersForCalculation(orders);
+      expect(result).toHaveLength(2);
+      expect(result.every((o) => !o.started)).toBe(true);
+    });
+
+    it('falls through to non-recurring when all recurring orders are started', () => {
+      const orders = [
+        createProductionOrder({ recurring: true, started: createDateTime() }),
+        createProductionOrder({ recurring: true, started: createDateTime() }),
+        createProductionOrder({ recurring: false }),
+        createProductionOrder({ recurring: false }),
+      ];
+      const result = getOrdersForCalculation(orders);
+      expect(result).toHaveLength(2);
+      expect(result.every((o) => !o.recurring && !o.started)).toBe(true);
+    });
+
+    it('returns empty when all orders are started', () => {
+      const orders = [
+        createProductionOrder({ recurring: true, started: createDateTime() }),
+        createProductionOrder({ recurring: false, started: createDateTime() }),
+      ];
+      expect(getOrdersForCalculation(orders)).toHaveLength(0);
     });
   });
 
@@ -1195,6 +1239,66 @@ describe('burn.ts', () => {
       useSettingsStore.getState().setBurnThresholds({ critical: 2, warning: 3 });
       const result2 = calculateSiteBurn(siteId);
       expect(result2.burns.find((b) => b.materialTicker === 'RAT')?.urgency).toBe('ok');
+    });
+
+    it('excludes started orders from burn rate (balanced production chain)', () => {
+      // Bug scenario from #12: DRF produced by Line A, consumed by Line B.
+      // Rates should balance (10/day each), but a started order on Line A
+      // would double-count production if not filtered out.
+      const lineAId = 'prodline-A';
+      const lineBId = 'prodline-B';
+
+      // Line A: queued recurring producing 10 DRF/day + started recurring (should be ignored)
+      const lineAQueued = createOrderWithIO(
+        [{ ticker: 'H2O', amount: 5 }],
+        [{ ticker: 'DRF', amount: 10 }],
+        MS_PER_DAY,
+        true
+      );
+      const lineAStarted = createOrderWithIO(
+        [{ ticker: 'H2O', amount: 5 }],
+        [{ ticker: 'DRF', amount: 10 }],
+        MS_PER_DAY,
+        true,
+        createDateTime()
+      );
+      const lineA = createTestProductionLine({
+        siteId,
+        orders: [lineAQueued, lineAStarted],
+        capacity: 1,
+      });
+      lineA.id = lineAId;
+
+      // Line B: queued recurring consuming 10 DRF/day, producing 10 DCH/day
+      const lineBOrder = createOrderWithIO(
+        [{ ticker: 'DRF', amount: 10 }],
+        [{ ticker: 'DCH', amount: 10 }],
+        MS_PER_DAY,
+        true
+      );
+      const lineB = createTestProductionLine({
+        siteId,
+        orders: [lineBOrder],
+        capacity: 1,
+      });
+      lineB.id = lineBId;
+
+      useProductionStore.getState().setOne(lineA);
+      useProductionStore.getState().setOne(lineB);
+
+      const store = createStorageWithItems(siteId, [
+        { ticker: 'DRF', amount: 50 },
+        { ticker: 'H2O', amount: 100 },
+      ]);
+      useStorageStore.getState().setOne(store);
+
+      const result = calculateSiteBurn(siteId);
+
+      // DRF: 10 produced (queued only) - 10 consumed = net 0 → Infinity days
+      const drfBurn = result.burns.find((b) => b.materialTicker === 'DRF');
+      expect(drfBurn?.productionOutput).toBe(10);
+      expect(drfBurn?.productionInput).toBe(10);
+      expect(drfBurn?.daysRemaining).toBe(Infinity);
     });
   });
 
