@@ -35,6 +35,10 @@ import { useCompanyStore } from '../../stores/company';
 import { useWarehouseStore } from '../../stores/warehouses';
 import { calculateSiteBurn, classifyBurnStatus } from '../../core/burn';
 import { isRprunDetected } from '../rprun-detect';
+import { getEntityDisplayName, extractSystemNaturalId } from '../address';
+
+// Re-export for existing test imports
+export { extractSystemNaturalId };
 
 // ============================================================================
 // Address Resolution Helpers
@@ -45,21 +49,11 @@ export interface PlanetInfo {
   naturalId: string;
 }
 
-/** Extracts planet name and naturalId from an address, or null if no PLANET line. */
+/** Extracts planet display name and naturalId from an address, or null if no PLANET line. */
 export function extractPlanetInfo(address: PrunApi.Address): PlanetInfo | null {
   for (const line of address.lines) {
     if (line.type === 'PLANET' && line.entity) {
-      return { name: line.entity.name, naturalId: line.entity.naturalId };
-    }
-  }
-  return null;
-}
-
-/** Extracts the SYSTEM naturalId from an address, or null if no SYSTEM line. */
-export function extractSystemNaturalId(address: PrunApi.Address): string | null {
-  for (const line of address.lines) {
-    if (line.type === 'SYSTEM' && line.entity) {
-      return line.entity.naturalId;
+      return { name: getEntityDisplayName(address), naturalId: line.entity.naturalId };
     }
   }
   return null;

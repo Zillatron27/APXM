@@ -1,19 +1,12 @@
 import type { PrunApi } from '../types/prun-api';
+import { getEntityDisplayName } from './address';
 
 /**
  * Extracts a human-readable destination name from an address.
- * Prefers planet name, falls back to station, then unknown.
+ * Derives display names for unnamed planets in named systems.
  */
 export function getDestinationName(address: PrunApi.Address): string {
-  for (const line of address.lines) {
-    if (line.type === 'PLANET' && line.entity) {
-      return line.entity.name || line.entity.naturalId;
-    }
-    if (line.type === 'STATION' && line.entity) {
-      return line.entity.name || line.entity.naturalId;
-    }
-  }
-  return 'Unknown';
+  return getEntityDisplayName(address);
 }
 
 /**

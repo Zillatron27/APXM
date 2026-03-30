@@ -12,6 +12,7 @@ import { getProductionBySiteId } from '../stores/entities/production';
 import { getWorkforceBySiteId } from '../stores/entities/workforce';
 import { getStorageByAddressableId } from '../stores/entities/storage';
 import { useSitesStore } from '../stores/entities/sites';
+import { getEntityDisplayName } from '../lib/address';
 
 // ============================================================================
 // Types
@@ -254,28 +255,10 @@ export function calculateNeed(
 
 /**
  * Extracts a human-readable site name from an address.
- * Prefers planet name, falls back to naturalId, station, or 'Unknown'.
+ * Derives display names for unnamed planets in named systems.
  */
 export function getSiteNameFromAddress(address: PrunApi.Address): string {
-  for (const line of address.lines) {
-    if (line.type === 'PLANET' && line.entity) {
-      return line.entity.name || line.entity.naturalId;
-    }
-  }
-
-  for (const line of address.lines) {
-    if (line.type === 'STATION' && line.entity) {
-      return line.entity.name || line.entity.naturalId;
-    }
-  }
-
-  // Fallback: first entity with a name
-  for (const line of address.lines) {
-    if (line.entity?.name) return line.entity.name;
-    if (line.entity?.naturalId) return line.entity.naturalId;
-  }
-
-  return 'Unknown';
+  return getEntityDisplayName(address);
 }
 
 /**
