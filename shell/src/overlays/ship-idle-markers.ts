@@ -16,11 +16,11 @@ import type { ShipSummary } from '../types/bridge';
 const SHIP_COLOUR = 0xff8c00;
 const SHIP_ALPHA = 0.8;
 const SYSTEM_VIEW_DIM_ALPHA = 0.05;
-const CHEVRON_SIZE = 5;
-const STACK_OFFSET_Y = -4;
-const HIT_RADIUS = 12;
+const CHEVRON_SIZE = 9;
+const STACK_OFFSET_Y = -7;
+const HIT_RADIUS = 16;
 // Selection halo — matches Helm's planet selection style
-const HALO_RADIUS = 10;
+const HALO_RADIUS = 14;
 const HALO_COLOUR = 0x3399ff;
 const HALO_ALPHA = 0.7;
 const HALO_STROKE = 2.0;

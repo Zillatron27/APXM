@@ -9,5 +9,5 @@ export function drawChevron(g: Graphics, size: number, colour: number): void {
   g.moveTo(-size, size * 0.6);
   g.lineTo(0, -size * 0.6);
   g.lineTo(size, size * 0.6);
-  g.stroke({ width: 1.5, color: colour });
+  g.stroke({ width: 2.5, color: colour });
 }

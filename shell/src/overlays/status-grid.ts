@@ -34,55 +34,55 @@ export interface StatusGridConfig {
 
 /** Galaxy-view grid for plain systems (no base, no CX) */
 export const SYSTEM_GRID_CONFIG: StatusGridConfig = {
-  cellSize: 12,
-  gapX: 2,
-  gapY: 2,
+  cellSize: 18,
+  gapX: 4,
+  gapY: 4,
   originOffsetX: 24,
-  originOffsetY: -12,
+  originOffsetY: -18,
   columns: 2,
   rows: 3,
 };
 
 /** Galaxy-view grid for base systems (no CX) — offset to clear base rings (edge ~20px) */
 export const BASE_SYSTEM_GRID_CONFIG: StatusGridConfig = {
-  cellSize: 12,
-  gapX: 2,
-  gapY: 2,
+  cellSize: 18,
+  gapX: 4,
+  gapY: 4,
   originOffsetX: 29,
-  originOffsetY: -12,
+  originOffsetY: -18,
   columns: 2,
   rows: 3,
 };
 
 /** Galaxy-view grid for CX systems — clears CX diamonds */
 export const CX_SYSTEM_GRID_CONFIG: StatusGridConfig = {
-  cellSize: 12,
-  gapX: 2,
-  gapY: 2,
+  cellSize: 18,
+  gapX: 4,
+  gapY: 4,
   originOffsetX: 49,
-  originOffsetY: -12,
+  originOffsetY: -18,
   columns: 2,
   rows: 3,
 };
 
 /** System-view grid — tuned for planet display sizes */
 export const PLANET_GRID_CONFIG: StatusGridConfig = {
-  cellSize: 16,
-  gapX: 3,
-  gapY: 3,
-  originOffsetX: 24,
-  originOffsetY: -20,
+  cellSize: 22,
+  gapX: 4,
+  gapY: 4,
+  originOffsetX: 28,
+  originOffsetY: -24,
   columns: 2,
   rows: 3,
 };
 
 /** System-view grid for owned planets — clears burn ring + Helm planet hit area */
 export const OWNED_PLANET_GRID_CONFIG: StatusGridConfig = {
-  cellSize: 16,
-  gapX: 3,
-  gapY: 3,
-  originOffsetX: 36,
-  originOffsetY: -20,
+  cellSize: 22,
+  gapX: 4,
+  gapY: 4,
+  originOffsetX: 40,
+  originOffsetY: -24,
   columns: 2,
   rows: 3,
 };

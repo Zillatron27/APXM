@@ -23,12 +23,12 @@ export interface CameraAccess {
 const SHIP_COLOUR = 0xff8c00;
 const TRANSIT_ALPHA = 0.8;
 const SYSTEM_VIEW_DIM_ALPHA = 0.05;
-const CHEVRON_SIZE = 6;
-const HIT_RADIUS = 12;
+const CHEVRON_SIZE = 10;
+const HIT_RADIUS = 16;
 const HOVER_OUT_DEBOUNCE_MS = 100;
 
 // Selection halo — matches Helm's planet selection style
-const HALO_RADIUS = 10;
+const HALO_RADIUS = 14;
 const HALO_COLOUR = 0x3399ff;
 const HALO_ALPHA = 0.7;
 const HALO_STROKE = 2.0;
