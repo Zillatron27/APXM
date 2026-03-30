@@ -28,12 +28,36 @@ const STATUS_PRIORITY: Record<string, number> = {
   unknown: 0,
 };
 
-// Persist across re-renders within panel lifecycle
-const expandedPlanets = new Set<string>();
-const activeFilters = new Set<string>(['critical', 'warning', 'ok', 'surplus']);
-let burnSortAlpha = false;
-
 const LAYOUT_KEY = 'apxm-burn-layout';
+const SETTINGS_KEY = 'apxm-burn-settings';
+
+interface BurnPanelSettings {
+  filters: string[];
+  sortAlpha: boolean;
+  expanded: string[];
+}
+
+function loadSettings(): BurnPanelSettings {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch { /* use defaults */ }
+  return { filters: ['critical', 'warning', 'ok', 'surplus'], sortAlpha: false, expanded: [] };
+}
+
+function persistSettings(): void {
+  const data: BurnPanelSettings = {
+    filters: [...activeFilters],
+    sortAlpha: burnSortAlpha,
+    expanded: [...expandedPlanets],
+  };
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(data));
+}
+
+const saved = loadSettings();
+const expandedPlanets = new Set<string>(saved.expanded);
+const activeFilters = new Set<string>(saved.filters);
+let burnSortAlpha = saved.sortAlpha;
 
 let panelEl: HTMLDivElement | null = null;
 let backdropEl: HTMLDivElement | null = null;
@@ -226,6 +250,7 @@ function render(empireState: EmpireState, callbacks: BurnPanelCallbacks): void {
       }
       const toggle = panelEl?.querySelector('#burn-expand-toggle');
       if (toggle) toggle.textContent = expandedPlanets.size > 0 ? 'Collapse All' : 'Expand All';
+      persistSettings();
       render(empireState, callbacks);
     });
   });
@@ -261,7 +286,7 @@ export function showBurnPanel(
       <button class="burn-panel-close">\u00D7</button>
     </div>
     <div class="burn-panel-toolbar">
-      <button class="burn-expand-btn" id="burn-expand-toggle">Expand All</button>
+      <button class="burn-expand-btn" id="burn-expand-toggle">${expandedPlanets.size > 0 ? 'Collapse All' : 'Expand All'}</button>
       <span class="burn-sort-label">Sort:</span><button class="burn-sort-btn" id="burn-sort-toggle">${burnSortAlpha ? 'A\u2013Z' : 'Burn'}</button>
     </div>
     <div class="burn-panel-body"></div>
@@ -292,6 +317,7 @@ export function showBurnPanel(
       else activeFilters.add(key);
       // Update toggle appearance
       btn.classList.toggle('active', activeFilters.has(key));
+      persistSettings();
       render(empireState, callbacks);
     });
   });
@@ -307,6 +333,7 @@ export function showBurnPanel(
       }
     }
     expandToggle.textContent = expandedPlanets.size > 0 ? 'Collapse All' : 'Expand All';
+    persistSettings();
     render(empireState, callbacks);
   });
 
@@ -315,6 +342,7 @@ export function showBurnPanel(
   sortToggle.addEventListener('click', () => {
     burnSortAlpha = !burnSortAlpha;
     sortToggle.textContent = burnSortAlpha ? 'A\u2013Z' : 'Burn';
+    persistSettings();
     render(empireState, callbacks);
   });
 

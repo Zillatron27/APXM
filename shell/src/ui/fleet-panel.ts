@@ -87,12 +87,37 @@ export interface FleetPanelCallbacks {
 }
 
 const LAYOUT_KEY = 'apxm-fleet-layout';
+const SETTINGS_KEY = 'apxm-fleet-settings';
 
-// Persist across re-renders within panel lifecycle
-const activeFilters = new Set<string>(['idle', 'transit']);
-const collapsedSections = new Set<string>();
 type SortMode = 'eta' | 'name' | 'cargo';
-let sortMode: SortMode = 'eta';
+
+interface FleetPanelSettings {
+  filters: string[];
+  sort: SortMode;
+  collapsed: string[];
+}
+
+function loadSettings(): FleetPanelSettings {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch { /* use defaults */ }
+  return { filters: ['idle', 'transit'], sort: 'eta', collapsed: [] };
+}
+
+function persistSettings(): void {
+  const data: FleetPanelSettings = {
+    filters: [...activeFilters],
+    sort: sortMode,
+    collapsed: [...collapsedSections],
+  };
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(data));
+}
+
+const savedSettings = loadSettings();
+const activeFilters = new Set<string>(savedSettings.filters);
+const collapsedSections = new Set<string>(savedSettings.collapsed);
+let sortMode: SortMode = savedSettings.sort;
 
 let panelEl: HTMLDivElement | null = null;
 let backdropEl: HTMLDivElement | null = null;
@@ -276,6 +301,7 @@ function render(empireState: EmpireState, callbacks: FleetPanelCallbacks): void 
         collapsedSections.add(section);
       }
       updateExpandToggleText();
+      persistSettings();
       render(empireState, callbacks);
     });
   });
@@ -327,7 +353,7 @@ export function showFleetPanel(
       <button class="fleet-panel-close">\u00D7</button>
     </div>
     <div class="fleet-panel-toolbar">
-      <button class="fleet-expand-btn" id="fleet-expand-toggle">Collapse All</button>
+      <button class="fleet-expand-btn" id="fleet-expand-toggle">${collapsedSections.size > 0 ? 'Expand All' : 'Collapse All'}</button>
       <span class="fleet-sort-label">Sort:</span>
       <select class="fleet-sort-select" id="fleet-sort-select">
         <option value="eta"${sortMode === 'eta' ? ' selected' : ''}>ETA</option>
@@ -362,6 +388,7 @@ export function showFleetPanel(
       if (activeFilters.has(key)) activeFilters.delete(key);
       else activeFilters.add(key);
       btn.classList.toggle('active', activeFilters.has(key));
+      persistSettings();
       render(empireState, callbacks);
     });
   });
@@ -376,6 +403,7 @@ export function showFleetPanel(
       collapsedSections.add('transit');
     }
     updateExpandToggleText();
+    persistSettings();
     render(empireState, callbacks);
   });
 
@@ -384,6 +412,7 @@ export function showFleetPanel(
   sortSelect.addEventListener('change', () => {
     sortMode = sortSelect.value as SortMode;
     sortSelect.blur();
+    persistSettings();
     render(empireState, callbacks);
   });
 
