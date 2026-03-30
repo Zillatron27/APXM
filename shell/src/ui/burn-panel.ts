@@ -139,6 +139,13 @@ function renderMaterialRows(burns: BurnMaterialSummary[]): string {
 function render(empireState: EmpireState, callbacks: BurnPanelCallbacks): void {
   if (!panelEl) return;
 
+  // Sync ACTS button visibility with current rprun state
+  const actsEl = panelEl.querySelector<HTMLElement>('.burn-acts-btn');
+  if (actsEl) {
+    const show = empireState.isRprunDetected() && !empireState.isRprunFeaturesDisabled();
+    actsEl.style.display = show ? 'inline-block' : 'none';
+  }
+
   const body = panelEl.querySelector('.burn-panel-body');
   if (!body) return;
 
@@ -248,7 +255,7 @@ export function showBurnPanel(
   panelEl.innerHTML = `
     <div class="burn-panel-header">
       <h3>Burn Status</h3>
-      ${showActionPackages ? '<button class="burn-acts-btn">ACTS</button>' : ''}
+      <button class="burn-acts-btn" style="display:${showActionPackages ? 'inline-block' : 'none'}">ACTS</button>
       <div class="burn-filter-group">${renderFilterToggles()}</div>
       <button class="panel-pin-btn${pinned ? ' pinned' : ''}">${PIN_SVG}</button>
       <button class="burn-panel-close">\u00D7</button>

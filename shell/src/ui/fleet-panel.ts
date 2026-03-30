@@ -150,6 +150,13 @@ function renderFilterToggles(): string {
 function render(empireState: EmpireState, callbacks: FleetPanelCallbacks): void {
   if (!panelEl) return;
 
+  // Sync ACTS button visibility with current rprun state
+  const actsEl = panelEl.querySelector<HTMLElement>('.fleet-acts-btn');
+  if (actsEl) {
+    const show = empireState.isRprunDetected() && !empireState.isRprunFeaturesDisabled();
+    actsEl.style.display = show ? 'inline-block' : 'none';
+  }
+
   const body = panelEl.querySelector('.fleet-panel-body');
   if (!body) return;
 
@@ -314,7 +321,7 @@ export function showFleetPanel(
   panelEl.innerHTML = `
     <div class="fleet-panel-header">
       <h3>Fleet Overview</h3>
-      ${showActs ? '<button class="fleet-acts-btn">ACTS</button>' : ''}
+      <button class="fleet-acts-btn" style="display:${showActs ? 'inline-block' : 'none'}">ACTS</button>
       <div class="fleet-filter-group">${renderFilterToggles()}</div>
       <button class="panel-pin-btn${pinned ? ' pinned' : ''}">${PIN_SVG}</button>
       <button class="fleet-panel-close">\u00D7</button>
