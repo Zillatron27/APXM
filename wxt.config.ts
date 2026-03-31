@@ -25,7 +25,9 @@ export default defineConfig({
           optional: [],
         },
       },
-      gecko_android: {},
+      gecko_android: {
+        strict_min_version: '120.0',
+      },
     },
   },
   vite: () => ({
