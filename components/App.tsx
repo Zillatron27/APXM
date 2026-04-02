@@ -36,7 +36,7 @@ export function App() {
       if (apexVisible) {
         el.style.display = '';
         el.style.marginTop = '2.75rem';
-        el.style.height = 'calc(100vh - 2.75rem)';
+        el.style.height = 'calc(100dvh - 2.75rem)';
         el.style.overflow = 'auto';
       } else {
         el.style.marginTop = '';
