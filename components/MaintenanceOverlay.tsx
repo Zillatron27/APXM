@@ -4,7 +4,7 @@
  */
 export function MaintenanceOverlay() {
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center bg-apxm-bg text-apxm-text pointer-events-auto p-6">
+    <div className="w-full h-dvh flex flex-col items-center justify-center bg-apxm-bg text-apxm-text pointer-events-auto p-6">
       <h1 className="text-xl font-semibold text-center mb-2">
         Prosperous Universe appears to be unavailable
       </h1>
