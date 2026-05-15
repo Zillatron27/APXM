@@ -24,3 +24,7 @@ Thumbs.db
 
 # Claude Code config (lives in context/ repo, symlinked here)
 CLAUDE.md
+.claude/
+
+# OpenWolf runtime state (syncable files live in project-context)
+.wolf/
