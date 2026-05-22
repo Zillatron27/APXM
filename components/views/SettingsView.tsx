@@ -177,8 +177,6 @@ export function SettingsView() {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-apxm-muted">{BUILD_VERSION}</p>
-
       {/* Burn Thresholds Section */}
       <Card>
         <h2 className="text-prun-yellow text-sm font-semibold mb-1">Burn Thresholds</h2>
@@ -386,6 +384,8 @@ export function SettingsView() {
           </div>
         </div>
       </Card>
+
+      <p className="text-xs text-apxm-muted text-center pb-2">{BUILD_VERSION}</p>
     </div>
   );
 }
