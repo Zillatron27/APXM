@@ -20,6 +20,9 @@ export default defineConfig({
       gecko: {
         id: 'apxm@27bit.dev',
         strict_min_version: '142.0',
+        // WXT's manifest types lag this AMO field, but Firefox requires it for
+        // the data-collection disclosure. Valid at runtime; types are behind.
+        // @ts-expect-error -- data_collection_permissions not yet in WXT types
         data_collection_permissions: {
           required: ['none'],
           optional: [],
