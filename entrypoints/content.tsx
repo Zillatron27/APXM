@@ -12,9 +12,6 @@ import { warn, error as logError } from '../lib/debug/logger';
 import { isDebugEnabled, createOverlay, markStep, markFailed, pollForAttribute, ensureDiagnosticsVisible } from '../lib/diagnostics';
 import { initRefreshMode, isAutoRefreshEnabled } from '../lib/buffer-refresh';
 import { executeBatchRefresh } from '../lib/buffer-refresh';
-import { initDesktopBridge } from '../lib/desktop-bridge';
-import { initApxmButton } from '../lib/apxm-button';
-import { initRprunDetection } from '../lib/rprun-detect';
 import { useSitesStore } from '../stores/entities';
 import { useSiteSourceStore } from '../stores/site-data-sources';
 import '../assets/styles.css';
@@ -34,18 +31,21 @@ export default defineContentScript({
       }
     });
 
-    // Desktop detection — on desktop without ?apxm_force, run data pipeline
-    // and bridge but skip the mobile UI overlay.
+    // APXM is a mobile-only overlay. On desktop (no coarse pointer) it stays
+    // dormant so the native APEX client is left untouched — unless ?apxm_force
+    // is set for testing the overlay on a desktop browser.
     const isMobile = window.matchMedia('(pointer: coarse)').matches;
     const forceEnabled = new URLSearchParams(window.location.search).has('apxm_force');
-    const isDesktopBridgeMode = !isMobile && !forceEnabled;
+    if (!isMobile && !forceEnabled) {
+      return;
+    }
 
     const debug = isDebugEnabled();
 
     if (debug) {
       createOverlay();
       markStep(1, 'ok');
-      markStep(2, 'ok', isMobile ? 'mobile detected' : forceEnabled ? 'forced via ?apxm_force' : 'desktop bridge mode');
+      markStep(2, 'ok', isMobile ? 'mobile detected' : 'forced via ?apxm_force');
     }
 
     // 1. Inject main-world interceptor (includes script blocker)
@@ -167,24 +167,6 @@ export default defineContentScript({
           useSettingsStore.getState().setFioLastFetch(Date.now());
         }
       });
-    }
-
-    // Desktop bridge: start iframe detection and store subscriptions
-    if (!isMobile) {
-      initDesktopBridge();
-      // Detect rprun after first WebSocket data arrives (both APEX and rprun loaded by then)
-      const unsubRprunInit = useConnectionStore.subscribe((state) => {
-        if (state.connected) {
-          unsubRprunInit();
-          initRprunDetection();
-        }
-      });
-    }
-
-    if (isDesktopBridgeMode) {
-      initApxmButton();
-      console.log('[APXM] Desktop mode — bridge active, APXM button injected, mobile UI skipped.');
-      return;
     }
 
     // 7. Mount React overlay in Shadow DOM

@@ -15,9 +15,6 @@ import {
   type WorkforceEntity,
 } from './entities';
 import { useSiteSourceStore } from './site-data-sources';
-import { useScreensStore, type ScreenInfo } from './screens';
-import { useCompanyStore } from './company';
-import { useWarehouseStore, type WarehouseLocation } from './warehouses';
 
 type MessageHandler = (msg: ProcessedMessage) => void;
 const typeHandlers = new Map<string, MessageHandler>();
@@ -41,6 +38,11 @@ export function processMessage(msg: ProcessedMessage): void {
   const handler = typeHandlers.get(msg.messageType);
   if (handler) {
     handler(msg);
+  } else {
+    // No registered handler — record the type so the diagnostic overlay can
+    // surface it. A silently-dropped message type is an invisible blind spot:
+    // new game features won't display until we notice and add a handler.
+    useConnectionStore.getState().addUnknownMessageType(msg.messageType);
   }
 }
 
@@ -455,119 +457,4 @@ export function initMessageHandlers(): void {
     }
   });
 
-  // ============================================================================
-  // Company
-  // ============================================================================
-
-  typeHandlers.set('COMPANY_DATA', (msg: ProcessedMessage) => {
-    const payload = extractPayload(msg) as {
-      name?: string;
-      code?: string;
-      countryId?: string;
-    };
-    if (typeof payload?.name === 'string') {
-      useCompanyStore.getState().setCompany({
-        name: payload.name,
-        code: payload.code ?? '',
-        countryId: payload.countryId ?? '',
-      });
-    } else {
-      warn('COMPANY_DATA: unexpected payload structure', payload);
-    }
-  });
-
-  // ============================================================================
-  // Warehouses
-  // ============================================================================
-
-  function extractWarehouse(wh: Record<string, unknown>): WarehouseLocation | null {
-    const warehouseId = wh.warehouseId as string | undefined;
-    const storeId = wh.storeId as string | undefined;
-    const address = wh.address as { lines?: Array<{ type?: string; entity?: { naturalId?: string } }> } | undefined;
-    if (typeof warehouseId !== 'string' || typeof storeId !== 'string') return null;
-    const systemLine = address?.lines?.find((l) => l.type === 'SYSTEM');
-    const systemNaturalId = systemLine?.entity?.naturalId;
-    if (typeof systemNaturalId !== 'string') return null;
-    const stationLine = address?.lines?.find((l) => l.type === 'STATION');
-    const stationNaturalId = typeof stationLine?.entity?.naturalId === 'string'
-      ? stationLine.entity.naturalId : null;
-    return { warehouseId, storeId, systemNaturalId, stationNaturalId };
-  }
-
-  typeHandlers.set('WAREHOUSE_STORAGES', (msg: ProcessedMessage) => {
-    const payload = extractPayload(msg) as { storages?: unknown[] };
-    if (Array.isArray(payload?.storages)) {
-      const locations: WarehouseLocation[] = [];
-      for (const wh of payload.storages) {
-        if (wh && typeof wh === 'object') {
-          const loc = extractWarehouse(wh as Record<string, unknown>);
-          if (loc) locations.push(loc);
-        }
-      }
-      useWarehouseStore.getState().setWarehouses(locations);
-    } else {
-      warn('WAREHOUSE_STORAGES: unexpected payload structure', payload);
-    }
-  });
-
-  typeHandlers.set('WAREHOUSE_STORAGE', (msg: ProcessedMessage) => {
-    const payload = extractPayload(msg) as Record<string, unknown>;
-    if (payload && typeof payload === 'object') {
-      const loc = extractWarehouse(payload);
-      if (loc) {
-        useWarehouseStore.getState().addWarehouse(loc);
-        return;
-      }
-    }
-    warn('WAREHOUSE_STORAGE: unexpected payload structure', payload);
-  });
-
-  typeHandlers.set('WAREHOUSE_STORAGE_REMOVED', (msg: ProcessedMessage) => {
-    const payload = extractPayload(msg) as { warehouseId?: string };
-    if (typeof payload?.warehouseId === 'string') {
-      useWarehouseStore.getState().removeWarehouse(payload.warehouseId);
-    }
-  });
-
-  // ============================================================================
-  // UI / Screens
-  // ============================================================================
-
-  typeHandlers.set('UI_DATA', (msg: ProcessedMessage) => {
-    const payload = extractPayload(msg) as { screens?: Array<{ id?: string; name?: string; hidden?: boolean }> };
-    if (Array.isArray(payload?.screens)) {
-      const screens: ScreenInfo[] = [];
-      for (const s of payload.screens) {
-        if (typeof s?.id === 'string' && typeof s?.name === 'string') {
-          screens.push({ id: s.id, name: s.name, hidden: !!s.hidden });
-        }
-      }
-      useScreensStore.getState().setScreens(screens);
-    }
-  });
-
-  typeHandlers.set('UI_SCREENS_ADD', (msg: ProcessedMessage) => {
-    const payload = extractPayload(msg) as { id?: string; name?: string; hidden?: boolean };
-    if (typeof payload?.id === 'string' && typeof payload?.name === 'string') {
-      useScreensStore.getState().addScreen({
-        id: payload.id,
-        name: payload.name,
-        hidden: !!payload.hidden,
-      });
-    }
-  });
-
-  typeHandlers.set('UI_SCREENS_RENAME', (msg: ProcessedMessage) => {
-    const payload = extractPayload(msg) as { id?: string; name?: string };
-    if (typeof payload?.id === 'string' && typeof payload?.name === 'string') {
-      useScreensStore.getState().renameScreen(payload.id, payload.name);
-    }
-  });
-
-  typeHandlers.set('UI_SCREENS_DELETE', (msg: ProcessedMessage) => {
-    const payload = extractPayload(msg) as { id?: string };
-    if (typeof payload?.id === 'string') {
-      useScreensStore.getState().removeScreen(payload.id);
-    }
-  });
 }

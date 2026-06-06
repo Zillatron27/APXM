@@ -75,7 +75,10 @@ const browserStorage: StateStorage = {
     if (!isBrowserStorageAvailable()) return null;
     try {
       const result = await browser.storage.local.get(name);
-      return result[name] ?? null;
+      // Storage values are untyped at the boundary; persist only ever writes
+      // JSON strings, so anything non-string is treated as absent.
+      const value = result[name];
+      return typeof value === 'string' ? value : null;
     } catch (error) {
       if (isContextInvalidated(error)) return null;
       throw error;

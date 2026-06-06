@@ -19,6 +19,37 @@ import type {
   FioSite,
   FioSiteBuilding,
 } from './types';
+import { warn } from '../debug/logger';
+
+/**
+ * Maps a FIO response array through a per-item transform at the trust boundary.
+ *
+ * FIO is an external API; its payloads are hostile until validated:
+ *  - a non-array top level is logged and yields an empty result instead of throwing
+ *  - an item whose transform throws (e.g. a missing nested array) is skipped, not fatal
+ *
+ * This degrades gracefully — one malformed record can't drop the whole fetch —
+ * while keeping each skip discoverable via the diagnostics log.
+ */
+function mapFioArray<T, R>(
+  label: string,
+  data: unknown,
+  transform: (item: T) => R
+): R[] {
+  if (!Array.isArray(data)) {
+    warn(`FIO ${label}: expected array, received ${typeof data} — dropping response`);
+    return [];
+  }
+  const out: R[] = [];
+  data.forEach((item, index) => {
+    try {
+      out.push(transform(item as T));
+    } catch (err) {
+      warn(`FIO ${label}: skipped malformed record at index ${index}:`, err);
+    }
+  });
+  return out;
+}
 
 // ============================================================================
 // Workforce Transforms
@@ -80,8 +111,8 @@ export function transformWorkforce(fioWorkforce: FioWorkforce): WorkforceEntity 
   };
 }
 
-export function transformAllWorkforce(fioWorkforces: FioWorkforce[]): WorkforceEntity[] {
-  return fioWorkforces.map(transformWorkforce);
+export function transformAllWorkforce(fioWorkforces: unknown): WorkforceEntity[] {
+  return mapFioArray('workforce', fioWorkforces, transformWorkforce);
 }
 
 // ============================================================================
@@ -178,9 +209,9 @@ export function transformProductionLine(
 }
 
 export function transformAllProduction(
-  fioLines: FioProductionLine[]
+  fioLines: unknown
 ): PrunApi.ProductionLine[] {
-  return fioLines.map(transformProductionLine);
+  return mapFioArray('production', fioLines, transformProductionLine);
 }
 
 // ============================================================================
@@ -247,8 +278,8 @@ export function transformStorage(fioStorage: FioStorage): PrunApi.Store {
   };
 }
 
-export function transformAllStorage(fioStorages: FioStorage[]): PrunApi.Store[] {
-  return fioStorages.map(transformStorage);
+export function transformAllStorage(fioStorages: unknown): PrunApi.Store[] {
+  return mapFioArray('storage', fioStorages, transformStorage);
 }
 
 // ============================================================================
@@ -339,6 +370,6 @@ export function transformSite(fioSite: FioSite): PrunApi.Site {
   };
 }
 
-export function transformAllSites(fioSites: FioSite[]): PrunApi.Site[] {
-  return fioSites.map(transformSite);
+export function transformAllSites(fioSites: unknown): PrunApi.Site[] {
+  return mapFioArray('sites', fioSites, transformSite);
 }

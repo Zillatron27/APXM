@@ -2,37 +2,11 @@ import { useSiteBurns, sortByUrgency } from './useSiteBurns';
 import { SiteBurnCard } from './SiteBurnCard';
 import { DataSourceBadge } from './DataSourceBadge';
 import { useSettingsStore } from '../../stores/settings';
-import { useSiteSourceStore, type SiteSourceEntry } from '../../stores/site-data-sources';
-import type { DataSource } from '../../stores/create-entity-store';
-
-/**
- * Derive the weakest-link source across all sites.
- * cache < fio < websocket — if any site is cache, show cache.
- */
-function deriveSummarySource(entries: Map<string, SiteSourceEntry>): DataSource {
-  if (entries.size === 0) return null;
-  let hasCache = false;
-  let hasFio = false;
-  for (const entry of entries.values()) {
-    if (entry.source === 'cache') hasCache = true;
-    else if (entry.source === 'fio') hasFio = true;
-  }
-  if (hasCache) return 'cache';
-  if (hasFio) return 'fio';
-  return 'websocket';
-}
-
-/**
- * Derive the oldest timestamp across all sites for the badge age display.
- */
-function deriveSummaryTimestamp(entries: Map<string, SiteSourceEntry>): number | null {
-  if (entries.size === 0) return null;
-  let oldest = Infinity;
-  for (const entry of entries.values()) {
-    if (entry.updatedAt < oldest) oldest = entry.updatedAt;
-  }
-  return oldest === Infinity ? null : oldest;
-}
+import {
+  useSiteSourceStore,
+  deriveWeakestSource,
+  deriveOldestUpdate,
+} from '../../stores/site-data-sources';
 
 interface BurnSummaryListProps {
   /** Expand first card by default */
@@ -48,8 +22,8 @@ export function BurnSummaryList({ expandFirst = true }: BurnSummaryListProps) {
 
   // Derive data source from per-site entries (weakest-link across all sites)
   const siteEntries = useSiteSourceStore((s) => s.entries);
-  const summarySource = deriveSummarySource(siteEntries);
-  const summaryUpdated = deriveSummaryTimestamp(siteEntries);
+  const summarySource = deriveWeakestSource(siteEntries);
+  const summaryUpdated = deriveOldestUpdate(siteEntries);
   const fioLastFetch = useSettingsStore((s) => s.fio.lastFetch);
 
   // Use FIO timestamp when source is FIO, otherwise use derived timestamp

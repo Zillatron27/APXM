@@ -391,3 +391,32 @@ describe('FIO Transforms', () => {
     });
   });
 });
+
+describe('FIO boundary validation', () => {
+  // FIO is an external API; transformAll* must degrade gracefully on hostile
+  // shapes rather than throwing out of the populate coordinator.
+  const validWorkforce = {
+    PlanetId: 'p1',
+    PlanetNaturalId: 'XY-123a',
+    PlanetName: 'Test',
+    SiteId: 'site-1',
+    Workforces: [],
+    LastWorkforceUpdateTime: '2024-01-01T00:00:00Z',
+  };
+
+  it('returns an empty array when the response is not an array', () => {
+    expect(transformAllWorkforce(null)).toEqual([]);
+    expect(transformAllStorage(undefined)).toEqual([]);
+    expect(transformAllProduction({ not: 'an array' })).toEqual([]);
+    expect(transformAllSites('nope')).toEqual([]);
+  });
+
+  it('skips a malformed record but keeps the valid ones', () => {
+    // The second item has no Workforces array, so its transform throws and
+    // must be skipped without dropping the valid first record.
+    const malformed = { SiteId: 'broken', PlanetId: 'p2' };
+    const result = transformAllWorkforce([validWorkforce, malformed]);
+    expect(result).toHaveLength(1);
+    expect(result[0].siteId).toBe('site-1');
+  });
+});
