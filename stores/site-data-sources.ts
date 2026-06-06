@@ -38,3 +38,33 @@ export const useSiteSourceStore = create<SiteDataSourceState>((set) => ({
     set({ entries: new Map() });
   },
 }));
+
+/**
+ * Weakest-link data source across all sites: cache < fio < websocket.
+ * If any site is showing cached data, the whole summary is "cache".
+ */
+export function deriveWeakestSource(entries: Map<string, SiteSourceEntry>): DataSource {
+  if (entries.size === 0) return null;
+  let hasCache = false;
+  let hasFio = false;
+  for (const entry of entries.values()) {
+    if (entry.source === 'cache') hasCache = true;
+    else if (entry.source === 'fio') hasFio = true;
+  }
+  if (hasCache) return 'cache';
+  if (hasFio) return 'fio';
+  return 'websocket';
+}
+
+/**
+ * Oldest update timestamp across all sites — the most pessimistic age to
+ * surface in a staleness badge. Returns null when there are no entries.
+ */
+export function deriveOldestUpdate(entries: Map<string, SiteSourceEntry>): number | null {
+  if (entries.size === 0) return null;
+  let oldest = Infinity;
+  for (const entry of entries.values()) {
+    if (entry.updatedAt < oldest) oldest = entry.updatedAt;
+  }
+  return oldest === Infinity ? null : oldest;
+}
