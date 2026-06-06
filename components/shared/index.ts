@@ -6,4 +6,4 @@ export { FilterBar, type FilterOption } from './FilterBar';
 export { StateTile, type TileVariant } from './StateTile';
 export { ProgressBar, type BarColor } from './ProgressBar';
 export { MaterialTile } from './MaterialTile';
-export { DataGate } from './DataGate';
+export { DataGate, type RequiredStore } from './DataGate';
