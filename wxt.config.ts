@@ -35,7 +35,16 @@ export default defineConfig({
   },
   vite: () => ({
     define: {
-      __DEV__: JSON.stringify(process.env.NODE_ENV !== 'production'),
+      // Debug-logging flag. True for the HMR dev server (`wxt dev`, where
+      // NODE_ENV is development) OR when APXM_DEV=true is set explicitly for a
+      // loadable debug build. We do NOT key debug builds off NODE_ENV=development
+      // because that flips React to the jsxDEV runtime, which WXT's production
+      // build pipeline does not bundle — the overlay then crashes with
+      // "jsxDEV is not a function". A debug build stays NODE_ENV=production
+      // (working jsx runtime) and just turns logging on. See buglog bug-002.
+      __DEV__: JSON.stringify(
+        process.env.NODE_ENV !== 'production' || process.env.APXM_DEV === 'true'
+      ),
     },
     build: {
       // Ensure compatibility with Firefox ESR
