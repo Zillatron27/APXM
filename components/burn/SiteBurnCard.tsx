@@ -94,12 +94,12 @@ export function SiteBurnCard({ summary, defaultExpanded = false }: SiteBurnCardP
 
           {/* Quick counts */}
           {criticalCount > 0 && (
-            <span className="text-xs px-1.5 py-0.5 bg-red-500/20 text-red-400">
+            <span className="text-xs px-1.5 py-0.5 bg-status-critical/20 text-status-critical">
               {criticalCount}
             </span>
           )}
           {warningCount > 0 && (
-            <span className="text-xs px-1.5 py-0.5 bg-amber-500/20 text-amber-400">
+            <span className="text-xs px-1.5 py-0.5 bg-status-warning/20 text-status-warning">
               {warningCount}
             </span>
           )}
@@ -117,9 +117,9 @@ export function SiteBurnCard({ summary, defaultExpanded = false }: SiteBurnCardP
                 isLoading
                   ? 'text-apxm-muted cursor-wait'
                   : siteStatus === 'success'
-                    ? 'text-green-400'
+                    ? 'text-status-ok'
                     : siteStatus === 'error'
-                      ? 'text-red-400'
+                      ? 'text-status-critical'
                       : 'text-apxm-text/50 hover:text-prun-yellow'
               }`}
               aria-label={`Refresh ${siteName}`}

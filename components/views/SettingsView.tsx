@@ -3,6 +3,12 @@ import { Card, MaterialTile } from '../shared';
 import { useSettingsStore, DEFAULT_THRESHOLDS, type MaterialTheme } from '../../stores/settings';
 import { testConnection, populateStoresFromFio, type FioProgressStep } from '../../lib/fio';
 import { clearAllCache } from '../../stores/cache';
+import { themePresets } from '../../lib/theme';
+
+/** 24-bit hex number → CSS hex string, for inline preset-preview swatches. */
+function toCssHex(value: number): string {
+  return `#${value.toString(16).padStart(6, '0')}`;
+}
 
 type ConnectionStatus = 'untested' | 'testing' | 'valid' | 'invalid';
 
@@ -39,7 +45,7 @@ export function validateThresholds(
 }
 
 export function SettingsView() {
-  const { fio, setFioConfig, setFioLastFetch, materialTheme, setMaterialTheme, burnThresholds, setBurnThresholds } = useSettingsStore();
+  const { fio, setFioConfig, setFioLastFetch, materialTheme, setMaterialTheme, uiTheme, setUiTheme, burnThresholds, setBurnThresholds } = useSettingsStore();
 
   // Burn threshold local state — strings for free-form editing, persist on valid input
   const [critical, setCritical] = useState(String(burnThresholds.critical));
@@ -339,6 +345,52 @@ export function SettingsView() {
           >
             {isClearing ? 'Clearing...' : 'Clear Cached Data'}
           </button>
+        </div>
+      </Card>
+
+      {/* UI Theme Section */}
+      <Card>
+        <h2 className="text-prun-yellow text-sm font-semibold mb-3">Theme</h2>
+
+        <div className="grid grid-cols-2 gap-2">
+          {themePresets.map((preset, index) => {
+            const selected = uiTheme === preset.id;
+            const { tokens } = preset;
+            // A lone trailing item (odd count) spans both columns and centres
+            // itself at a single column's width, rather than sitting left.
+            const isLoneLast =
+              index === themePresets.length - 1 && themePresets.length % 2 === 1;
+            return (
+              <button
+                key={preset.id}
+                onClick={() => setUiTheme(preset.id)}
+                aria-pressed={selected}
+                className={`min-h-touch flex flex-col items-start gap-2 rounded p-2 border ${
+                  isLoneLast ? 'col-span-2 justify-self-center w-[calc(50%-0.25rem)]' : ''
+                } ${selected ? 'border-prun-yellow' : 'border-apxm-accent'}`}
+                style={{ backgroundColor: toCssHex(tokens.bg) }}
+              >
+                <span
+                  className="text-xs font-semibold"
+                  style={{ color: selected ? toCssHex(tokens.highlight) : toCssHex(tokens.text) }}
+                >
+                  {selected ? '✓ ' : ''}{preset.name}
+                </span>
+                {/* Authentic per-preset swatches (inline styles, not theme tokens) */}
+                <span className="flex gap-1">
+                  {[tokens.highlight, tokens.statusOk, tokens.statusWarning, tokens.statusCritical].map(
+                    (c, i) => (
+                      <span
+                        key={i}
+                        className="inline-block h-3 w-3 rounded-full"
+                        style={{ backgroundColor: toCssHex(c) }}
+                      />
+                    )
+                  )}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </Card>
 

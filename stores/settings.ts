@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware';
 import { browser } from 'wxt/browser';
+import { DEFAULT_THEME_ID, type ApxmThemeId } from '../lib/theme';
 
 export interface BurnThresholds {
   critical: number; // days — default 3
@@ -20,6 +21,7 @@ interface SettingsState {
   burnThresholds: BurnThresholds;
   fio: FioConfig;
   materialTheme: MaterialTheme;
+  uiTheme: ApxmThemeId;
   rprunFeaturesDisabled: boolean;
 }
 
@@ -28,6 +30,7 @@ interface SettingsActions {
   setFioConfig: (config: Partial<FioConfig>) => void;
   setFioLastFetch: (timestamp: number) => void;
   setMaterialTheme: (theme: MaterialTheme) => void;
+  setUiTheme: (theme: ApxmThemeId) => void;
   setRprunFeaturesDisabled: (disabled: boolean) => void;
   reset: () => void;
 }
@@ -46,6 +49,7 @@ const initialState: SettingsState = {
   burnThresholds: DEFAULT_THRESHOLDS,
   fio: DEFAULT_FIO_CONFIG,
   materialTheme: 'rprun',
+  uiTheme: DEFAULT_THEME_ID,
   rprunFeaturesDisabled: false,
 };
 
@@ -131,6 +135,8 @@ export const useSettingsStore = create<SettingsStore>()(
         })),
 
       setMaterialTheme: (theme) => set({ materialTheme: theme }),
+
+      setUiTheme: (theme) => set({ uiTheme: theme }),
 
       setRprunFeaturesDisabled: (disabled) => set({ rprunFeaturesDisabled: disabled }),
 

@@ -14,6 +14,7 @@ import { initRefreshMode, isAutoRefreshEnabled } from '../lib/buffer-refresh';
 import { executeBatchRefresh } from '../lib/buffer-refresh';
 import { useSitesStore } from '../stores/entities';
 import { useSiteSourceStore } from '../stores/site-data-sources';
+import { applyTheme } from '../lib/theme';
 import '../assets/styles.css';
 
 export default defineContentScript({
@@ -145,6 +146,13 @@ export default defineContentScript({
 
     // 6. Rehydrate entity stores from cache (after settings hydrate)
     await waitForSettingsHydration();
+
+    // Apply the persisted UI theme before the overlay mounts so the first
+    // paint already has the right CSS custom properties. Re-apply on change
+    // (the guard inside applyTheme makes non-theme settings changes a no-op).
+    applyTheme(useSettingsStore.getState().uiTheme);
+    useSettingsStore.subscribe((s) => applyTheme(s.uiTheme));
+
     await rehydrateAllStores();
 
     // Mark rehydrated sites as cache-sourced for per-site staleness indicators

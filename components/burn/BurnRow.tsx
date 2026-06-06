@@ -40,7 +40,7 @@ export function BurnRow({ burn, detailed = false }: BurnRowProps) {
         </span>
 
         {/* Daily rate */}
-        <span className={`w-20 text-right font-mono text-xs ${isConsuming ? 'text-red-400' : 'text-green-400'}`}>
+        <span className={`w-20 text-right font-mono text-xs ${isConsuming ? 'text-status-critical' : 'text-status-ok'}`}>
           {dailyDisplay}/d
         </span>
 
@@ -50,7 +50,7 @@ export function BurnRow({ burn, detailed = false }: BurnRowProps) {
         </span>
 
         {/* Need amount (only if consuming and has need) */}
-        <span className="w-12 text-right text-xs text-amber-400">
+        <span className="w-12 text-right text-xs text-status-warning">
           {isConsuming && need > 0 ? `+${Math.ceil(need)}` : ''}
         </span>
       </div>

@@ -21,7 +21,9 @@ input[type='number'] {
   box-sizing: border-box !important;
   overflow: hidden !important;
   pointer-events: none !important;
-  background-color: #0a0a1a !important; /* opaque dark bg - prevents APEX bleed-through */
+  /* Themed opaque bg - prevents APEX bleed-through. Falls back to the legacy
+     navy during the brief window before the theme is applied. */
+  background-color: var(--apxm-bg, #0a0a1a) !important;
 }
 
 /* Collapse the host when showing APEX — FloatingReturn escapes via fixed positioning */

@@ -1,5 +1,19 @@
 # APXM Changelog
 
+## 0.2.0-beta1.4 — Theme System (2026-06-06)
+
+### Features
+
+- **Selectable UI themes** (#22) — five presets (PrUn, DryDock, CRT, Vivid, Colorblind) shared with Helm to unify the visual language across the 27bit tools. Pick a theme in Settings → Theme; the choice persists across sessions and applies instantly
+- **CVD-safe burn indicators** — the Colorblind preset remaps critical/warning/ok/surplus burn colours to a CVD-safe Okabe-Ito palette (vermillion / yellow / bluish-green / sky blue), so the ~8% of users with red-green colour vision deficiency get legible burn status
+
+### Internal
+
+- Theme tokens are driven by CSS custom properties on the document root (inherited into the Shadow DOM); Tailwind chrome/status tokens now resolve to those vars
+- Burn components migrated from ad-hoc Tailwind colours to the themeable `status-*` tokens
+
+---
+
 ## 0.2.0-beta1.1 — Burn Fixes & Desktop Polish (2026-03-30)
 
 ### Bug Fixes

@@ -9,17 +9,17 @@ interface BurnBadgeProps {
 }
 
 const urgencyColors: Record<Urgency, string> = {
-  critical: 'bg-red-500',
-  warning: 'bg-amber-500',
-  ok: 'bg-green-500',
-  surplus: 'bg-blue-500',
+  critical: 'bg-status-critical',
+  warning: 'bg-status-warning',
+  ok: 'bg-status-ok',
+  surplus: 'bg-status-surplus',
 };
 
 const urgencyTextColors: Record<Urgency, string> = {
-  critical: 'text-red-500',
-  warning: 'text-amber-500',
-  ok: 'text-green-500',
-  surplus: 'text-blue-500',
+  critical: 'text-status-critical',
+  warning: 'text-status-warning',
+  ok: 'text-status-ok',
+  surplus: 'text-status-surplus',
 };
 
 /**

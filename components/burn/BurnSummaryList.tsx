@@ -79,7 +79,7 @@ export function BurnSummaryCompact() {
 
   if (urgentItems.length === 0) {
     return (
-      <div className={`text-xs ${sorted.length === 0 ? 'text-apxm-text/50' : 'text-green-500'}`}>
+      <div className={`text-xs ${sorted.length === 0 ? 'text-apxm-text/50' : 'text-status-ok'}`}>
         {sorted.length === 0 ? 'Awaiting data...' : 'All supplies OK'}
       </div>
     );
@@ -92,8 +92,8 @@ export function BurnSummaryCompact() {
           key={`${item.siteName}-${item.materialTicker}`}
           className={`text-xs px-1.5 py-0.5 rounded ${
             item.urgency === 'critical'
-              ? 'bg-red-500/20 text-red-400'
-              : 'bg-amber-500/20 text-amber-400'
+              ? 'bg-status-critical/20 text-status-critical'
+              : 'bg-status-warning/20 text-status-warning'
           }`}
           title={`${item.siteName}: ${item.daysRemaining.toFixed(1)} days`}
         >
