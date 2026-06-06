@@ -23,7 +23,9 @@ Thumbs.db
 .env
 .env.local
 
-# Claude Code config (lives in context/ repo, symlinked here)
+# Claude Code
 CLAUDE.md
-.claude/settings.json
-.claude/commands/
+.claude/
+
+# OpenWolf runtime state (syncable files live in project-context)
+.wolf/
