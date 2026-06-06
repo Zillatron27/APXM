@@ -38,6 +38,11 @@ export function processMessage(msg: ProcessedMessage): void {
   const handler = typeHandlers.get(msg.messageType);
   if (handler) {
     handler(msg);
+  } else {
+    // No registered handler — record the type so the diagnostic overlay can
+    // surface it. A silently-dropped message type is an invisible blind spot:
+    // new game features won't display until we notice and add a handler.
+    useConnectionStore.getState().addUnknownMessageType(msg.messageType);
   }
 }
 
