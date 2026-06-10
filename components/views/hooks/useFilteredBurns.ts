@@ -12,10 +12,13 @@ export interface FilteredBurnsResult {
 
 /**
  * Maps internal urgency to display filter.
- * Sites with no burn data land in 'ok' — "nothing burning" is not surplus.
+ * Surplus folds into 'ok': per-site mostUrgent never lands on surplus
+ * (workforce consumables always burn), so it gets no tier of its own.
+ * Sites with no burn data also land in 'ok'.
  */
 export function getFilterForUrgency(urgency: Urgency | undefined): BurnFilter {
-  return urgency ?? 'ok';
+  if (!urgency || urgency === 'surplus') return 'ok';
+  return urgency;
 }
 
 /**
@@ -33,7 +36,6 @@ export function useFilteredBurns(activeFilters: ReadonlySet<BurnFilter>): Filter
       critical: 0,
       warning: 0,
       ok: 0,
-      surplus: 0,
     };
 
     for (const summary of sorted) {

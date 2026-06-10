@@ -9,11 +9,16 @@ import type { Urgency } from '../core/burn';
 
 export type TabId = 'status' | 'fleet' | 'bases' | 'contracts' | 'settings';
 
-/** Burn view filter: one of the four urgency tiers, or 'all'. */
-export type BurnFilter = Urgency | 'all';
+/**
+ * Burn view filter tiers. 'surplus' is deliberately excluded: a site's
+ * mostUrgent can never be surplus because workforce consumables always
+ * burn on every base, so an INF tier matches nothing (tried and removed
+ * 2026-06-10, see #24). Surplus exists per-material, not per-site.
+ */
+export type BurnFilter = Exclude<Urgency, 'surplus'> | 'all';
 
 // Non-ALL filter values, used by the toggle collapse/revert rules
-const individualBurnFilters: BurnFilter[] = ['critical', 'warning', 'ok', 'surplus'];
+const individualBurnFilters: BurnFilter[] = ['critical', 'warning', 'ok'];
 
 interface GameState {
   overlayVisible: boolean;

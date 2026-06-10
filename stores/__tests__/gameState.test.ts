@@ -55,8 +55,8 @@ describe('gameState store', () => {
 
     it('supports multi-select of tiers', () => {
       toggle('critical');
-      toggle('surplus');
-      expect(filters()).toEqual(['critical', 'surplus']);
+      toggle('ok');
+      expect(filters()).toEqual(['critical', 'ok']);
     });
 
     it('deselecting the last tier reverts to ALL', () => {
@@ -65,11 +65,10 @@ describe('gameState store', () => {
       expect(filters()).toEqual(['all']);
     });
 
-    it('selecting all four tiers collapses to ALL', () => {
+    it('selecting all three tiers collapses to ALL', () => {
       toggle('critical');
       toggle('warning');
       toggle('ok');
-      toggle('surplus');
       expect(filters()).toEqual(['all']);
     });
 

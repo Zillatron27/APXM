@@ -9,7 +9,6 @@ const filterLabels: Record<BurnFilter, string> = {
   critical: 'RED',
   warning: 'YELLOW',
   ok: 'GREEN',
-  surplus: 'INF',
   all: 'ALL',
 };
 
@@ -38,7 +37,6 @@ export function BasesView() {
     { id: 'critical', label: filterLabels.critical, count: counts.critical },
     { id: 'warning', label: filterLabels.warning, count: counts.warning },
     { id: 'ok', label: filterLabels.ok, count: counts.ok },
-    { id: 'surplus', label: filterLabels.surplus, count: counts.surplus },
     { id: 'all', label: filterLabels.all, count: counts.all },
   ];
 
