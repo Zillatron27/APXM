@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Card, MaterialTile } from '../shared';
-import { useSettingsStore, DEFAULT_THRESHOLDS, type MaterialTheme } from '../../stores/settings';
+import {
+  useSettingsStore,
+  DEFAULT_THRESHOLDS,
+  DEFAULT_REPAIR_THRESHOLDS,
+  type MaterialTheme,
+} from '../../stores/settings';
 import { testConnection, populateStoresFromFio, type FioProgressStep } from '../../lib/fio';
 import { clearAllCache } from '../../stores/cache';
 import { themePresets } from '../../lib/theme';
@@ -40,6 +45,19 @@ export function validateThresholds(
   }
   if (resupply < warning) {
     return 'Resupply target must be at least the warning threshold';
+  }
+  return null;
+}
+
+export function validateRepairThresholds(
+  threshold: number,
+  offset: number
+): string | null {
+  if (threshold <= 0 || offset <= 0) {
+    return 'All values must be greater than 0';
+  }
+  if (offset >= threshold) {
+    return 'Offset must be less than the threshold';
   }
   return null;
 }
@@ -93,6 +111,46 @@ export function SettingsView() {
   const handleResetThresholds = () => {
     setBurnThresholds(DEFAULT_THRESHOLDS);
     setThresholdError(null);
+  };
+
+  // Repair threshold local state — same string-edit pattern as burn thresholds
+  const { repairThresholds, setRepairThresholds } = useSettingsStore();
+  const [repairThreshold, setRepairThreshold] = useState(String(repairThresholds.threshold));
+  const [repairOffset, setRepairOffset] = useState(String(repairThresholds.offset));
+  const [repairError, setRepairError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setRepairThreshold(String(repairThresholds.threshold));
+    setRepairOffset(String(repairThresholds.offset));
+  }, [repairThresholds.threshold, repairThresholds.offset]);
+
+  const handleRepairChange = (field: 'threshold' | 'offset', value: string) => {
+    if (field === 'threshold') setRepairThreshold(value);
+    if (field === 'offset') setRepairOffset(value);
+
+    const num = parseFloat(value);
+    if (isNaN(num) || value.trim() === '') {
+      setRepairError(null);
+      return;
+    }
+
+    const current = {
+      threshold: parseFloat(repairThreshold),
+      offset: parseFloat(repairOffset),
+      [field]: num,
+    };
+
+    const error = validateRepairThresholds(current.threshold, current.offset);
+    setRepairError(error);
+
+    if (!error) {
+      setRepairThresholds({ [field]: num });
+    }
+  };
+
+  const handleResetRepairThresholds = () => {
+    setRepairThresholds(DEFAULT_REPAIR_THRESHOLDS);
+    setRepairError(null);
   };
 
   const [username, setUsername] = useState('');
@@ -228,6 +286,51 @@ export function SettingsView() {
 
           <button
             onClick={handleResetThresholds}
+            className="w-full min-h-touch px-4 py-2 text-sm rounded border border-apxm-accent text-apxm-muted font-semibold hover:border-prun-yellow hover:text-prun-yellow"
+          >
+            Reset to Defaults
+          </button>
+        </div>
+      </Card>
+
+      {/* Repair Thresholds Section */}
+      <Card>
+        <h2 className="text-prun-yellow text-sm font-semibold mb-1">Repair Thresholds</h2>
+        <p className="text-xs text-apxm-muted mb-3">
+          Days since last repair on a base's production buildings
+        </p>
+
+        <div className="space-y-3">
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="block text-apxm-muted text-xs mb-1">Threshold (red)</label>
+              <input
+                type="number"
+                value={repairThreshold}
+                onChange={(e) => handleRepairChange('threshold', e.target.value)}
+                className="w-full min-h-touch px-3 py-2 text-sm bg-apxm-bg border border-apxm-accent rounded text-apxm-text outline-none focus:border-prun-yellow"
+              />
+            </div>
+
+            <div className="flex-1">
+              <label className="block text-apxm-muted text-xs mb-1">Offset (yellow)</label>
+              <input
+                type="number"
+                value={repairOffset}
+                onChange={(e) => handleRepairChange('offset', e.target.value)}
+                className="w-full min-h-touch px-3 py-2 text-sm bg-apxm-bg border border-apxm-accent rounded text-apxm-text outline-none focus:border-prun-yellow"
+              />
+            </div>
+          </div>
+
+          <p className="text-xs text-apxm-muted">
+            Offset: turns yellow this many days before the threshold (e.g. 60/10 → yellow at 50d, red at 60d)
+          </p>
+
+          {repairError && <p className="text-xs text-status-critical">{repairError}</p>}
+
+          <button
+            onClick={handleResetRepairThresholds}
             className="w-full min-h-touch px-4 py-2 text-sm rounded border border-apxm-accent text-apxm-muted font-semibold hover:border-prun-yellow hover:text-prun-yellow"
           >
             Reset to Defaults

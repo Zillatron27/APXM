@@ -4,3 +4,8 @@ export { SiteBurnCard } from './SiteBurnCard';
 export { BurnSummaryList, BurnSummaryCompact } from './BurnSummaryList';
 export { useSiteBurns, sortByUrgency } from './useSiteBurns';
 export { DataSourceBadge } from './DataSourceBadge';
+export { useRepairStatus, type RepairStatusSummary } from './useRepairStatus';
+export { useProdStatuses, type ProdStatus } from './useProdStatus';
+export { RepairAgeBadge } from './RepairAgeBadge';
+export { ProdStatusBadge } from './ProdStatusBadge';
+export { BaseStatusTile, type TileTone } from './BaseStatusTile';

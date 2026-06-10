@@ -1,5 +1,7 @@
+import { useMemo } from 'react';
 import { FilterBar, type FilterOption, DataGate, type RequiredStore } from '../shared';
 import { SiteBurnCard } from '../burn/SiteBurnCard';
+import { useRepairStatus, useProdStatuses } from '../burn';
 import { useFilteredBurns, type BurnFilter } from './hooks';
 import { useSitesStore } from '../../stores/entities/sites';
 import { useGameState } from '../../stores/gameState';
@@ -22,6 +24,12 @@ export function BasesView() {
   const activeFilters = useGameState((s) => s.burnFilters);
   const toggleBurnFilter = useGameState((s) => s.toggleBurnFilter);
   const { summaries, counts } = useFilteredBurns(activeFilters);
+  const repairStatuses = useRepairStatus();
+  const prodStatuses = useProdStatuses();
+  const repairBySite = useMemo(
+    () => new Map(repairStatuses.map((r) => [r.siteId, r])),
+    [repairStatuses]
+  );
 
   const sitesFetched = useSitesStore((s) => s.fetched);
 
@@ -55,6 +63,8 @@ export function BasesView() {
               <SiteBurnCard
                 key={summary.siteId}
                 summary={summary}
+                repairAgeDays={repairBySite.get(summary.siteId)?.oldestBuildingAgeDays ?? null}
+                prodStatus={prodStatuses.get(summary.siteId) ?? null}
                 defaultExpanded={false}
               />
             ))}

@@ -1,15 +1,26 @@
 import { useState } from 'react';
 import type { SiteBurnSummary, BurnRate } from '../../core/burn';
+import { classifyRepairUrgency } from '../../core/repair';
 import { useRefreshState } from '../../stores/refreshState';
+import { useSettingsStore } from '../../stores/settings';
 import { executeBufferRefresh, buildBufferCommand } from '../../lib/buffer-refresh';
 import { useSiteStaleness } from '../../hooks/useSiteStaleness';
-import { BurnBadge } from './BurnBadge';
 import { BurnRow } from './BurnRow';
+import { BaseStatusTile, type TileTone } from './BaseStatusTile';
+import type { ProdStatus } from './useProdStatus';
 
 interface SiteBurnCardProps {
   summary: SiteBurnSummary;
+  /** Days since last repair on the site's oldest production building (null = none) */
+  repairAgeDays: number | null;
+  /** Production status (null = unknown, true = all running, false = stopped/idle) */
+  prodStatus: ProdStatus;
   /** Start expanded */
   defaultExpanded?: boolean;
+}
+
+function formatDays(days: number): string {
+  return days < 1 ? '<1d' : `${Math.floor(days)}d`;
 }
 
 /**
@@ -47,18 +58,33 @@ function sortBurns(burns: BurnRate[]): BurnRate[] {
  * Card showing burn summary for a single site.
  * Collapsible with header showing site name and most urgent item.
  */
-export function SiteBurnCard({ summary, defaultExpanded = false }: SiteBurnCardProps) {
+export function SiteBurnCard({
+  summary,
+  repairAgeDays,
+  prodStatus,
+  defaultExpanded = false,
+}: SiteBurnCardProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const { siteId, siteName, burns, mostUrgent } = summary;
 
   const { text: stalenessText, colorClass: stalenessColor } = useSiteStaleness(siteId);
+  const repairThresholds = useSettingsStore((s) => s.repairThresholds);
 
   const mode = useRefreshState((s) => s.mode);
   const siteStatus = useRefreshState((s) => s.siteStatus.get(siteId));
 
   const sortedBurns = sortBurns(burns);
-  const criticalCount = burns.filter((b) => b.urgency === 'critical').length;
-  const warningCount = burns.filter((b) => b.urgency === 'warning').length;
+
+  // Tile tones: burn from mostUrgent urgency (surplus folds into ok),
+  // repair from the user's threshold/offset settings
+  const burnTone: TileTone = mostUrgent
+    ? mostUrgent.urgency === 'surplus'
+      ? 'ok'
+      : mostUrgent.urgency
+    : 'muted';
+  const repairTone: TileTone =
+    repairAgeDays === null ? 'muted' : classifyRepairUrgency(repairAgeDays, repairThresholds);
+  const prodTone: TileTone = prodStatus === null ? 'muted' : prodStatus ? 'ok' : 'critical';
 
   const showRefreshButton = mode === 'manual' || mode === 'batch';
   const isLoading = siteStatus === 'loading';
@@ -92,17 +118,6 @@ export function SiteBurnCard({ summary, defaultExpanded = false }: SiteBurnCardP
             )}
           </div>
 
-          {/* Quick counts */}
-          {criticalCount > 0 && (
-            <span className="text-xs px-1.5 py-0.5 bg-status-critical/20 text-status-critical">
-              {criticalCount}
-            </span>
-          )}
-          {warningCount > 0 && (
-            <span className="text-xs px-1.5 py-0.5 bg-status-warning/20 text-status-warning">
-              {warningCount}
-            </span>
-          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -136,13 +151,22 @@ export function SiteBurnCard({ summary, defaultExpanded = false }: SiteBurnCardP
             </span>
           )}
 
-          {/* Most urgent item preview */}
-          {mostUrgent && (
-            <>
-              <span className="text-xs text-apxm-text/70">{mostUrgent.materialTicker}</span>
-              <BurnBadge urgency={mostUrgent.urgency} daysRemaining={mostUrgent.daysRemaining} />
-            </>
-          )}
+          {/* BURN / REPAIR / PROD status tiles */}
+          <BaseStatusTile
+            label="Burn"
+            value={mostUrgent ? formatDays(mostUrgent.daysRemaining) : '—'}
+            tone={burnTone}
+          />
+          <BaseStatusTile
+            label="Repair"
+            value={repairAgeDays === null ? '—' : formatDays(repairAgeDays)}
+            tone={repairTone}
+          />
+          <BaseStatusTile
+            label="Prod"
+            value={prodStatus === null ? '?' : prodStatus ? '✓' : '∅'}
+            tone={prodTone}
+          />
         </div>
       </button>
 
