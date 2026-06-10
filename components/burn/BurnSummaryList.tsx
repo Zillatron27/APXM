@@ -1,6 +1,9 @@
+import { useMemo } from 'react';
 import { useSiteBurns, sortByUrgency } from './useSiteBurns';
 import { SiteBurnCard } from './SiteBurnCard';
 import { DataSourceBadge } from './DataSourceBadge';
+import { useRepairStatus } from './useRepairStatus';
+import { useProdStatuses } from './useProdStatus';
 import { useSettingsStore } from '../../stores/settings';
 import {
   useSiteSourceStore,
@@ -19,6 +22,12 @@ interface BurnSummaryListProps {
 export function BurnSummaryList({ expandFirst = true }: BurnSummaryListProps) {
   const summaries = useSiteBurns();
   const sorted = sortByUrgency(summaries);
+  const repairStatuses = useRepairStatus();
+  const prodStatuses = useProdStatuses();
+  const repairBySite = useMemo(
+    () => new Map(repairStatuses.map((r) => [r.siteId, r])),
+    [repairStatuses]
+  );
 
   // Derive data source from per-site entries (weakest-link across all sites)
   const siteEntries = useSiteSourceStore((s) => s.entries);
@@ -53,6 +62,8 @@ export function BurnSummaryList({ expandFirst = true }: BurnSummaryListProps) {
         <SiteBurnCard
           key={summary.siteId}
           summary={summary}
+          repairAgeDays={repairBySite.get(summary.siteId)?.oldestBuildingAgeDays ?? null}
+          prodStatus={prodStatuses.get(summary.siteId) ?? null}
           defaultExpanded={expandFirst && index === 0}
         />
       ))}

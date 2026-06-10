@@ -8,7 +8,7 @@ interface TabConfig {
 
 const tabs: TabConfig[] = [
   { id: 'status', label: 'STATUS' },
-  { id: 'bases', label: 'BURN' },
+  { id: 'bases', label: 'BASE' },
   { id: 'fleet', label: 'FLEET' },
   { id: 'contracts', label: 'CONTRACTS' },
   { id: 'settings', label: 'SET' },

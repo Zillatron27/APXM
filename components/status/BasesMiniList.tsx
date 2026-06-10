@@ -1,5 +1,13 @@
 import { useMemo } from 'react';
-import { useSiteBurns, sortByUrgency, DataSourceBadge } from '../burn';
+import {
+  useSiteBurns,
+  sortByUrgency,
+  DataSourceBadge,
+  useRepairStatus,
+  useProdStatuses,
+  RepairAgeBadge,
+  ProdStatusBadge,
+} from '../burn';
 import { Card, SectionHeader, TimeBadge } from '../shared';
 import { useGameState } from '../../stores/gameState';
 import { useConnectionStore } from '../../stores/connection';
@@ -17,6 +25,13 @@ import { useStorageStore } from '../../stores/entities/storage';
 export function BasesMiniList() {
   const { setActiveTab } = useGameState();
   const siteBurns = useSiteBurns();
+  const repairStatuses = useRepairStatus();
+  const prodStatuses = useProdStatuses();
+
+  const repairBySite = useMemo(
+    () => new Map(repairStatuses.map((r) => [r.siteId, r])),
+    [repairStatuses]
+  );
 
   const apexUnresponsive = useConnectionStore((s) => s.apexUnresponsive);
   const sitesFetched = useSitesStore((s) => s.fetched);
@@ -34,9 +49,15 @@ export function BasesMiniList() {
   const lastUpdated = source === 'fio' ? fioLastFetch : oldestUpdate;
 
   const topBases = useMemo(() => {
-    const sorted = sortByUrgency(siteBurns);
+    // Stopped production bubbles above burn urgency — it's the loudest alarm
+    const sorted = [...sortByUrgency(siteBurns)].sort((a, b) => {
+      const aStopped = prodStatuses.get(a.siteId) === false;
+      const bStopped = prodStatuses.get(b.siteId) === false;
+      if (aStopped !== bStopped) return aStopped ? -1 : 1;
+      return 0; // stable: keep burn-urgency order within each group
+    });
     return sorted.slice(0, 5);
-  }, [siteBurns]);
+  }, [siteBurns, prodStatuses]);
 
   // Determine loading state for empty-state message
   const emptyMessage = apexUnresponsive && !sitesFetched
@@ -65,18 +86,32 @@ export function BasesMiniList() {
         onViewAll={() => setActiveTab('bases')}
         accessory={<DataSourceBadge source={source} lastUpdated={lastUpdated} />}
       />
-      <div className="space-y-0">
+      <div className="grid grid-cols-[minmax(0,1fr)_3.5rem_3.5rem_2.5rem] gap-x-2 items-center">
+        {/* Column headers */}
+        <span />
+        <span className="text-[10px] text-apxm-text/40 uppercase tracking-wide text-center">Burn</span>
+        <span className="text-[10px] text-apxm-text/40 uppercase tracking-wide text-center">Repair</span>
+        <span className="text-[10px] text-apxm-text/40 uppercase tracking-wide text-center">Prod</span>
+
         {topBases.map((site) => (
-          <div key={site.siteId} className="flex items-center justify-between py-1">
-            <span className="text-sm text-apxm-text truncate flex-1 mr-2">{site.siteName}</span>
-            {site.mostUrgent ? (
-              <TimeBadge
-                daysRemaining={site.mostUrgent.daysRemaining}
-                urgency={site.mostUrgent.urgency}
-              />
-            ) : (
-              <span className="text-xs text-apxm-muted">OK</span>
-            )}
+          <div key={site.siteId} className="contents">
+            <span className="text-sm text-apxm-text truncate py-1">{site.siteName}</span>
+            <span className="text-center">
+              {site.mostUrgent ? (
+                <TimeBadge
+                  daysRemaining={site.mostUrgent.daysRemaining}
+                  urgency={site.mostUrgent.urgency}
+                />
+              ) : (
+                <span className="text-xs text-apxm-muted">OK</span>
+              )}
+            </span>
+            <span className="text-center">
+              <RepairAgeBadge ageDays={repairBySite.get(site.siteId)?.oldestBuildingAgeDays ?? null} />
+            </span>
+            <span className="text-center">
+              <ProdStatusBadge status={prodStatuses.get(site.siteId) ?? null} />
+            </span>
           </div>
         ))}
       </div>

@@ -11,6 +11,7 @@ import {
   useFlightsStore,
   useContractsStore,
   useBalancesStore,
+  useProductionLoadedStore,
   clearAllEntityStores,
   type WorkforceEntity,
 } from './entities';
@@ -98,9 +99,11 @@ export function initMessageHandlers(): void {
     if (reconnectCount > 0) {
       clearAllEntityStores();
       useSiteSourceStore.getState().clear();
-      // Not an entity store, so clearAllEntityStores doesn't cover it.
-      // COMPANY_DATA re-arrives with the login dump.
+      // Not entity stores, so clearAllEntityStores doesn't cover them.
+      // COMPANY_DATA re-arrives with the login dump; production loaded
+      // markers re-accumulate as per-site data arrives.
       useCompanyStore.getState().clear();
+      useProductionLoadedStore.getState().clear();
     }
     useConnectionStore.getState().incrementReconnectCount();
     useConnectionStore.getState().setConnected(true);
@@ -227,6 +230,9 @@ export function initMessageHandlers(): void {
     if (Array.isArray(payload?.productionLines)) {
       useProductionStore.getState().setAll(payload.productionLines);
       useProductionStore.getState().setFetched('websocket');
+      useProductionLoadedStore.getState().markSitesLoaded(
+        payload.productionLines.map((l) => l.siteId).filter(Boolean)
+      );
     } else {
       warn('PRODUCTION_PRODUCTION_LINES: unexpected payload structure', payload);
     }
@@ -250,6 +256,7 @@ export function initMessageHandlers(): void {
       }
       useProductionStore.getState().setMany(payload.productionLines);
       useProductionStore.getState().setFetched('websocket');
+      useProductionLoadedStore.getState().markSitesLoaded(siteIds);
     } else {
       warn('PRODUCTION_SITE_PRODUCTION_LINES: unexpected payload structure', payload);
     }
