@@ -10,6 +10,7 @@ import {
   useShipsStore,
   useFlightsStore,
   useContractsStore,
+  useProductionLoadedStore,
   clearAllEntityStores,
 } from '../entities';
 import {
@@ -41,6 +42,7 @@ describe('message-handlers', () => {
     clearAllEntityStores();
     useSiteSourceStore.getState().clear();
     useCompanyStore.getState().clear();
+    useProductionLoadedStore.getState().clear();
     useConnectionStore.setState({
       connected: false,
       lastMessageTimestamp: null,
@@ -283,6 +285,38 @@ describe('message-handlers', () => {
 
       expect(useWorkforceStore.getState().entities.size).toBe(1);
       expect(useWorkforceStore.getState().getById('site-1')).toBeDefined();
+    });
+  });
+
+  describe('production loaded tracking', () => {
+    it('marks sites loaded on per-site production data', () => {
+      dispatchMessage('PRODUCTION_SITE_PRODUCTION_LINES', {
+        productionLines: [createTestProductionLine({ siteId: 'site-A' })],
+      });
+
+      expect(useProductionLoadedStore.getState().loadedSiteIds.has('site-A')).toBe(true);
+      expect(useProductionLoadedStore.getState().loadedSiteIds.has('site-B')).toBe(false);
+    });
+
+    it('marks sites loaded on bulk production data', () => {
+      dispatchMessage('PRODUCTION_PRODUCTION_LINES', {
+        productionLines: [
+          createTestProductionLine({ siteId: 'site-A' }),
+          createTestProductionLine({ siteId: 'site-B' }),
+        ],
+      });
+
+      expect(useProductionLoadedStore.getState().loadedSiteIds.has('site-A')).toBe(true);
+      expect(useProductionLoadedStore.getState().loadedSiteIds.has('site-B')).toBe(true);
+    });
+
+    it('clears loaded markers on reconnection', () => {
+      dispatchMessage('CLIENT_CONNECTION_OPENED', {});
+      useProductionLoadedStore.getState().markSitesLoaded(['site-A']);
+
+      dispatchMessage('CLIENT_CONNECTION_OPENED', {});
+
+      expect(useProductionLoadedStore.getState().loadedSiteIds.size).toBe(0);
     });
   });
 

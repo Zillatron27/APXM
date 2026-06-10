@@ -26,6 +26,7 @@ export {
 
 export {
   useProductionStore,
+  useProductionLoadedStore,
   getProductionBySiteId,
   type ProductionStore,
 } from './production';
