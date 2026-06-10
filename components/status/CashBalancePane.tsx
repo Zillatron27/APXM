@@ -18,18 +18,19 @@ interface BalanceRowProps {
 }
 
 function BalanceRow({ currency, amount, indicator, hiddenCount }: BalanceRowProps) {
+  // Ledger layout: fixed-width right-aligned amount column directly beside
+  // the code column, so amounts share one right edge near their labels
+  // instead of stretching to the card edge.
   return (
-    <div className="flex items-center justify-between">
-      <span className="flex items-center gap-2">
-        <span className="text-apxm-text/50 text-xs w-4 shrink-0">{indicator ?? ''}</span>
-        <span className="text-xs text-apxm-text">{currency}</span>
+    <div className="flex items-center gap-2 py-0.5">
+      <span className="text-apxm-text/50 text-xs w-4 shrink-0">{indicator ?? ''}</span>
+      <span className="text-xs text-apxm-text/70 w-9 shrink-0">{currency}</span>
+      <span className="text-xs text-apxm-text tabular-nums w-28 shrink-0 text-right">
+        {formatAmount(amount)}
       </span>
-      <span className="flex items-center gap-2">
-        {hiddenCount !== undefined && hiddenCount > 0 && (
-          <span className="text-xs text-apxm-muted">+{hiddenCount}</span>
-        )}
-        <span className="text-xs text-apxm-text tabular-nums">{formatAmount(amount)}</span>
-      </span>
+      {hiddenCount !== undefined && hiddenCount > 0 && (
+        <span className="text-xs text-apxm-muted">+{hiddenCount}</span>
+      )}
     </div>
   );
 }
@@ -60,8 +61,7 @@ export function CashBalancePane() {
       ? `${company.name} (${company.code})`
       : company.name
     : 'Cash';
-  const visible = expanded ? balances : balances.slice(0, 1);
-  const hiddenCount = balances.length - visible.length;
+  const [primary, ...rest] = balances;
 
   return (
     <Card>
@@ -72,21 +72,37 @@ export function CashBalancePane() {
         <p className="text-xs text-apxm-muted">No balances</p>
       ) : balances.length === 1 ? (
         // Single currency — nothing to expand, render a plain row
-        <BalanceRow currency={balances[0].currency} amount={balances[0].amount} />
+        <div className="pt-3">
+          <BalanceRow currency={balances[0].currency} amount={balances[0].amount} />
+        </div>
       ) : (
+        // flex-col overrides the browser's default vertical centring of
+        // button content: the first row keeps the same offset below the
+        // title in both states, so expanding only grows the list downward.
         <button
           onClick={() => setExpanded(!expanded)}
-          className="w-full min-h-[44px] text-left hover:bg-apxm-accent/30"
+          aria-expanded={expanded}
+          className="w-full min-h-[44px] flex flex-col items-stretch justify-start pt-3 text-left hover:bg-apxm-accent/30"
         >
-          {visible.map((bal, i) => (
-            <BalanceRow
-              key={bal.currency}
-              currency={bal.currency}
-              amount={bal.amount}
-              indicator={i === 0 ? (expanded ? '▼' : '▶') : undefined}
-              hiddenCount={i === 0 && !expanded ? hiddenCount : undefined}
-            />
-          ))}
+          <BalanceRow
+            currency={primary.currency}
+            amount={primary.amount}
+            indicator={expanded ? '▼' : '▶'}
+            hiddenCount={!expanded ? rest.length : undefined}
+          />
+          {/* grid-rows 0fr→1fr animates to the list's natural height
+              (height:auto isn't transitionable); motion-reduce disables it */}
+          <div
+            className={`grid transition-[grid-template-rows,opacity] duration-150 ease-out motion-reduce:transition-none ${
+              expanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+            }`}
+          >
+            <div className="overflow-hidden">
+              {rest.map((bal) => (
+                <BalanceRow key={bal.currency} currency={bal.currency} amount={bal.amount} />
+              ))}
+            </div>
+          </div>
         </button>
       )}
     </Card>
