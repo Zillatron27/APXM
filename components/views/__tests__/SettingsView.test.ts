@@ -1,6 +1,46 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { validateThresholds } from '../SettingsView';
-import { useSettingsStore, DEFAULT_THRESHOLDS } from '../../../stores/settings';
+import { validateThresholds, validateRepairThresholds } from '../SettingsView';
+import {
+  useSettingsStore,
+  DEFAULT_THRESHOLDS,
+  DEFAULT_REPAIR_THRESHOLDS,
+} from '../../../stores/settings';
+
+describe('SettingsView repair threshold validation', () => {
+  describe('validateRepairThresholds', () => {
+    it('returns null for valid values', () => {
+      expect(validateRepairThresholds(60, 10)).toBeNull();
+    });
+
+    it('rejects offset >= threshold', () => {
+      expect(validateRepairThresholds(60, 60)).toBe('Offset must be less than the threshold');
+      expect(validateRepairThresholds(60, 70)).toBe('Offset must be less than the threshold');
+    });
+
+    it('rejects zero and negative values', () => {
+      expect(validateRepairThresholds(0, 10)).toBe('All values must be greater than 0');
+      expect(validateRepairThresholds(60, 0)).toBe('All values must be greater than 0');
+      expect(validateRepairThresholds(-60, -10)).toBe('All values must be greater than 0');
+    });
+  });
+
+  describe('store integration', () => {
+    beforeEach(() => {
+      useSettingsStore.getState().reset();
+    });
+
+    it('defaults match DEFAULT_REPAIR_THRESHOLDS (60/10)', () => {
+      expect(useSettingsStore.getState().repairThresholds).toEqual(DEFAULT_REPAIR_THRESHOLDS);
+    });
+
+    it('setRepairThresholds persists partial updates', () => {
+      useSettingsStore.getState().setRepairThresholds({ offset: 14 });
+      const { repairThresholds } = useSettingsStore.getState();
+      expect(repairThresholds.offset).toBe(14);
+      expect(repairThresholds.threshold).toBe(60);
+    });
+  });
+});
 
 describe('SettingsView burn threshold validation', () => {
   describe('validateThresholds', () => {

@@ -9,6 +9,13 @@ export interface BurnThresholds {
   resupply: number; // days — default 30 (how much to buy)
 }
 
+// rPrun-style XIT REP model: one number per base (days since last repair on
+// its production buildings); red at threshold, yellow `offset` days before it.
+export interface RepairThresholds {
+  threshold: number; // days since last repair → red. default 60
+  offset: number; // days before threshold → yellow. default 10
+}
+
 export interface FioConfig {
   apiKey: string | null;
   username: string | null;
@@ -19,6 +26,7 @@ export type MaterialTheme = 'rprun' | 'prun';
 
 interface SettingsState {
   burnThresholds: BurnThresholds;
+  repairThresholds: RepairThresholds;
   fio: FioConfig;
   materialTheme: MaterialTheme;
   uiTheme: ApxmThemeId;
@@ -27,6 +35,7 @@ interface SettingsState {
 
 interface SettingsActions {
   setBurnThresholds: (thresholds: Partial<BurnThresholds>) => void;
+  setRepairThresholds: (thresholds: Partial<RepairThresholds>) => void;
   setFioConfig: (config: Partial<FioConfig>) => void;
   setFioLastFetch: (timestamp: number) => void;
   setMaterialTheme: (theme: MaterialTheme) => void;
@@ -39,6 +48,9 @@ type SettingsStore = SettingsState & SettingsActions;
 
 export const DEFAULT_THRESHOLDS: BurnThresholds = { critical: 3, warning: 5, resupply: 30 };
 
+// 60/10 matches the values proven on jackinabox86's fork (red 60d, yellow 50d)
+export const DEFAULT_REPAIR_THRESHOLDS: RepairThresholds = { threshold: 60, offset: 10 };
+
 const DEFAULT_FIO_CONFIG: FioConfig = {
   apiKey: null,
   username: null,
@@ -47,6 +59,7 @@ const DEFAULT_FIO_CONFIG: FioConfig = {
 
 const initialState: SettingsState = {
   burnThresholds: DEFAULT_THRESHOLDS,
+  repairThresholds: DEFAULT_REPAIR_THRESHOLDS,
   fio: DEFAULT_FIO_CONFIG,
   materialTheme: 'rprun',
   uiTheme: DEFAULT_THEME_ID,
@@ -124,6 +137,11 @@ export const useSettingsStore = create<SettingsStore>()(
           burnThresholds: { ...state.burnThresholds, ...thresholds },
         })),
 
+      setRepairThresholds: (thresholds) =>
+        set((state) => ({
+          repairThresholds: { ...state.repairThresholds, ...thresholds },
+        })),
+
       setFioConfig: (config) =>
         set((state) => ({
           fio: { ...state.fio, ...config },
@@ -153,6 +171,7 @@ export const useSettingsStore = create<SettingsStore>()(
           ...current,
           ...state,
           burnThresholds: { ...current.burnThresholds, ...state?.burnThresholds },
+          repairThresholds: { ...current.repairThresholds, ...state?.repairThresholds },
           fio: { ...current.fio, ...state?.fio },
         };
       },
