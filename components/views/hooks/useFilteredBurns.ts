@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
 import { useSiteBurns, sortByUrgency } from '../../burn/useSiteBurns';
 import type { SiteBurnSummary, Urgency } from '../../../core/burn';
+import type { BurnFilter } from '../../../stores/gameState';
 
-export type BurnFilter = 'all' | 'critical' | 'warning' | 'ok';
+export type { BurnFilter };
 
 export interface FilteredBurnsResult {
   summaries: SiteBurnSummary[];
@@ -11,13 +12,10 @@ export interface FilteredBurnsResult {
 
 /**
  * Maps internal urgency to display filter.
- * Sites with mostUrgent of that urgency level.
+ * Sites with no burn data land in 'ok' — "nothing burning" is not surplus.
  */
-function getFilterForUrgency(urgency: Urgency | undefined): BurnFilter {
-  if (!urgency) return 'ok';
-  if (urgency === 'critical') return 'critical';
-  if (urgency === 'warning') return 'warning';
-  return 'ok'; // 'ok' and 'surplus' both map to 'ok' filter
+export function getFilterForUrgency(urgency: Urgency | undefined): BurnFilter {
+  return urgency ?? 'ok';
 }
 
 /**
@@ -35,6 +33,7 @@ export function useFilteredBurns(activeFilters: ReadonlySet<BurnFilter>): Filter
       critical: 0,
       warning: 0,
       ok: 0,
+      surplus: 0,
     };
 
     for (const summary of sorted) {

@@ -1,51 +1,28 @@
-import { useCallback, useState } from 'react';
 import { FilterBar, type FilterOption, DataGate, type RequiredStore } from '../shared';
 import { SiteBurnCard } from '../burn/SiteBurnCard';
 import { useFilteredBurns, type BurnFilter } from './hooks';
 import { useSitesStore } from '../../stores/entities/sites';
+import { useGameState } from '../../stores/gameState';
 
 // UI label mapping: internal type → display
 const filterLabels: Record<BurnFilter, string> = {
   critical: 'RED',
   warning: 'YELLOW',
   ok: 'GREEN',
+  surplus: 'INF',
   all: 'ALL',
 };
-
-// Non-ALL filter values for revert logic
-const individualFilters: BurnFilter[] = ['critical', 'warning', 'ok'];
 
 /**
  * Full burn view showing all sites with filtering by urgency.
  * BURN tab content.
  */
 export function BasesView() {
-  const [activeFilters, setActiveFilters] = useState<Set<BurnFilter>>(new Set(['all']));
+  // Filter selection lives in gameState so it survives tab switches;
+  // the toggle rules (ALL reset, empty→ALL, full-set→ALL) live with it.
+  const activeFilters = useGameState((s) => s.burnFilters);
+  const toggleBurnFilter = useGameState((s) => s.toggleBurnFilter);
   const { summaries, counts } = useFilteredBurns(activeFilters);
-
-  const handleFilterToggle = useCallback((filter: BurnFilter) => {
-    setActiveFilters((prev) => {
-      // Selecting ALL resets to show everything
-      if (filter === 'all') return new Set(['all']);
-
-      const next = new Set(prev);
-      next.delete('all');
-
-      if (next.has(filter)) {
-        next.delete(filter);
-      } else {
-        next.add(filter);
-      }
-
-      // If nothing selected, revert to ALL
-      if (next.size === 0) return new Set(['all']);
-
-      // If all individual filters selected, collapse to ALL
-      if (individualFilters.every((f) => next.has(f))) return new Set(['all']);
-
-      return next;
-    });
-  }, []);
 
   const sitesFetched = useSitesStore((s) => s.fetched);
 
@@ -61,13 +38,14 @@ export function BasesView() {
     { id: 'critical', label: filterLabels.critical, count: counts.critical },
     { id: 'warning', label: filterLabels.warning, count: counts.warning },
     { id: 'ok', label: filterLabels.ok, count: counts.ok },
+    { id: 'surplus', label: filterLabels.surplus, count: counts.surplus },
     { id: 'all', label: filterLabels.all, count: counts.all },
   ];
 
   return (
     <DataGate requiredStores={requiredStores}>
       <div className="space-y-3">
-        <FilterBar options={filterOptions} activeFilters={activeFilters} onChange={handleFilterToggle} />
+        <FilterBar options={filterOptions} activeFilters={activeFilters} onChange={toggleBurnFilter} />
 
         {summaries.length === 0 ? (
           <p className="text-sm text-apxm-muted py-4 text-center">

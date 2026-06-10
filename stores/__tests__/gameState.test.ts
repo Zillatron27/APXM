@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useGameState } from '../gameState';
+import { useGameState, type BurnFilter } from '../gameState';
 
 /**
  * gameState store tests.
@@ -12,6 +12,7 @@ describe('gameState store', () => {
     useGameState.setState({
       overlayVisible: true,
       debugMode: false,
+      burnFilters: new Set<BurnFilter>(['all']),
     });
   });
 
@@ -36,6 +37,47 @@ describe('gameState store', () => {
     it('updates debug mode', () => {
       useGameState.getState().setDebugMode(true);
       expect(useGameState.getState().debugMode).toBe(true);
+    });
+  });
+
+  describe('toggleBurnFilter', () => {
+    const filters = () => [...useGameState.getState().burnFilters].sort();
+    const toggle = (f: BurnFilter) => useGameState.getState().toggleBurnFilter(f);
+
+    it('defaults to ALL', () => {
+      expect(filters()).toEqual(['all']);
+    });
+
+    it('selecting a tier replaces ALL with that tier', () => {
+      toggle('critical');
+      expect(filters()).toEqual(['critical']);
+    });
+
+    it('supports multi-select of tiers', () => {
+      toggle('critical');
+      toggle('surplus');
+      expect(filters()).toEqual(['critical', 'surplus']);
+    });
+
+    it('deselecting the last tier reverts to ALL', () => {
+      toggle('warning');
+      toggle('warning');
+      expect(filters()).toEqual(['all']);
+    });
+
+    it('selecting all four tiers collapses to ALL', () => {
+      toggle('critical');
+      toggle('warning');
+      toggle('ok');
+      toggle('surplus');
+      expect(filters()).toEqual(['all']);
+    });
+
+    it('selecting ALL resets any tier selection', () => {
+      toggle('critical');
+      toggle('ok');
+      toggle('all');
+      expect(filters()).toEqual(['all']);
     });
   });
 });
