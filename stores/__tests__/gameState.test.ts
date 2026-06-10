@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useGameState, type BurnFilter } from '../gameState';
+import {
+  useGameState,
+  type BurnFilter,
+  type FleetFilter,
+  type ContractFilter,
+} from '../gameState';
 
 /**
  * gameState store tests.
@@ -13,6 +18,8 @@ describe('gameState store', () => {
       overlayVisible: true,
       debugMode: false,
       burnFilters: new Set<BurnFilter>(['all']),
+      fleetFilters: new Set<FleetFilter>(['all']),
+      contractFilters: new Set<ContractFilter>(['active']),
     });
   });
 
@@ -77,6 +84,40 @@ describe('gameState store', () => {
       toggle('ok');
       toggle('all');
       expect(filters()).toEqual(['all']);
+    });
+  });
+
+  describe('toggleFleetFilter', () => {
+    const filters = () => [...useGameState.getState().fleetFilters].sort();
+
+    it('defaults to ALL', () => {
+      expect(filters()).toEqual(['all']);
+    });
+
+    it('applies the shared toggle rules', () => {
+      useGameState.getState().toggleFleetFilter('idle');
+      expect(filters()).toEqual(['idle']);
+
+      // Selecting both individual filters collapses to ALL
+      useGameState.getState().toggleFleetFilter('in-transit');
+      expect(filters()).toEqual(['all']);
+    });
+  });
+
+  describe('toggleContractFilter', () => {
+    const filters = () => [...useGameState.getState().contractFilters].sort();
+
+    it('defaults to ACTIVE — fulfilled contracts are history', () => {
+      expect(filters()).toEqual(['active']);
+    });
+
+    it('applies the shared toggle rules', () => {
+      // Deselecting the default reverts to ALL
+      useGameState.getState().toggleContractFilter('active');
+      expect(filters()).toEqual(['all']);
+
+      useGameState.getState().toggleContractFilter('fulfilled');
+      expect(filters()).toEqual(['fulfilled']);
     });
   });
 });

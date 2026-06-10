@@ -6,7 +6,9 @@ import { getDestinationName, formatEta, getCurrentLocation } from '../../../lib/
 import { useTick } from '../../../lib/use-tick';
 import type { PrunApi } from '../../../types/prun-api';
 
-export type FleetFilter = 'all' | 'idle' | 'in-transit';
+import type { FleetFilter } from '../../../stores/gameState';
+
+export type { FleetFilter };
 
 export type FlightState = 'IDL' | 'ARR' | 'TRN' | 'DEP' | 'ORB';
 
