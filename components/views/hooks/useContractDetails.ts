@@ -2,7 +2,9 @@ import { useMemo } from 'react';
 import { useContractsStore } from '../../../stores/entities/contracts';
 import type { PrunApi } from '../../../types/prun-api';
 
-export type ContractFilter = 'all' | 'active' | 'fulfilled';
+import type { ContractFilter } from '../../../stores/gameState';
+
+export type { ContractFilter };
 
 // Contract statuses considered "active" (need attention)
 const ACTIVE_STATUSES: PrunApi.ContractStatus[] = ['OPEN', 'CLOSED', 'PARTIALLY_FULFILLED'];
