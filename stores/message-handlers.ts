@@ -15,6 +15,7 @@ import {
   type WorkforceEntity,
 } from './entities';
 import { useSiteSourceStore } from './site-data-sources';
+import { useCompanyStore } from './company';
 
 type MessageHandler = (msg: ProcessedMessage) => void;
 const typeHandlers = new Map<string, MessageHandler>();
@@ -97,6 +98,9 @@ export function initMessageHandlers(): void {
     if (reconnectCount > 0) {
       clearAllEntityStores();
       useSiteSourceStore.getState().clear();
+      // Not an entity store, so clearAllEntityStores doesn't cover it.
+      // COMPANY_DATA re-arrives with the login dump.
+      useCompanyStore.getState().clear();
     }
     useConnectionStore.getState().incrementReconnectCount();
     useConnectionStore.getState().setConnected(true);
@@ -453,6 +457,31 @@ export function initMessageHandlers(): void {
       }
     } else {
       warn('ACCOUNTING_BOOKINGS: unexpected payload structure', payload);
+      useConnectionStore.getState().incrementDiscarded();
+    }
+  });
+
+  // ============================================================================
+  // Company
+  // ============================================================================
+
+  // Company identity sent on login. name is the only field the UI cannot
+  // degrade without; code/countryId fall back to '' (no code suffix shown,
+  // alphabetical currency ordering).
+  typeHandlers.set('COMPANY_DATA', (msg: ProcessedMessage) => {
+    const payload = extractPayload(msg) as {
+      name?: string;
+      code?: string;
+      countryId?: string;
+    };
+    if (typeof payload?.name === 'string') {
+      useCompanyStore.getState().setCompany({
+        name: payload.name,
+        code: typeof payload.code === 'string' ? payload.code : '',
+        countryId: typeof payload.countryId === 'string' ? payload.countryId : '',
+      });
+    } else {
+      warn('COMPANY_DATA: unexpected payload structure', payload);
       useConnectionStore.getState().incrementDiscarded();
     }
   });
