@@ -23,6 +23,7 @@ import {
   createProductionOrder,
 } from '../../__tests__/fixtures/factories';
 import { useSiteSourceStore } from '../site-data-sources';
+import { useCompanyStore } from '../company';
 
 function dispatchMessage(messageType: string, payload: unknown): void {
   const msg: ProcessedMessage = {
@@ -39,6 +40,7 @@ describe('message-handlers', () => {
   beforeEach(() => {
     clearAllEntityStores();
     useSiteSourceStore.getState().clear();
+    useCompanyStore.getState().clear();
     useConnectionStore.setState({
       connected: false,
       lastMessageTimestamp: null,
@@ -115,6 +117,19 @@ describe('message-handlers', () => {
       dispatchMessage('CLIENT_CONNECTION_OPENED', {});
 
       expect(useSiteSourceStore.getState().entries.size).toBe(0);
+    });
+
+    it('clears company identity on reconnection', () => {
+      // First connection
+      dispatchMessage('CLIENT_CONNECTION_OPENED', {});
+
+      useCompanyStore.getState().setCompany({ name: 'Test Co', code: 'TST', countryId: 'NC' });
+      expect(useCompanyStore.getState().company).not.toBeNull();
+
+      // Reconnection — company re-arrives via COMPANY_DATA, so clear is safe
+      dispatchMessage('CLIENT_CONNECTION_OPENED', {});
+
+      expect(useCompanyStore.getState().company).toBeNull();
     });
 
     it('increments reconnect count', () => {
@@ -405,6 +420,44 @@ describe('message-handlers', () => {
       dispatchMessage('CONTRACTS_CONTRACTS', { contracts });
 
       expect(useContractsStore.getState().entities.size).toBe(2);
+    });
+  });
+
+  describe('COMPANY_DATA', () => {
+    it('populates the company store', () => {
+      dispatchMessage('COMPANY_DATA', { name: 'Test Co', code: 'TST', countryId: 'NC' });
+
+      expect(useCompanyStore.getState().company).toEqual({
+        name: 'Test Co',
+        code: 'TST',
+        countryId: 'NC',
+      });
+    });
+
+    it('defaults missing code and countryId to empty strings', () => {
+      dispatchMessage('COMPANY_DATA', { name: 'Test Co' });
+
+      expect(useCompanyStore.getState().company).toEqual({
+        name: 'Test Co',
+        code: '',
+        countryId: '',
+      });
+    });
+
+    it('discards payloads without a name and leaves the store untouched', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      dispatchMessage('COMPANY_DATA', { code: 'TST' });
+
+      expect(useCompanyStore.getState().company).toBeNull();
+      expect(useConnectionStore.getState().discardedMessages).toBe(1);
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[APXM]',
+        'COMPANY_DATA: unexpected payload structure',
+        expect.anything()
+      );
+
+      warnSpy.mockRestore();
     });
   });
 
