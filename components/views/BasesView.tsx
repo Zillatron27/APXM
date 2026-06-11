@@ -23,13 +23,15 @@ export function BasesView() {
   // the toggle rules (ALL reset, empty→ALL, full-set→ALL) live with it.
   const activeFilters = useGameState((s) => s.burnFilters);
   const toggleBurnFilter = useGameState((s) => s.toggleBurnFilter);
-  const { summaries, counts } = useFilteredBurns(activeFilters);
   const repairStatuses = useRepairStatus();
   const prodStatuses = useProdStatuses();
   const repairBySite = useMemo(
     () => new Map(repairStatuses.map((r) => [r.siteId, r])),
     [repairStatuses]
   );
+  // Filter tiers are worst-of-three (burn/repair/prod, #37), so the maps
+  // feeding the card indicators also feed the filter classification.
+  const { summaries, counts } = useFilteredBurns(activeFilters, repairBySite, prodStatuses);
 
   const sitesFetched = useSitesStore((s) => s.fetched);
 
