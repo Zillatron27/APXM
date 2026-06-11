@@ -1,6 +1,8 @@
 /**
  * Adapted from jackinabox86's APXM fork (https://github.com/jackinabox86/APXM),
- * MIT licensed — credit jackinabox86.
+ * MIT licensed — credit jackinabox86. Capacity-aware classification (#36)
+ * lives in core/prod.ts; this hook handles the unknown-data case and store
+ * subscription.
  */
 import { useMemo } from 'react';
 import { useSitesStore } from '../../stores/entities/sites';
@@ -9,14 +11,9 @@ import {
   useProductionLoadedStore,
   getProductionBySiteId,
 } from '../../stores/entities/production';
+import { classifyProdStatus, type ProdStatus } from '../../core/prod';
 
-/**
- * Production status per site:
- * null  = no data for this site yet → show ?
- * true  = every production line has a running order → show ✓
- * false = any line idle, or no lines at all → show ∅
- */
-export type ProdStatus = boolean | null;
+export type { ProdStatus };
 
 export function useProdStatuses(): Map<string, ProdStatus> {
   const sitesLastUpdated = useSitesStore((s) => s.lastUpdated);
@@ -32,11 +29,7 @@ export function useProdStatuses(): Map<string, ProdStatus> {
         // present; only a site with no lines AND no load marker is unknown.
         map.set(site.siteId, null);
       } else {
-        map.set(
-          site.siteId,
-          lines.length > 0 &&
-            lines.every((line) => line.orders.some((o) => o.started !== null && !o.halted))
-        );
+        map.set(site.siteId, classifyProdStatus(lines));
       }
     }
     return map;

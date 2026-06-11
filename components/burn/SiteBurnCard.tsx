@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { SiteBurnSummary, BurnRate } from '../../core/burn';
 import { classifyRepairUrgency } from '../../core/repair';
+import { classifyProdUrgency, prodStatusLabel } from '../../core/prod';
 import { useRefreshState } from '../../stores/refreshState';
 import { useSettingsStore } from '../../stores/settings';
 import { executeBufferRefresh, buildBufferCommand } from '../../lib/buffer-refresh';
@@ -13,7 +14,7 @@ interface SiteBurnCardProps {
   summary: SiteBurnSummary;
   /** Days since last repair on the site's oldest production building (null = none) */
   repairAgeDays: number | null;
-  /** Production status (null = unknown, true = all running, false = stopped/idle) */
+  /** Capacity-aware production status (null = data not yet received) */
   prodStatus: ProdStatus;
   /** Start expanded */
   defaultExpanded?: boolean;
@@ -84,7 +85,8 @@ export function SiteBurnCard({
     : 'muted';
   const repairTone: TileTone =
     repairAgeDays === null ? 'muted' : classifyRepairUrgency(repairAgeDays, repairThresholds);
-  const prodTone: TileTone = prodStatus === null ? 'muted' : prodStatus ? 'ok' : 'critical';
+  const prodTone: TileTone =
+    prodStatus === null ? 'muted' : classifyProdUrgency(prodStatus.tier);
 
   const showRefreshButton = mode === 'manual' || mode === 'batch';
   const isLoading = siteStatus === 'loading';
@@ -164,7 +166,7 @@ export function SiteBurnCard({
           />
           <BaseStatusTile
             label="Prod"
-            value={prodStatus === null ? '?' : prodStatus ? '✓' : '∅'}
+            value={prodStatusLabel(prodStatus)}
             tone={prodTone}
           />
         </div>

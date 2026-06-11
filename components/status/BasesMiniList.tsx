@@ -51,8 +51,8 @@ export function BasesMiniList() {
   const topBases = useMemo(() => {
     // Stopped production bubbles above burn urgency — it's the loudest alarm
     const sorted = [...sortByUrgency(siteBurns)].sort((a, b) => {
-      const aStopped = prodStatuses.get(a.siteId) === false;
-      const bStopped = prodStatuses.get(b.siteId) === false;
+      const aStopped = prodStatuses.get(a.siteId)?.tier === 'stopped';
+      const bStopped = prodStatuses.get(b.siteId)?.tier === 'stopped';
       if (aStopped !== bStopped) return aStopped ? -1 : 1;
       return 0; // stable: keep burn-urgency order within each group
     });
