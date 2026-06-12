@@ -12,6 +12,7 @@ import { getProductionBySiteId } from '../stores/entities/production';
 import { getWorkforceBySiteId } from '../stores/entities/workforce';
 import { getStorageByAddressableId } from '../stores/entities/storage';
 import { useSitesStore } from '../stores/entities/sites';
+import { getMaterialName } from '../stores/reference';
 import { getEntityDisplayName } from '../lib/address';
 
 // ============================================================================
@@ -349,8 +350,10 @@ export function calculateSiteBurn(siteId: string): SiteBurnSummary {
     const urgency = classifyUrgency(daysRemaining, dailyAmount, thresholds);
     const need = calculateNeed(dailyAmount, inventoryAmount, thresholds.resupply);
 
-    // Get material name from either source
-    const materialName = production.name ?? workforce.name;
+    // Material name from the WS/FIO payloads, falling back to the public
+    // materials database for tickers those payloads didn't name
+    const materialName =
+      production.name ?? workforce.name ?? getMaterialName(ticker);
 
     burns.push({
       materialTicker: ticker,
