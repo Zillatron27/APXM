@@ -145,6 +145,39 @@ export interface FioSite {
 }
 
 // ============================================================================
+// Public Reference Data Endpoint Types (no auth)
+// ============================================================================
+
+/** GET /material/allmaterials */
+export interface FioMaterial {
+  MaterialId: string;
+  CategoryName: string;
+  CategoryId: string;
+  Name: string;
+  Ticker: string;
+  Weight: number;
+  Volume: number;
+}
+
+/**
+ * GET /exchange/all — simplified market data, one entry per
+ * material × exchange. Bid/ask/MM fields are null on illiquid pairs.
+ */
+export interface FioExchangeEntry {
+  MaterialTicker: string;
+  ExchangeCode: string;
+  MMBuy: number | null;
+  MMSell: number | null;
+  PriceAverage: number;
+  AskCount: number | null;
+  Ask: number | null;
+  Supply: number;
+  BidCount: number | null;
+  Bid: number | null;
+  Demand: number;
+}
+
+// ============================================================================
 // Error Types
 // ============================================================================
 
