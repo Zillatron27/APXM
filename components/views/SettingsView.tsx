@@ -430,24 +430,22 @@ export function SettingsView() {
           {refreshError && (
             <div className="text-sm text-status-critical">{refreshError}</div>
           )}
-        </div>
-      </Card>
 
-      {/* Cached Data Section */}
-      <Card>
-        <h2 className="text-prun-yellow text-sm font-semibold mb-3">Cached Data</h2>
-        <div className="space-y-3">
-          <p className="text-xs text-apxm-muted">
-            Entity data is cached locally to speed up page loads.
-            Clear if you experience stale or incorrect data.
-          </p>
-          <button
-            onClick={handleClearCache}
-            disabled={isClearing}
-            className="w-full min-h-touch px-4 py-2 text-sm rounded border border-apxm-accent text-apxm-muted font-semibold hover:border-prun-yellow hover:text-prun-yellow disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isClearing ? 'Clearing...' : 'Clear Cached Data'}
-          </button>
+          {/* Local cache controls live alongside the FIO refresh — both are
+              "data freshness" actions, so they share one pane. */}
+          <div className="pt-3 border-t border-apxm-accent/40 space-y-3">
+            <p className="text-xs text-apxm-muted">
+              Entity data is cached locally to speed up page loads.
+              Clear if you experience stale or incorrect data.
+            </p>
+            <button
+              onClick={handleClearCache}
+              disabled={isClearing}
+              className="w-full min-h-touch px-4 py-2 text-sm rounded border border-apxm-accent text-apxm-muted font-semibold hover:border-prun-yellow hover:text-prun-yellow disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isClearing ? 'Clearing...' : 'Clear Cached Data'}
+            </button>
+          </div>
         </div>
       </Card>
 
