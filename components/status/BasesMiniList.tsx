@@ -86,7 +86,9 @@ export function BasesMiniList() {
         onViewAll={() => setActiveTab('bases')}
         accessory={<DataSourceBadge source={source} lastUpdated={lastUpdated} />}
       />
-      <div className="grid grid-cols-[minmax(0,1fr)_3.5rem_3.5rem_2.5rem] gap-x-2 items-center">
+      {/* Three equal fixed columns keep the BURN/REPAIR/PROD chips a uniform
+          width regardless of content (<1d vs 18/19 vs ✓), like material tiles. */}
+      <div className="grid grid-cols-[minmax(0,1fr)_3.5rem_3.5rem_3.5rem] gap-x-2 items-center">
         {/* Column headers */}
         <span />
         <span className="text-[10px] text-apxm-text/40 uppercase tracking-wide text-center">Burn</span>
@@ -96,22 +98,18 @@ export function BasesMiniList() {
         {topBases.map((site) => (
           <div key={site.siteId} className="contents">
             <span className="text-sm text-apxm-text truncate py-1">{site.siteName}</span>
-            <span className="text-center">
-              {site.mostUrgent ? (
-                <TimeBadge
-                  daysRemaining={site.mostUrgent.daysRemaining}
-                  urgency={site.mostUrgent.urgency}
-                />
-              ) : (
-                <span className="text-xs text-apxm-muted">OK</span>
-              )}
-            </span>
-            <span className="text-center">
-              <RepairAgeBadge ageDays={repairBySite.get(site.siteId)?.oldestBuildingAgeDays ?? null} />
-            </span>
-            <span className="text-center">
-              <ProdStatusBadge status={prodStatuses.get(site.siteId) ?? null} />
-            </span>
+            {site.mostUrgent ? (
+              <TimeBadge
+                daysRemaining={site.mostUrgent.daysRemaining}
+                urgency={site.mostUrgent.urgency}
+              />
+            ) : (
+              <span className="block w-full text-center py-0.5 text-xs font-medium bg-apxm-bg text-apxm-muted">
+                OK
+              </span>
+            )}
+            <RepairAgeBadge ageDays={repairBySite.get(site.siteId)?.oldestBuildingAgeDays ?? null} />
+            <ProdStatusBadge status={prodStatuses.get(site.siteId) ?? null} />
           </div>
         ))}
       </div>

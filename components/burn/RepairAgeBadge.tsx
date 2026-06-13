@@ -15,12 +15,16 @@ export function RepairAgeBadge({ ageDays }: { ageDays: number | null }) {
   const thresholds = useSettingsStore((s) => s.repairThresholds);
 
   if (ageDays === null) {
-    return <span className="text-xs text-apxm-muted">—</span>;
+    return (
+      <span className="block w-full text-center py-0.5 text-xs font-medium bg-apxm-bg text-apxm-muted">
+        —
+      </span>
+    );
   }
 
   const urgency = classifyRepairUrgency(ageDays, thresholds);
   return (
-    <span className={`px-2 py-0.5 text-xs font-medium ${urgencyColors[urgency]}`}>
+    <span className={`block w-full text-center py-0.5 text-xs font-medium ${urgencyColors[urgency]}`}>
       {Math.floor(ageDays)}d
     </span>
   );

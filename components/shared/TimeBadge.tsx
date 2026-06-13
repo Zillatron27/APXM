@@ -21,7 +21,7 @@ export function TimeBadge({ daysRemaining, urgency }: TimeBadgeProps) {
         : `${Math.floor(daysRemaining)}d`;
 
   return (
-    <span className={`px-2 py-0.5 text-xs font-medium ${urgencyBgColors[urgency]}`}>
+    <span className={`block w-full text-center py-0.5 text-xs font-medium ${urgencyBgColors[urgency]}`}>
       {displayText}
     </span>
   );
