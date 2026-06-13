@@ -1,4 +1,4 @@
-export { StatusDot } from './StatusDot';
+export { ConnectionStatusBadge } from './ConnectionStatusBadge';
 export { Card } from './Card';
 export { SectionHeader } from './SectionHeader';
 export { TimeBadge } from './TimeBadge';

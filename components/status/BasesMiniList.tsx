@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import {
   useSiteBurns,
   sortByUrgency,
-  DataSourceBadge,
   useRepairStatus,
   useProdStatuses,
   RepairAgeBadge,
@@ -11,12 +10,6 @@ import {
 import { Card, SectionHeader, TimeBadge } from '../shared';
 import { useGameState } from '../../stores/gameState';
 import { useConnectionStore } from '../../stores/connection';
-import { useSettingsStore } from '../../stores/settings';
-import {
-  useSiteSourceStore,
-  deriveWeakestSource,
-  deriveOldestUpdate,
-} from '../../stores/site-data-sources';
 import { useSitesStore } from '../../stores/entities/sites';
 import { useWorkforceStore } from '../../stores/entities/workforce';
 import { useProductionStore } from '../../stores/entities/production';
@@ -38,15 +31,6 @@ export function BasesMiniList() {
   const workforceFetched = useWorkforceStore((s) => s.fetched);
   const productionFetched = useProductionStore((s) => s.fetched);
   const storageFetched = useStorageStore((s) => s.fetched);
-
-  // Staleness signal for the displayed burn figures: weakest-link source and
-  // oldest update across sites. Without this the mini-list shows burn days with
-  // no indication of how fresh they are — acting on stale burn data is harmful.
-  const siteEntries = useSiteSourceStore((s) => s.entries);
-  const fioLastFetch = useSettingsStore((s) => s.fio.lastFetch);
-  const source = deriveWeakestSource(siteEntries);
-  const oldestUpdate = deriveOldestUpdate(siteEntries);
-  const lastUpdated = source === 'fio' ? fioLastFetch : oldestUpdate;
 
   const topBases = useMemo(() => {
     // Stopped production bubbles above burn urgency — it's the loudest alarm
@@ -84,7 +68,6 @@ export function BasesMiniList() {
       <SectionHeader
         title="Bases"
         onViewAll={() => setActiveTab('bases')}
-        accessory={<DataSourceBadge source={source} lastUpdated={lastUpdated} />}
       />
       {/* Three equal fixed columns keep the BURN/REPAIR/PROD chips a uniform
           width regardless of content (<1d vs 18/19 vs ✓), like material tiles. */}
