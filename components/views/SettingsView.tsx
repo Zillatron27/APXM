@@ -10,6 +10,12 @@ import { testConnection, populateStoresFromFio, type FioProgressStep } from '../
 import { clearAllCache } from '../../stores/cache';
 import { themePresets } from '../../lib/theme';
 
+const materialThemeOptions: { id: MaterialTheme; label: string }[] = [
+  { id: 'rprun', label: 'rPrUn' },
+  { id: 'prun', label: 'PrUn' },
+  { id: 'drydock', label: 'DryDock' },
+];
+
 /** 24-bit hex number → CSS hex string, for inline preset-preview swatches. */
 function toCssHex(value: number): string {
   return `#${value.toString(16).padStart(6, '0')}`;
@@ -503,26 +509,19 @@ export function SettingsView() {
 
         <div className="space-y-3">
           <div className="flex gap-2">
-            <button
-              onClick={() => setMaterialTheme('rprun')}
-              className={`flex-1 min-h-touch px-4 py-2 text-sm rounded font-semibold ${
-                materialTheme === 'rprun'
-                  ? 'bg-prun-yellow text-apxm-bg'
-                  : 'border border-apxm-accent text-apxm-muted'
-              }`}
-            >
-              rPrUn
-            </button>
-            <button
-              onClick={() => setMaterialTheme('prun')}
-              className={`flex-1 min-h-touch px-4 py-2 text-sm rounded font-semibold ${
-                materialTheme === 'prun'
-                  ? 'bg-prun-yellow text-apxm-bg'
-                  : 'border border-apxm-accent text-apxm-muted'
-              }`}
-            >
-              PrUn
-            </button>
+            {materialThemeOptions.map((option) => (
+              <button
+                key={option.id}
+                onClick={() => setMaterialTheme(option.id)}
+                className={`flex-1 min-h-touch px-4 py-2 text-sm rounded font-semibold ${
+                  materialTheme === option.id
+                    ? 'bg-prun-yellow text-apxm-bg'
+                    : 'border border-apxm-accent text-apxm-muted'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
 
           {/* Preview tiles */}
