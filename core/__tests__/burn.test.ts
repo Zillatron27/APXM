@@ -13,8 +13,10 @@ import {
   findMostUrgent,
   calculateSiteBurn,
   calculateAllBurns,
+  aggregateEmpireBurn,
   type BurnRate,
   type BurnThresholds,
+  type SiteBurnSummary,
 } from '../burn';
 import { useSettingsStore } from '../../stores/settings';
 import { useSitesStore } from '../../stores/entities/sites';
@@ -38,6 +40,7 @@ import {
   createOrderWithIO,
   createDateTime,
 } from '../../__tests__/fixtures/factories';
+import { createEmpireFixture } from '../../__tests__/fixtures/empire';
 import type { WorkforceEntity } from '../../stores/entities/workforce';
 
 const MS_PER_DAY = 86400000;
@@ -1323,6 +1326,248 @@ describe('burn.ts', () => {
     it('returns empty array when no sites exist', () => {
       const results = calculateAllBurns();
       expect(results).toEqual([]);
+    });
+  });
+
+  describe('aggregateEmpireBurn', () => {
+    const thresholds: BurnThresholds = { critical: 3, warning: 5, resupply: 30 };
+
+    /**
+     * Aggregation reads only the component fields (rates, inventory, name)
+     * and recomputes the derived ones, so fixtures only set components.
+     */
+    function makeRate(
+      overrides: Partial<BurnRate> & { materialTicker: string }
+    ): BurnRate {
+      return {
+        dailyAmount: 0,
+        type: 'workforce',
+        productionInput: 0,
+        productionOutput: 0,
+        workforceConsumption: 0,
+        inventoryAmount: 0,
+        daysRemaining: Infinity,
+        need: 0,
+        urgency: 'ok',
+        ...overrides,
+      };
+    }
+
+    function makeSummary(siteId: string, burns: BurnRate[]): SiteBurnSummary {
+      return {
+        siteId,
+        siteName: siteId,
+        burns,
+        mostUrgent: null,
+        lastCalculated: 0,
+      };
+    }
+
+    it('returns empty array for no sites', () => {
+      expect(aggregateEmpireBurn([], thresholds)).toEqual([]);
+    });
+
+    it('computes daysRemaining from summed inventory and rate, not averaged per-site days', () => {
+      // Site A: 10 DW at 2/d = 5 days. Site B: 100 DW at 1/d = 100 days.
+      // Empire: 110 DW at 3/d ≈ 36.67 days (an average would give 52.5).
+      const rows = aggregateEmpireBurn(
+        [
+          makeSummary('a', [
+            makeRate({ materialTicker: 'DW', workforceConsumption: 2, inventoryAmount: 10 }),
+          ]),
+          makeSummary('b', [
+            makeRate({ materialTicker: 'DW', workforceConsumption: 1, inventoryAmount: 100 }),
+          ]),
+        ],
+        thresholds
+      );
+
+      expect(rows).toHaveLength(1);
+      const dw = rows[0];
+      expect(dw.materialTicker).toBe('DW');
+      expect(dw.dailyAmount).toBe(-3);
+      expect(dw.inventoryAmount).toBe(110);
+      expect(dw.daysRemaining).toBeCloseTo(110 / 3, 5);
+      expect(dw.urgency).toBe('ok');
+    });
+
+    it('classifies a cross-site flow that nets to zero as surplus with no need', () => {
+      // Producer covers the consumer exactly — empire-wide, nothing to buy.
+      const rows = aggregateEmpireBurn(
+        [
+          makeSummary('producer', [
+            makeRate({ materialTicker: 'RAT', productionOutput: 10 }),
+          ]),
+          makeSummary('consumer', [
+            makeRate({ materialTicker: 'RAT', workforceConsumption: 10 }),
+          ]),
+        ],
+        thresholds
+      );
+
+      expect(rows).toHaveLength(1);
+      expect(rows[0].dailyAmount).toBe(0);
+      expect(rows[0].daysRemaining).toBe(Infinity);
+      expect(rows[0].urgency).toBe('surplus');
+      expect(rows[0].need).toBe(0);
+    });
+
+    it('classifies a net-produced material as surplus (valid per-material at empire level)', () => {
+      const rows = aggregateEmpireBurn(
+        [
+          makeSummary('producer', [
+            makeRate({ materialTicker: 'GRN', productionOutput: 10 }),
+          ]),
+          makeSummary('consumer', [
+            makeRate({ materialTicker: 'GRN', productionInput: 4 }),
+          ]),
+        ],
+        thresholds
+      );
+
+      expect(rows[0].dailyAmount).toBe(6);
+      expect(rows[0].urgency).toBe('surplus');
+    });
+
+    it('treats near-zero net rates as floating-point noise, not consumption or surplus', () => {
+      // Imbalance below NET_RATE_EPSILON: no runout, but net is still
+      // negative so it must not read as surplus either.
+      const rows = aggregateEmpireBurn(
+        [
+          makeSummary('producer', [
+            makeRate({ materialTicker: 'AL', productionOutput: 10 }),
+          ]),
+          makeSummary('consumer', [
+            makeRate({ materialTicker: 'AL', productionInput: 10.0005 }),
+          ]),
+        ],
+        thresholds
+      );
+
+      expect(rows[0].daysRemaining).toBe(Infinity);
+      expect(rows[0].urgency).toBe('ok');
+    });
+
+    it('recomputes need at empire level: a producing site offsets consumers', () => {
+      // Site A consumes 2/d with nothing stocked → site-level need is 60
+      // (30-day resupply). Site B produces 1/d. Empire net is only -1/d,
+      // so the empire need is 30 — less than the per-site sum.
+      const rows = aggregateEmpireBurn(
+        [
+          makeSummary('a', [
+            makeRate({ materialTicker: 'COF', workforceConsumption: 2, need: 60 }),
+          ]),
+          makeSummary('b', [
+            makeRate({ materialTicker: 'COF', productionOutput: 1 }),
+          ]),
+        ],
+        thresholds
+      );
+
+      expect(rows[0].dailyAmount).toBe(-1);
+      expect(rows[0].need).toBe(30);
+    });
+
+    it('classifies type from aggregated sums', () => {
+      const rows = aggregateEmpireBurn(
+        [
+          makeSummary('a', [
+            makeRate({ materialTicker: 'RAT', productionOutput: 5 }),
+            makeRate({ materialTicker: 'H2O', productionInput: 3 }),
+          ]),
+          makeSummary('b', [
+            makeRate({ materialTicker: 'RAT', workforceConsumption: 2 }),
+            makeRate({ materialTicker: 'H2O', workforceConsumption: 2 }),
+          ]),
+        ],
+        thresholds
+      );
+
+      const rat = rows.find((r) => r.materialTicker === 'RAT');
+      const h2o = rows.find((r) => r.materialTicker === 'H2O');
+      expect(rat?.type).toBe('output'); // net +3
+      expect(h2o?.type).toBe('input'); // net negative with production input
+    });
+
+    it('propagates the first available material name', () => {
+      const rows = aggregateEmpireBurn(
+        [
+          makeSummary('a', [
+            makeRate({ materialTicker: 'RAT', workforceConsumption: 1 }),
+          ]),
+          makeSummary('b', [
+            makeRate({
+              materialTicker: 'RAT',
+              workforceConsumption: 1,
+              materialName: 'Rations',
+            }),
+          ]),
+        ],
+        thresholds
+      );
+
+      expect(rows[0].materialName).toBe('Rations');
+    });
+
+    it('marks a consuming material with zero empire inventory as critical with 0 days', () => {
+      const rows = aggregateEmpireBurn(
+        [
+          makeSummary('a', [
+            makeRate({ materialTicker: 'DW', workforceConsumption: 4 }),
+          ]),
+        ],
+        thresholds
+      );
+
+      expect(rows[0].daysRemaining).toBe(0);
+      expect(rows[0].urgency).toBe('critical');
+      expect(rows[0].need).toBe(120); // 30 days × 4/d, nothing stocked
+    });
+
+    it('aggregates the empire fixture consistently with per-site results', () => {
+      const fixture = createEmpireFixture();
+      useSitesStore.getState().setAll(fixture.sites);
+      useStorageStore.getState().setAll(fixture.storages);
+      useWorkforceStore.getState().setAll(fixture.workforces);
+      useProductionStore.getState().setAll(fixture.productionLines);
+
+      const summaries = calculateAllBurns();
+      const rows = aggregateEmpireBurn(
+        summaries,
+        useSettingsStore.getState().burnThresholds
+      );
+
+      // DW is a workforce consumable on every base — the fixture must
+      // exercise true cross-site aggregation for it.
+      const dwSites = summaries.filter((s) =>
+        s.burns.some((b) => b.materialTicker === 'DW')
+      );
+      expect(dwSites.length).toBeGreaterThanOrEqual(2);
+
+      // Every empire row's components equal the sums of the per-site rows.
+      for (const row of rows) {
+        const siteRows = summaries.flatMap((s) =>
+          s.burns.filter((b) => b.materialTicker === row.materialTicker)
+        );
+        const sum = (pick: (b: BurnRate) => number) =>
+          siteRows.reduce((acc, b) => acc + pick(b), 0);
+
+        expect(row.workforceConsumption).toBeCloseTo(
+          sum((b) => b.workforceConsumption),
+          5
+        );
+        expect(row.productionInput).toBeCloseTo(sum((b) => b.productionInput), 5);
+        expect(row.productionOutput).toBeCloseTo(sum((b) => b.productionOutput), 5);
+        expect(row.inventoryAmount).toBeCloseTo(sum((b) => b.inventoryAmount), 5);
+      }
+
+      // And every material seen at any site appears exactly once.
+      const tickers = rows.map((r) => r.materialTicker);
+      expect(new Set(tickers).size).toBe(tickers.length);
+      const allSiteTickers = new Set(
+        summaries.flatMap((s) => s.burns.map((b) => b.materialTicker))
+      );
+      expect(new Set(tickers)).toEqual(allSiteTickers);
     });
   });
 

@@ -2,18 +2,23 @@
  * Material Category Color Palettes
  *
  * Color schemes for material tiles based on category.
- * Two themes:
+ * Three themes:
  * - prun: Stock game colors (from PrUn JS bundle)
  * - rprun: rPrUn extension colors (overrides 7 categories)
+ * - drydock: DryDock's neon-sign style — dark fill, category colour as
+ *   both border and text (ported from drydock src/theme/tokens.css)
  *
  * Source: refined-prun/src/infrastructure/prun-ui/item-tracker.ts
  */
 
-export type MaterialTheme = 'rprun' | 'prun';
+export type MaterialTheme = 'rprun' | 'prun' | 'drydock';
 
 export interface CategoryColors {
   bg: string;
   text: string;
+  /** Tile border colour. Only the drydock theme sets it — tiles draw a
+   *  border iff the theme provides one. */
+  border?: string;
 }
 
 /**
@@ -81,7 +86,64 @@ const RPRUN_COLORS: Record<string, CategoryColors> = {
   'ship-shields': { bg: '#bf740a', text: '#dbdb79' },           // dark orange (was pastel)
 };
 
+const DRYDOCK_BG = '#1a1a1a';
+
+/** DryDock neon tile: bright category colour as both text and border over
+ *  the shared dark fill. No glow/shadow — the "neon" read comes entirely
+ *  from the bright-on-dark contrast. */
+function neon(color: string): CategoryColors {
+  return { bg: DRYDOCK_BG, text: color, border: color };
+}
+
+/**
+ * DryDock theme. The 14 categories DryDock itself defines use its palette
+ * verbatim; the remaining 21 reuse the prun theme's text colours (already
+ * the bright variant of each category) so the whole set reads as one style.
+ */
+const DRYDOCK_COLORS: Record<string, CategoryColors> = {
+  // DryDock-native palette (drydock src/theme/tokens.css)
+  'alloys': neon('#ffaa44'),
+  'chemicals': neon('#ff7eb3'),
+  'construction-materials': neon('#5eaaff'),
+  'electronic-systems': neon('#9955dd'),
+  'elements': neon('#c9a06a'),
+  'fuels': neon('#a0ff60'),
+  'metals': neon('#b0b0b0'),
+  'minerals': neon('#e8c9a0'),
+  'plastics': neon('#ff6be0'),
+  'ship-engines': neon('#ff5522'),
+  'ship-kits': neon('#ffaa22'),
+  'ship-parts': neon('#ffcc33'),
+  'ship-shields': neon('#ffd34d'),
+  'unit-prefabs': neon('#5a8c8c'),
+  // Derived from the prun theme's text colours
+  'agricultural-products': neon('#e54a4a'),
+  'construction-parts': neon('#78b0e0'),
+  'construction-prefabs': neon('#4868e0'),
+  'consumable-bundles': neon('#c04058'),
+  'consumables-basic': neon('#f08888'),
+  'consumables-luxury': neon('#f86080'),
+  'drones': neon('#ff8858'),
+  'electronic-devices': neon('#b868ff'),
+  'electronic-parts': neon('#c0a0ff'),
+  'electronic-pieces': neon('#d8c8ff'),
+  'energy-systems': neon('#60c090'),
+  'gases': neon('#48ffff'),
+  'infrastructure': neon('#5050b0'),
+  'liquids': neon('#e8ffff'),
+  'medical-equipment': neon('#c0ffc0'),
+  'ores': neon('#b0b8c8'),
+  'software-components': neon('#e8e090'),
+  'software-systems': neon('#c8b040'),
+  'software-tools': neon('#ffd058'),
+  'textiles': neon('#c0d070'),
+  'utility': neon('#f0e8e0'),
+};
+
 const DEFAULT_COLORS: CategoryColors = { bg: '#2a2a3c', text: '#808080' };
+
+// An unknown category should still read as the active theme's style
+const DRYDOCK_DEFAULT: CategoryColors = neon('#808080');
 
 /**
  * Normalizes a category name to slug format for lookup.
@@ -96,11 +158,20 @@ export function normalizeCategory(category: string | null | undefined): string {
     .replace(/\s+/g, '-');
 }
 
+const PALETTES: Record<
+  MaterialTheme,
+  { colors: Record<string, CategoryColors>; fallback: CategoryColors }
+> = {
+  prun: { colors: PRUN_COLORS, fallback: DEFAULT_COLORS },
+  rprun: { colors: RPRUN_COLORS, fallback: DEFAULT_COLORS },
+  drydock: { colors: DRYDOCK_COLORS, fallback: DRYDOCK_DEFAULT },
+};
+
 /**
- * Returns the background and text colors for a material category.
+ * Returns the tile colors for a material category under the given theme.
  */
 export function getCategoryColors(category: string, theme: MaterialTheme): CategoryColors {
   const slug = normalizeCategory(category);
-  const palette = theme === 'rprun' ? RPRUN_COLORS : PRUN_COLORS;
-  return palette[slug] ?? DEFAULT_COLORS;
+  const palette = PALETTES[theme];
+  return palette.colors[slug] ?? palette.fallback;
 }
