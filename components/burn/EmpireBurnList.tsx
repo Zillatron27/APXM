@@ -1,13 +1,6 @@
 import type { BurnRate } from '../../core/burn';
 import { BurnRow } from './BurnRow';
-import { DataSourceBadge } from './DataSourceBadge';
 import { SectionHeader } from '../shared';
-import { useSettingsStore } from '../../stores/settings';
-import {
-  useSiteSourceStore,
-  deriveWeakestSource,
-  deriveOldestUpdate,
-} from '../../stores/site-data-sources';
 
 interface EmpireBurnListProps {
   rows: BurnRate[];
@@ -15,22 +8,13 @@ interface EmpireBurnListProps {
 
 /**
  * Empire-wide material list: one row per material, aggregated across all
- * sites. The header carries a weakest-link staleness badge — the aggregate
- * is only as fresh as the stalest site feeding it.
+ * sites. Data freshness is shown by the global header indicator (the
+ * aggregate is only as fresh as the stalest site feeding it).
  */
 export function EmpireBurnList({ rows }: EmpireBurnListProps) {
-  const siteEntries = useSiteSourceStore((s) => s.entries);
-  const fioLastFetch = useSettingsStore((s) => s.fio.lastFetch);
-  const source = deriveWeakestSource(siteEntries);
-  const oldestUpdate = deriveOldestUpdate(siteEntries);
-  const lastUpdated = source === 'fio' ? fioLastFetch : oldestUpdate;
-
   return (
     <div className="bg-apxm-surface p-3">
-      <SectionHeader
-        title="Empire"
-        accessory={<DataSourceBadge source={source} lastUpdated={lastUpdated} />}
-      />
+      <SectionHeader title="Empire" />
       {rows.length === 0 ? (
         <p className="text-sm text-apxm-muted py-4 text-center">
           No materials match the selected filter

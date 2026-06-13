@@ -14,11 +14,15 @@ const tierClasses = {
  */
 export function ProdStatusBadge({ status }: { status: ProdStatus }) {
   if (status === null) {
-    return <span className="px-2 py-0.5 text-xs font-medium bg-apxm-bg text-apxm-muted">?</span>;
+    return (
+      <span className="block w-full text-center py-0.5 text-xs font-medium bg-apxm-bg text-apxm-muted">
+        ?
+      </span>
+    );
   }
   return (
     <span
-      className={`px-2 py-0.5 text-xs font-medium whitespace-nowrap ${tierClasses[classifyProdUrgency(status.tier)]}`}
+      className={`block w-full text-center py-0.5 text-xs font-medium whitespace-nowrap ${tierClasses[classifyProdUrgency(status.tier)]}`}
     >
       {prodStatusLabel(status)}
     </span>

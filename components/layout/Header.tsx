@@ -1,10 +1,8 @@
 import { useGameState } from '../../stores/gameState';
-import { useConnectionStatus } from '../../hooks/useConnectionStatus';
-import { StatusDot } from '../shared';
+import { ConnectionStatusBadge } from '../shared';
 import { BUILD_VERSION } from '../../lib/constants';
 
 export function Header() {
-  const status = useConnectionStatus();
   const { setApexVisible } = useGameState();
 
   return (
@@ -19,7 +17,7 @@ export function Header() {
         <span className="text-xs text-apxm-muted">{BUILD_VERSION}</span>
       </div>
       <div className="flex items-center gap-3">
-        <StatusDot status={status} />
+        <ConnectionStatusBadge />
         <button
           onClick={() => setApexVisible(true)}
           className="px-3 min-h-touch flex items-center text-xs font-medium text-apxm-text border border-apxm-surface hover:border-prun-yellow hover:text-prun-yellow"

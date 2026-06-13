@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import {
   useSiteBurns,
   sortByUrgency,
-  DataSourceBadge,
   useRepairStatus,
   useProdStatuses,
   RepairAgeBadge,
@@ -11,12 +10,6 @@ import {
 import { Card, SectionHeader, TimeBadge } from '../shared';
 import { useGameState } from '../../stores/gameState';
 import { useConnectionStore } from '../../stores/connection';
-import { useSettingsStore } from '../../stores/settings';
-import {
-  useSiteSourceStore,
-  deriveWeakestSource,
-  deriveOldestUpdate,
-} from '../../stores/site-data-sources';
 import { useSitesStore } from '../../stores/entities/sites';
 import { useWorkforceStore } from '../../stores/entities/workforce';
 import { useProductionStore } from '../../stores/entities/production';
@@ -38,15 +31,6 @@ export function BasesMiniList() {
   const workforceFetched = useWorkforceStore((s) => s.fetched);
   const productionFetched = useProductionStore((s) => s.fetched);
   const storageFetched = useStorageStore((s) => s.fetched);
-
-  // Staleness signal for the displayed burn figures: weakest-link source and
-  // oldest update across sites. Without this the mini-list shows burn days with
-  // no indication of how fresh they are — acting on stale burn data is harmful.
-  const siteEntries = useSiteSourceStore((s) => s.entries);
-  const fioLastFetch = useSettingsStore((s) => s.fio.lastFetch);
-  const source = deriveWeakestSource(siteEntries);
-  const oldestUpdate = deriveOldestUpdate(siteEntries);
-  const lastUpdated = source === 'fio' ? fioLastFetch : oldestUpdate;
 
   const topBases = useMemo(() => {
     // Stopped production bubbles above burn urgency — it's the loudest alarm
@@ -84,9 +68,10 @@ export function BasesMiniList() {
       <SectionHeader
         title="Bases"
         onViewAll={() => setActiveTab('bases')}
-        accessory={<DataSourceBadge source={source} lastUpdated={lastUpdated} />}
       />
-      <div className="grid grid-cols-[minmax(0,1fr)_3.5rem_3.5rem_2.5rem] gap-x-2 items-center">
+      {/* Three equal fixed columns keep the BURN/REPAIR/PROD chips a uniform
+          width regardless of content (<1d vs 18/19 vs ✓), like material tiles. */}
+      <div className="grid grid-cols-[minmax(0,1fr)_3.5rem_3.5rem_3.5rem] gap-x-2 items-center">
         {/* Column headers */}
         <span />
         <span className="text-[10px] text-apxm-text/40 uppercase tracking-wide text-center">Burn</span>
@@ -96,22 +81,18 @@ export function BasesMiniList() {
         {topBases.map((site) => (
           <div key={site.siteId} className="contents">
             <span className="text-sm text-apxm-text truncate py-1">{site.siteName}</span>
-            <span className="text-center">
-              {site.mostUrgent ? (
-                <TimeBadge
-                  daysRemaining={site.mostUrgent.daysRemaining}
-                  urgency={site.mostUrgent.urgency}
-                />
-              ) : (
-                <span className="text-xs text-apxm-muted">OK</span>
-              )}
-            </span>
-            <span className="text-center">
-              <RepairAgeBadge ageDays={repairBySite.get(site.siteId)?.oldestBuildingAgeDays ?? null} />
-            </span>
-            <span className="text-center">
-              <ProdStatusBadge status={prodStatuses.get(site.siteId) ?? null} />
-            </span>
+            {site.mostUrgent ? (
+              <TimeBadge
+                daysRemaining={site.mostUrgent.daysRemaining}
+                urgency={site.mostUrgent.urgency}
+              />
+            ) : (
+              <span className="block w-full text-center py-0.5 text-xs font-medium bg-apxm-bg text-apxm-muted">
+                OK
+              </span>
+            )}
+            <RepairAgeBadge ageDays={repairBySite.get(site.siteId)?.oldestBuildingAgeDays ?? null} />
+            <ProdStatusBadge status={prodStatuses.get(site.siteId) ?? null} />
           </div>
         ))}
       </div>
