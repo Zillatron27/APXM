@@ -11,6 +11,9 @@ interface ConnectionState {
   unknownMessageTypes: string[];
   /** true if no WebSocket messages arrived within the startup timeout */
   apexUnresponsive: boolean;
+  /** true if another @prun/link interceptor was already active when ours
+   *  installed (competing extension — Helm, rprun, an APXM-family tool) */
+  interceptorConflict: boolean;
 }
 
 interface ConnectionActions {
@@ -21,6 +24,7 @@ interface ConnectionActions {
   incrementDiscarded: () => void;
   addUnknownMessageType: (type: string) => void;
   setApexUnresponsive: (value: boolean) => void;
+  setInterceptorConflict: (value: boolean) => void;
   reset: () => void;
 }
 
@@ -34,6 +38,7 @@ const initialState: ConnectionState = {
   discardedMessages: 0,
   unknownMessageTypes: [],
   apexUnresponsive: false,
+  interceptorConflict: false,
 };
 
 export const useConnectionStore = create<ConnectionStore>((set) => ({
@@ -60,6 +65,8 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
     }),
 
   setApexUnresponsive: (apexUnresponsive) => set({ apexUnresponsive }),
+
+  setInterceptorConflict: (interceptorConflict) => set({ interceptorConflict }),
 
   reset: () => set(initialState),
 }));

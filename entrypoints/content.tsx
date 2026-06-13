@@ -53,15 +53,24 @@ export default defineContentScript({
     injectScript('/ws-interceptor.js', { keepInDom: true });
     if (debug) markStep(3, 'ok');
 
-    // 2. Poll for interceptor readiness via shared DOM attribute
-    //    Always poll — not just in debug mode. Without this wait, the bridge
-    //    initializes before the interceptor is ready (race condition on Orion).
-    const interceptorReady = await pollForAttribute('prunLinkInterceptor', 'ready', 3000);
+    // 2. Poll for OUR interceptor's readiness (apxmInterceptor, not the shared
+    //    prunLinkInterceptor — a shared 'ready' could be another extension's).
+    //    Always poll — without this wait the bridge initializes before the
+    //    interceptor is ready (race condition on Orion).
+    const interceptorReady = await pollForAttribute('apxmInterceptor', 'ready', 3000);
     if (debug) markStep(4, interceptorReady ? 'ok' : 'fail');
     if (!interceptorReady) {
       if (debug) markFailed(4, 'timeout (3s)');
       warn('Interceptor failed to initialize within 3s — aborting');
       return;
+    }
+
+    // Our interceptor sets the conflict flag (before its readiness signal) when
+    // it found another @prun/link interceptor already installed. Surface it so
+    // the overlay can name the cause instead of guessing maintenance.
+    if (document.documentElement.dataset.prunLinkConflict === 'true') {
+      useConnectionStore.getState().setInterceptorConflict(true);
+      warn('Another PrUn extension is intercepting the WebSocket — APXM may be starved');
     }
 
     // 3. Init message bridge (handler registry)

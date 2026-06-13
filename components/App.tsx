@@ -1,12 +1,14 @@
 import { useEffect } from 'react';
 import { useGameState } from '../stores/gameState';
-import { useMaintenanceDetection } from '../hooks/useMaintenanceDetection';
+import { useConnectionStore } from '../stores/connection';
+import { useAvailabilityStatus } from '../hooks/useAvailabilityStatus';
 import { AppShell } from './layout';
-import { MaintenanceOverlay } from './MaintenanceOverlay';
+import { UnavailableOverlay } from './UnavailableOverlay';
 
 export function App() {
   const apexVisible = useGameState((s) => s.apexVisible);
-  const unavailable = useMaintenanceDetection();
+  const availability = useAvailabilityStatus();
+  const interceptorConflict = useConnectionStore((s) => s.interceptorConflict);
 
   // Toggle shadow host between opaque fullscreen (APXM) and collapsed transparent
   // (APEX). The :host(.apex-visible) CSS rule in styles.css handles the visual
@@ -67,8 +69,10 @@ export function App() {
     return () => observer.disconnect();
   }, [apexVisible]);
 
-  if (unavailable) {
-    return <MaintenanceOverlay />;
+  if (availability !== 'ok') {
+    return (
+      <UnavailableOverlay reason={availability} conflictConfirmed={interceptorConflict} />
+    );
   }
 
   return <AppShell />;
