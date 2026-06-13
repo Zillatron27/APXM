@@ -12,6 +12,8 @@ import type {
   FioProductionLine,
   FioStorage,
   FioSite,
+  FioMaterial,
+  FioExchangeEntry,
 } from './types';
 
 const FIO_BASE_URL = 'https://rest.fnar.net';
@@ -62,6 +64,41 @@ async function fioFetch<T>(
     const message = err instanceof Error ? err.message : 'Unknown network error';
     return { ok: false, error: { type: 'network', message } };
   }
+}
+
+/**
+ * Makes an anonymous GET request to a public FIO endpoint.
+ * Reference data (materials, exchange prices) needs no Authorization
+ * header, so these requests work without a configured FIO account.
+ */
+async function fioFetchPublic<T>(endpoint: string): Promise<FioResult<T>> {
+  try {
+    const response = await fetch(`${FIO_BASE_URL}${endpoint}`, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+      },
+    });
+    return handleResponse<T>(response);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown network error';
+    return { ok: false, error: { type: 'network', message } };
+  }
+}
+
+/**
+ * Fetches the full materials database (public reference data).
+ */
+export async function fetchAllMaterials(): Promise<FioResult<FioMaterial[]>> {
+  return fioFetchPublic<FioMaterial[]>('/material/allmaterials');
+}
+
+/**
+ * Fetches simplified market data for all materials on all exchanges
+ * (public; FIO caches this server-side for ~15 minutes).
+ */
+export async function fetchExchangeAll(): Promise<FioResult<FioExchangeEntry[]>> {
+  return fioFetchPublic<FioExchangeEntry[]>('/exchange/all');
 }
 
 /**

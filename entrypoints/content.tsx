@@ -6,7 +6,7 @@ import { useConnectionStore } from '../stores/connection';
 import { useSettingsStore, waitForSettingsHydration } from '../stores/settings';
 import { initMessageHandlers, processMessage } from '../stores/message-handlers';
 import { beginEntityBatch, endEntityBatch } from '../stores/entities';
-import { populateStoresFromFio } from '../lib/fio';
+import { populateStoresFromFio, ensureReferenceData } from '../lib/fio';
 import { rehydrateAllStores } from '../stores/cache';
 import { warn, error as logError } from '../lib/debug/logger';
 import { isDebugEnabled, createOverlay, markStep, markFailed, pollForAttribute, ensureDiagnosticsVisible } from '../lib/diagnostics';
@@ -164,7 +164,13 @@ export default defineContentScript({
       );
     }
 
-    // 6b. FIO fetch (fire-and-forget, concurrent with React mount)
+    // 6b. Public reference data — material names, CX prices. No credentials
+    // involved, so this runs regardless of the FIO account config below.
+    // Within cache TTL the rehydration above already populated the stores
+    // and this is a no-op.
+    void ensureReferenceData();
+
+    // 6c. FIO fetch (fire-and-forget, concurrent with React mount)
     const settings = useSettingsStore.getState();
     if (settings.fio.apiKey && settings.fio.username) {
       populateStoresFromFio({

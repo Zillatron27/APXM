@@ -8,12 +8,16 @@ import {
   transformAllStorage,
   transformSite,
   transformAllSites,
+  transformAllMaterials,
+  transformAllExchange,
 } from '../transforms';
 import type {
   FioWorkforce,
   FioProductionLine,
   FioStorage,
   FioSite,
+  FioMaterial,
+  FioExchangeEntry,
 } from '../types';
 
 describe('FIO Transforms', () => {
@@ -418,5 +422,92 @@ describe('FIO boundary validation', () => {
     const result = transformAllWorkforce([validWorkforce, malformed]);
     expect(result).toHaveLength(1);
     expect(result[0].siteId).toBe('site-1');
+  });
+});
+
+describe('FIO reference data transforms', () => {
+  const validMaterial: FioMaterial = {
+    MaterialId: 'mat-rat',
+    CategoryName: 'consumables (basic)',
+    CategoryId: 'cat-1',
+    Name: 'Rations',
+    Ticker: 'RAT',
+    Weight: 0.21,
+    Volume: 0.1,
+  };
+
+  const validExchangeEntry: FioExchangeEntry = {
+    MaterialTicker: 'RAT',
+    ExchangeCode: 'AI1',
+    MMBuy: null,
+    MMSell: null,
+    PriceAverage: 105.5,
+    AskCount: 12,
+    Ask: 110,
+    Supply: 5000,
+    BidCount: 8,
+    Bid: 101,
+    Demand: 3200,
+  };
+
+  describe('transformAllMaterials', () => {
+    it('maps a valid material record', () => {
+      const result = transformAllMaterials([validMaterial]);
+      expect(result).toEqual([
+        {
+          ticker: 'RAT',
+          name: 'Rations',
+          category: 'consumables (basic)',
+          weight: 0.21,
+          volume: 0.1,
+        },
+      ]);
+    });
+
+    it('returns an empty array when the response is not an array', () => {
+      expect(transformAllMaterials(null)).toEqual([]);
+      expect(transformAllMaterials({ not: 'an array' })).toEqual([]);
+    });
+
+    it('skips a record missing its identity fields but keeps valid siblings', () => {
+      // Flat records can't throw on field access, so the transform must
+      // validate Ticker/Name itself for the skip path to work at all.
+      const missingTicker = { ...validMaterial, Ticker: undefined };
+      const missingName = { ...validMaterial, Name: 42 };
+      const result = transformAllMaterials([missingTicker, validMaterial, missingName]);
+      expect(result).toHaveLength(1);
+      expect(result[0].ticker).toBe('RAT');
+    });
+  });
+
+  describe('transformAllExchange', () => {
+    it('maps a valid exchange entry, preserving nullable market fields', () => {
+      const result = transformAllExchange([validExchangeEntry]);
+      expect(result).toEqual([
+        {
+          ticker: 'RAT',
+          exchangeCode: 'AI1',
+          bid: 101,
+          ask: 110,
+          priceAverage: 105.5,
+          supply: 5000,
+          demand: 3200,
+          mmBuy: null,
+          mmSell: null,
+        },
+      ]);
+    });
+
+    it('returns an empty array when the response is not an array', () => {
+      expect(transformAllExchange(undefined)).toEqual([]);
+      expect(transformAllExchange('nope')).toEqual([]);
+    });
+
+    it('skips a record missing ticker or exchange code but keeps valid siblings', () => {
+      const missingCode = { ...validExchangeEntry, ExchangeCode: null };
+      const result = transformAllExchange([validExchangeEntry, missingCode]);
+      expect(result).toHaveLength(1);
+      expect(result[0].exchangeCode).toBe('AI1');
+    });
   });
 });

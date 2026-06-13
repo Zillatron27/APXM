@@ -18,7 +18,10 @@ import type {
   FioStorageItem,
   FioSite,
   FioSiteBuilding,
+  FioMaterial,
+  FioExchangeEntry,
 } from './types';
+import type { MaterialInfo, CxEntry } from '../../stores/reference';
 import { warn } from '../debug/logger';
 
 /**
@@ -372,4 +375,60 @@ export function transformSite(fioSite: FioSite): PrunApi.Site {
 
 export function transformAllSites(fioSites: unknown): PrunApi.Site[] {
   return mapFioArray('sites', fioSites, transformSite);
+}
+
+// ============================================================================
+// Public Reference Data Transforms
+// ============================================================================
+
+/**
+ * Transforms a FIO material record to the reference store shape.
+ * Flat records can't throw on field access, so the identity fields are
+ * checked explicitly — that is what lets mapFioArray skip a malformed
+ * record instead of storing a half-empty one.
+ */
+export function transformMaterial(fio: FioMaterial): MaterialInfo {
+  if (typeof fio.Ticker !== 'string' || typeof fio.Name !== 'string') {
+    throw new Error('material record missing Ticker/Name');
+  }
+  return {
+    ticker: fio.Ticker,
+    name: fio.Name,
+    category: fio.CategoryName,
+    weight: fio.Weight,
+    volume: fio.Volume,
+  };
+}
+
+export function transformAllMaterials(data: unknown): MaterialInfo[] {
+  return mapFioArray('materials', data, transformMaterial);
+}
+
+/**
+ * Transforms a FIO exchange entry to the reference store shape.
+ * Ticker and exchange code form the store key, so both are validated;
+ * bid/ask/MM fields stay nullable (null on illiquid pairs).
+ */
+export function transformExchangeEntry(fio: FioExchangeEntry): CxEntry {
+  if (
+    typeof fio.MaterialTicker !== 'string' ||
+    typeof fio.ExchangeCode !== 'string'
+  ) {
+    throw new Error('exchange record missing MaterialTicker/ExchangeCode');
+  }
+  return {
+    ticker: fio.MaterialTicker,
+    exchangeCode: fio.ExchangeCode,
+    bid: fio.Bid,
+    ask: fio.Ask,
+    priceAverage: fio.PriceAverage,
+    supply: fio.Supply,
+    demand: fio.Demand,
+    mmBuy: fio.MMBuy,
+    mmSell: fio.MMSell,
+  };
+}
+
+export function transformAllExchange(data: unknown): CxEntry[] {
+  return mapFioArray('exchange', data, transformExchangeEntry);
 }
