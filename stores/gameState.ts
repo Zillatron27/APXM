@@ -19,6 +19,9 @@ export type BurnFilter = Exclude<Urgency, 'surplus'> | 'all';
 export type FleetFilter = 'idle' | 'in-transit' | 'all';
 export type ContractFilter = 'active' | 'fulfilled' | 'all';
 
+/** BASES tab display mode: per-site cards or the empire-wide material rollup. */
+export type BasesViewMode = 'sites' | 'empire';
+
 // Non-ALL filter values per view, used by the toggle collapse/revert rules
 const individualBurnFilters: readonly BurnFilter[] = ['critical', 'warning', 'ok'];
 const individualFleetFilters: readonly FleetFilter[] = ['idle', 'in-transit'];
@@ -62,10 +65,14 @@ interface GameState {
   burnFilters: ReadonlySet<BurnFilter>;
   fleetFilters: ReadonlySet<FleetFilter>;
   contractFilters: ReadonlySet<ContractFilter>;
+  // Session-scoped like the filters: an EMPIRE mode that stuck across
+  // reloads would hide the per-site cards users expect to land on.
+  basesViewMode: BasesViewMode;
   setOverlayVisible: (visible: boolean) => void;
   setDebugMode: (debug: boolean) => void;
   setApexVisible: (visible: boolean) => void;
   setActiveTab: (tab: TabId) => void;
+  setBasesViewMode: (mode: BasesViewMode) => void;
   toggleBurnFilter: (filter: BurnFilter) => void;
   toggleFleetFilter: (filter: FleetFilter) => void;
   toggleContractFilter: (filter: ContractFilter) => void;
@@ -80,10 +87,12 @@ export const useGameState = create<GameState>((set) => ({
   fleetFilters: new Set<FleetFilter>(['all']),
   // Contracts default to ACTIVE — fulfilled contracts are history
   contractFilters: new Set<ContractFilter>(['active']),
+  basesViewMode: 'sites',
   setOverlayVisible: (overlayVisible) => set({ overlayVisible }),
   setDebugMode: (debugMode) => set({ debugMode }),
   setApexVisible: (apexVisible) => set({ apexVisible }),
   setActiveTab: (activeTab) => set({ activeTab }),
+  setBasesViewMode: (basesViewMode) => set({ basesViewMode }),
   toggleBurnFilter: (filter) =>
     set((state) => ({
       burnFilters: toggleFilterSelection(state.burnFilters, filter, individualBurnFilters),

@@ -35,7 +35,12 @@ export function MaterialTile({ ticker, category, size = 'md' }: MaterialTileProp
       style={{
         backgroundColor: colors.bg,
         color: colors.text,
-        textShadow: '1px 1px 1px rgba(0, 0, 0, 0.7)',
+        // Border is always present so themes with and without one render
+        // at identical size; bordered (neon) tiles drop the text shadow —
+        // their look is crisp bright glyphs on a dark fill.
+        border: '1px solid',
+        borderColor: colors.border ?? 'transparent',
+        textShadow: colors.border ? 'none' : '1px 1px 1px rgba(0, 0, 0, 0.7)',
       }}
     >
       {ticker}

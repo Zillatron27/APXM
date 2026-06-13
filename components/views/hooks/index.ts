@@ -1,4 +1,5 @@
 export { useFilteredBurns, type BurnFilter, type FilteredBurnsResult } from './useFilteredBurns';
+export { useEmpireBurn, sortEmpireRows, type EmpireBurnResult } from './useEmpireBurn';
 export {
   useFleetDetails,
   type FleetFilter,

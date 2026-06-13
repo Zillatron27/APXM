@@ -2,6 +2,11 @@ import { create } from 'zustand';
 import { persist, createJSONStorage, type StateStorage } from 'zustand/middleware';
 import { browser } from 'wxt/browser';
 import { DEFAULT_THEME_ID, type ApxmThemeId } from '../lib/theme';
+import type { MaterialTheme } from '../lib/material-colors';
+
+// Re-exported so settings consumers don't need a second import; the palette
+// module owns the definition (it changes when palettes are added).
+export type { MaterialTheme } from '../lib/material-colors';
 
 export interface BurnThresholds {
   critical: number; // days — default 3
@@ -21,8 +26,6 @@ export interface FioConfig {
   username: string | null;
   lastFetch: number | null;
 }
-
-export type MaterialTheme = 'rprun' | 'prun';
 
 interface SettingsState {
   burnThresholds: BurnThresholds;

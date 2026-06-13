@@ -87,6 +87,14 @@ interface WorkforceRateEntry {
 const MS_PER_DAY = 86400000;
 
 /**
+ * Net rates below this (units/day) are floating-point noise from balanced
+ * production chains — treat as effectively zero consumption. Shared by the
+ * site and empire paths so a chain that nets out per-site also nets out
+ * when aggregated across sites.
+ */
+const NET_RATE_EPSILON = 0.001;
+
+/**
  * Returns the orders that represent the ongoing production plan for rate calculation.
  * Started orders are excluded — when an order starts executing, its inputs are immediately
  * deducted from inventory and it's no longer part of the queue. Including them would
@@ -283,6 +291,54 @@ export function findMostUrgent(burns: BurnRate[]): BurnRate | null {
   })[0];
 }
 
+/**
+ * Builds one BurnRate from daily rates and inventory. Shared by the per-site
+ * and empire paths so both classify days remaining, urgency, and need
+ * identically.
+ */
+function buildBurnRate(
+  ticker: string,
+  materialName: string | undefined,
+  productionInput: number,
+  productionOutput: number,
+  workforceConsumption: number,
+  inventoryAmount: number,
+  thresholds: BurnThresholds
+): BurnRate {
+  // Net daily amount: positive = producing, negative = consuming
+  const dailyAmount = productionOutput - productionInput - workforceConsumption;
+
+  let daysRemaining: number;
+  if (dailyAmount >= 0 || Math.abs(dailyAmount) < NET_RATE_EPSILON) {
+    daysRemaining = Infinity;
+  } else {
+    daysRemaining =
+      inventoryAmount === 0 ? 0 : inventoryAmount / Math.abs(dailyAmount);
+  }
+
+  const type = classifyBurnType(
+    productionInput,
+    productionOutput,
+    workforceConsumption
+  );
+  const urgency = classifyUrgency(daysRemaining, dailyAmount, thresholds);
+  const need = calculateNeed(dailyAmount, inventoryAmount, thresholds.resupply);
+
+  return {
+    materialTicker: ticker,
+    materialName,
+    dailyAmount,
+    type,
+    productionInput,
+    productionOutput,
+    workforceConsumption,
+    inventoryAmount,
+    daysRemaining,
+    need,
+    urgency,
+  };
+}
+
 // ============================================================================
 // Main Entry Points
 // ============================================================================
@@ -321,53 +377,19 @@ export function calculateSiteBurn(siteId: string): SiteBurnSummary {
     const production = productionRates.get(ticker) ?? { input: 0, output: 0 };
     const workforce = workforceRates.get(ticker) ?? { consumption: 0 };
 
-    const productionInput = production.input;
-    const productionOutput = production.output;
-    const workforceConsumption = workforce.consumption;
-
-    // Net daily amount: positive = producing, negative = consuming
-    const dailyAmount =
-      productionOutput - productionInput - workforceConsumption;
-
-    const inventoryAmount = inventory.get(ticker) ?? 0;
-
-    // Days remaining calculation
-    // Near-zero net rates (< 0.001 units/day) are floating-point noise from
-    // balanced production chains — treat as effectively zero consumption.
-    let daysRemaining: number;
-    if (dailyAmount >= 0 || Math.abs(dailyAmount) < 0.001) {
-      daysRemaining = Infinity;
-    } else {
-      daysRemaining =
-        inventoryAmount === 0 ? 0 : inventoryAmount / Math.abs(dailyAmount);
-    }
-
-    const type = classifyBurnType(
-      productionInput,
-      productionOutput,
-      workforceConsumption
+    burns.push(
+      buildBurnRate(
+        ticker,
+        // WS/FIO payload names, falling back to the public materials
+        // database for tickers those payloads didn't name
+        production.name ?? workforce.name ?? getMaterialName(ticker),
+        production.input,
+        production.output,
+        workforce.consumption,
+        inventory.get(ticker) ?? 0,
+        thresholds
+      )
     );
-    const urgency = classifyUrgency(daysRemaining, dailyAmount, thresholds);
-    const need = calculateNeed(dailyAmount, inventoryAmount, thresholds.resupply);
-
-    // Material name from the WS/FIO payloads, falling back to the public
-    // materials database for tickers those payloads didn't name
-    const materialName =
-      production.name ?? workforce.name ?? getMaterialName(ticker);
-
-    burns.push({
-      materialTicker: ticker,
-      materialName,
-      dailyAmount,
-      type,
-      productionInput,
-      productionOutput,
-      workforceConsumption,
-      inventoryAmount,
-      daysRemaining,
-      need,
-      urgency,
-    });
   }
 
   return {
@@ -385,4 +407,66 @@ export function calculateSiteBurn(siteId: string): SiteBurnSummary {
 export function calculateAllBurns(): SiteBurnSummary[] {
   const sites = useSitesStore.getState().getAll();
   return sites.map((site) => calculateSiteBurn(site.siteId));
+}
+
+/**
+ * Aggregates per-site burns into one empire-wide row per material.
+ *
+ * Rates and inventory are summed across sites; daysRemaining is
+ * Σinventory / |Σnet| — never an average of per-site days — and need is
+ * recomputed at the empire level, so a site producing a material offsets
+ * the sites consuming it. Unlike a site's mostUrgent, an empire row can
+ * legitimately be 'surplus': a material net-produced across the empire
+ * needs no resupply purchase.
+ *
+ * Inventory counts only sites where the material has burn activity,
+ * matching the per-site semantics (stock at an inactive site feeds no
+ * burn until it is shipped somewhere that consumes it).
+ */
+export function aggregateEmpireBurn(
+  summaries: SiteBurnSummary[],
+  thresholds: BurnThresholds
+): BurnRate[] {
+  interface MaterialTotals {
+    productionInput: number;
+    productionOutput: number;
+    workforceConsumption: number;
+    inventoryAmount: number;
+    materialName?: string;
+  }
+
+  const totals = new Map<string, MaterialTotals>();
+
+  for (const summary of summaries) {
+    for (const burn of summary.burns) {
+      const existing = totals.get(burn.materialTicker) ?? {
+        productionInput: 0,
+        productionOutput: 0,
+        workforceConsumption: 0,
+        inventoryAmount: 0,
+      };
+      existing.productionInput += burn.productionInput;
+      existing.productionOutput += burn.productionOutput;
+      existing.workforceConsumption += burn.workforceConsumption;
+      existing.inventoryAmount += burn.inventoryAmount;
+      existing.materialName = existing.materialName ?? burn.materialName;
+      totals.set(burn.materialTicker, existing);
+    }
+  }
+
+  const rows: BurnRate[] = [];
+  for (const [ticker, t] of totals) {
+    rows.push(
+      buildBurnRate(
+        ticker,
+        t.materialName,
+        t.productionInput,
+        t.productionOutput,
+        t.workforceConsumption,
+        t.inventoryAmount,
+        thresholds
+      )
+    );
+  }
+  return rows;
 }
