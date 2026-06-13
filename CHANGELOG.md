@@ -1,5 +1,33 @@
 # APXM Changelog
 
+## 0.2.0-beta2 — Base Status, Empire Burn & Reference Data (2026-06-13)
+
+Bundles two waves of work shipped since the theme release.
+
+### Features
+
+- **Empire-wide burn aggregation** (#4) — the BASE tab has a SITES / EMPIRE toggle. EMPIRE mode rolls every base into one list, one row per material: total inventory, net daily rate, days remaining, and the total amount to buy across the whole empire. A producing base offsets consumers, so days-remaining is whole-empire stock over whole-empire net rate (not an average of per-site figures), and a net-produced material reads as surplus
+- **BURN / REPAIR / PROD base status** (#24) — base cards and the dashboard now show three status indicators per base, not just burn. The BURN tab is renamed BASE. Repair age is tracked per base against configurable threshold/offset settings; production status is shown alongside
+- **Capacity-aware production status** (#36) — the PROD indicator reflects how much of a base's production capacity is actually running, surfacing idle CapEx at a glance
+- **Indicator-aware base filters** (#37) — the RED / YELLOW / GREEN filters match the worst of any indicator (burn, repair, or production), so the filter answers "which bases need attention for any reason". Unknown indicators never drag a base's tier up or down
+- **Company identity & liquidity** (#26) — a company-name header with a condensed, expandable liquidity list (ledger-aligned rows, smooth expand/collapse)
+- **Material names in burn rows** (#2, partial) — tapping a burn row expands a detail line with the material's full name and its in/out/workforce rate breakdown. Names come from a cached public FIO materials database, so they resolve even without FIO account credentials configured
+- **DryDock material theme** (#34) — a third material-tile theme: neon-sign style with the category colour as a bright border and text on a dark fill. Selectable in Settings alongside PrUn and rPrUn
+
+### Changes
+
+- **Filter selections survive tab switches** (#24) — burn, fleet, and contract filter choices persist as you move between tabs (and reset on reload, so a stale filter can't silently hide data)
+- **Settings: Cached Data merged into the FIO Data pane** — the clear-cache control now sits with the FIO refresh as one "data freshness" pane, instead of a separate card
+
+### Internal
+
+- **FIO public reference data** (#2) — anonymous (no-auth) client for the materials and exchange endpoints, cached to extension storage (materials 7 days, CX prices 1 hour) and refetched automatically after an extension update. CX prices are cached and exposed via a lookup for a future inventory-valuation UI. Buildings and recipes remain deferred under #2
+- Site and empire burn rows are built by one shared helper, so they classify days-remaining, urgency, and need identically
+- The `MaterialTheme` type is now owned in one place (the palette module) and re-exported, removing a duplicate definition
+- Tests: 320 → 402
+
+---
+
 ## 0.2.0-beta1.4 — Theme System (2026-06-06)
 
 ### Features
