@@ -3,17 +3,25 @@ import { ConnectionStatusBadge } from '../shared';
 import { BUILD_VERSION } from '../../lib/constants';
 
 export function Header() {
-  const { setApexVisible } = useGameState();
+  const { setApexVisible, setActiveTab } = useGameState();
 
   return (
     <header className="flex items-center justify-between px-4 h-12 bg-apxm-bg border-b border-apxm-surface">
       <div className="flex items-center gap-1.5">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="28" height="28">
-          <rect x="6" y="6" width="116" height="116" rx="8" fill="#0a0a0a"/>
-          <rect x="6" y="6" width="116" height="116" rx="8" fill="none" stroke="#f7a600" strokeWidth="5"/>
-          <text x="64" y="42" textAnchor="middle" dominantBaseline="central" fill="#f7a600" fontFamily="'Courier New', monospace" fontWeight="bold" fontSize="54" letterSpacing="2">AP</text>
-          <text x="64" y="94" textAnchor="middle" dominantBaseline="central" fill="#f7a600" fontFamily="'Courier New', monospace" fontWeight="bold" fontSize="54" letterSpacing="2">XM</text>
-        </svg>
+        {/* Logo doubles as a home link back to the Status view. Padding
+            expands the tap target to 44pt without enlarging the 28px glyph. */}
+        <button
+          onClick={() => setActiveTab('status')}
+          aria-label="Go to Status"
+          className="flex items-center justify-center min-h-touch px-2 -ml-2"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="28" height="28">
+            <rect x="6" y="6" width="116" height="116" rx="8" fill="#0a0a0a"/>
+            <rect x="6" y="6" width="116" height="116" rx="8" fill="none" stroke="#f7a600" strokeWidth="5"/>
+            <text x="64" y="42" textAnchor="middle" dominantBaseline="central" fill="#f7a600" fontFamily="'Courier New', monospace" fontWeight="bold" fontSize="54" letterSpacing="2">AP</text>
+            <text x="64" y="94" textAnchor="middle" dominantBaseline="central" fill="#f7a600" fontFamily="'Courier New', monospace" fontWeight="bold" fontSize="54" letterSpacing="2">XM</text>
+          </svg>
+        </button>
         <span className="text-xs text-apxm-muted">{BUILD_VERSION}</span>
       </div>
       <div className="flex items-center gap-3">
