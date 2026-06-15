@@ -1,5 +1,27 @@
 # APXM Changelog
 
+## 0.2.0-beta3 — Base Drill-Down Sheets (2026-06-15)
+
+Tapping a base's status now drills into detail.
+
+### Features
+
+- **Base drill-down sheets** (#52, #54) — tapping a base's BURN, REPAIR, or PROD tile opens a detail sheet that slides up over the current view. PROD shows a phone-first, read-only production view: each building with its running/capacity count and its orders — producing ones first with a QUEUE divider, then waiting — each with live ETA, % done, and recurring/halted state. BURN opens the material breakdown that used to expand inline. REPAIR is a placeholder for now (the current oldest-building figure), pending its own design
+- **Tap the logo to go home** (#51) — the APXM logo in the header returns you to the Status view
+- **Clearer tappable tiles** (#53) — status tiles you can drill into now have a raised, physical "key" look that presses in when tapped, so it's obvious which tiles do something (touch has no hover to hint at it)
+
+### Changes
+
+- **Base cards no longer expand inline** — every BURN / REPAIR / PROD tile now drills into its own detail sheet instead. More consistent, and it scales as more detail moves into drill-downs
+
+### Internal
+
+- Removed the dead StatusPanel prototype (the original floating-corner panel, long superseded by the current shell + tabs) and the BurnSummaryList it used
+- Friendly building names are derived from the production-line type key, matching APEX's labels
+- Tests: 402 → 422
+
+---
+
 ## 0.2.0-beta2 — Base Status, Empire Burn & Reference Data (2026-06-13)
 
 Bundles two waves of work shipped since the theme release.
