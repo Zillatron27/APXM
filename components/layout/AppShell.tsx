@@ -2,6 +2,7 @@ import { useGameState } from '../../stores/gameState';
 import { Header } from './Header';
 import { TabBar } from './TabBar';
 import { FloatingReturn } from './FloatingReturn';
+import { DetailSheet } from './DetailSheet';
 import { StatusView } from '../views/StatusView';
 import { FleetView } from '../views/FleetView';
 import { BasesView } from '../views/BasesView';
@@ -33,12 +34,14 @@ export function AppShell() {
   }
 
   return (
-    <div className="w-full h-dvh flex flex-col bg-apxm-bg text-apxm-text overflow-hidden pointer-events-auto">
+    <div className="relative w-full h-dvh flex flex-col bg-apxm-bg text-apxm-text overflow-hidden pointer-events-auto">
       <Header />
       <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 min-w-0">
         <ViewContent />
       </main>
       <TabBar />
+      {/* Drill-down sheet — overlays the whole shell when a detailView is set */}
+      <DetailSheet />
     </div>
   );
 }

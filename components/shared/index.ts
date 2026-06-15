@@ -7,3 +7,4 @@ export { StateTile, type TileVariant } from './StateTile';
 export { ProgressBar, type BarColor } from './ProgressBar';
 export { MaterialTile } from './MaterialTile';
 export { DataGate, type RequiredStore } from './DataGate';
+export { keycapClasses } from './keycap';

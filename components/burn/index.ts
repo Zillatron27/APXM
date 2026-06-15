@@ -1,8 +1,9 @@
 export { BurnBadge, getUrgencyColor, getUrgencyTextColor } from './BurnBadge';
 export { BurnRow, BurnRowCompact } from './BurnRow';
 export { SiteBurnCard } from './SiteBurnCard';
+export { BurnDetailView } from './BurnDetailView';
+export { RepairDetailView } from './RepairDetailView';
 export { EmpireBurnList } from './EmpireBurnList';
-export { BurnSummaryList, BurnSummaryCompact } from './BurnSummaryList';
 export { useSiteBurns, sortByUrgency } from './useSiteBurns';
 export { DataSourceBadge } from './DataSourceBadge';
 export { useRepairStatus, type RepairStatusSummary } from './useRepairStatus';
