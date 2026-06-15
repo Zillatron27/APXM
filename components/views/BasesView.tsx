@@ -99,7 +99,6 @@ export function BasesView() {
                 summary={summary}
                 repairAgeDays={repairBySite.get(summary.siteId)?.oldestBuildingAgeDays ?? null}
                 prodStatus={prodStatuses.get(summary.siteId) ?? null}
-                defaultExpanded={false}
               />
             ))}
           </div>

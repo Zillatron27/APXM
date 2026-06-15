@@ -22,6 +22,17 @@ export type ContractFilter = 'active' | 'fulfilled' | 'all';
 /** BASES tab display mode: per-site cards or the empire-wide material rollup. */
 export type BasesViewMode = 'sites' | 'empire';
 
+/**
+ * A drill-down detail screen presented over the current tab as a slide-up
+ * sheet. Session-scoped (not persisted) — a sheet that reopened on reload
+ * would be a surprise. siteName travels in the payload so the sheet needs no
+ * sites-store lookup. This is the shared primitive for base drill-downs: each
+ * status tile (BURN / REPAIR / PROD) opens its dimension's detail. Future
+ * drill-downs add a `type`, not a new navigation mechanism.
+ */
+export type DetailViewType = 'production' | 'burn' | 'repair';
+export type DetailView = { type: DetailViewType; siteId: string; siteName: string };
+
 // Non-ALL filter values per view, used by the toggle collapse/revert rules
 const individualBurnFilters: readonly BurnFilter[] = ['critical', 'warning', 'ok'];
 const individualFleetFilters: readonly FleetFilter[] = ['idle', 'in-transit'];
@@ -68,11 +79,14 @@ interface GameState {
   // Session-scoped like the filters: an EMPIRE mode that stuck across
   // reloads would hide the per-site cards users expect to land on.
   basesViewMode: BasesViewMode;
+  // The active drill-down sheet, or null when none is open. Session-scoped.
+  detailView: DetailView | null;
   setOverlayVisible: (visible: boolean) => void;
   setDebugMode: (debug: boolean) => void;
   setApexVisible: (visible: boolean) => void;
   setActiveTab: (tab: TabId) => void;
   setBasesViewMode: (mode: BasesViewMode) => void;
+  setDetailView: (view: DetailView | null) => void;
   toggleBurnFilter: (filter: BurnFilter) => void;
   toggleFleetFilter: (filter: FleetFilter) => void;
   toggleContractFilter: (filter: ContractFilter) => void;
@@ -88,11 +102,13 @@ export const useGameState = create<GameState>((set) => ({
   // Contracts default to ACTIVE — fulfilled contracts are history
   contractFilters: new Set<ContractFilter>(['active']),
   basesViewMode: 'sites',
+  detailView: null,
   setOverlayVisible: (overlayVisible) => set({ overlayVisible }),
   setDebugMode: (debugMode) => set({ debugMode }),
   setApexVisible: (apexVisible) => set({ apexVisible }),
   setActiveTab: (activeTab) => set({ activeTab }),
   setBasesViewMode: (basesViewMode) => set({ basesViewMode }),
+  setDetailView: (detailView) => set({ detailView }),
   toggleBurnFilter: (filter) =>
     set((state) => ({
       burnFilters: toggleFilterSelection(state.burnFilters, filter, individualBurnFilters),

@@ -16,7 +16,7 @@ import { useProductionStore } from '../../stores/entities/production';
 import { useStorageStore } from '../../stores/entities/storage';
 
 export function BasesMiniList() {
-  const { setActiveTab } = useGameState();
+  const { setActiveTab, setDetailView } = useGameState();
   const siteBurns = useSiteBurns();
   const repairStatuses = useRepairStatus();
   const prodStatuses = useProdStatuses();
@@ -92,7 +92,15 @@ export function BasesMiniList() {
               </span>
             )}
             <RepairAgeBadge ageDays={repairBySite.get(site.siteId)?.oldestBuildingAgeDays ?? null} />
-            <ProdStatusBadge status={prodStatuses.get(site.siteId) ?? null} />
+            {/* PROD chip taps through to the production sheet. min-h-touch
+                makes the whole row a 44pt target without enlarging the chip. */}
+            <button
+              onClick={() => setDetailView({ type: 'production', siteId: site.siteId, siteName: site.siteName })}
+              aria-label={`Production detail for ${site.siteName}`}
+              className="flex w-full min-h-touch items-center justify-center"
+            >
+              <ProdStatusBadge status={prodStatuses.get(site.siteId) ?? null} interactive />
+            </button>
           </div>
         ))}
       </div>
