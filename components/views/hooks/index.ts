@@ -2,10 +2,11 @@ export { useFilteredBurns, type BurnFilter, type FilteredBurnsResult } from './u
 export { useEmpireBurn, sortEmpireRows, type EmpireBurnResult } from './useEmpireBurn';
 export {
   useFleetDetails,
+  useShipDetail,
   type FleetFilter,
   type FleetDetailsResult,
   type ShipDetail,
-  type FlightState,
+  type ShipDisplayStatus,
 } from './useFleetDetails';
 export {
   useContractDetails,

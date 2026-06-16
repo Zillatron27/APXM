@@ -2,15 +2,15 @@ import { useMemo } from 'react';
 import { useShipsStore } from '../../../stores/entities/ships';
 import { useFlightsStore, getFlightByShipId } from '../../../stores/entities/flights';
 import { useStorageStore } from '../../../stores/entities/storage';
-import { getDestinationName, formatEta, getCurrentLocation } from '../../../lib/fleet-utils';
+import { getDestinationName, getCurrentLocation, shipPhase } from '../../../lib/fleet-utils';
+import type { ShipDisplayStatus } from '../../../lib/ship-status';
 import { useTick } from '../../../lib/use-tick';
 import type { PrunApi } from '../../../types/prun-api';
 
 import type { FleetFilter } from '../../../stores/gameState';
 
 export type { FleetFilter };
-
-export type FlightState = 'IDL' | 'ARR' | 'TRN' | 'DEP' | 'ORB';
+export type { ShipDisplayStatus };
 
 export interface ShipDetail {
   id: string;
@@ -18,7 +18,10 @@ export interface ShipDetail {
   registration: string;
   location: string;
   destination: string | null;
-  state: FlightState;
+  /** Current flight phase (Helm/rPrun vocabulary), or STATIONARY when parked. */
+  phase: ShipDisplayStatus;
+  /** True when the ship is parked (no active flight) — drives idle filter/sort. */
+  stationary: boolean;
   etaMs: number | null;
   condition: number;
   cargo: {
@@ -37,44 +40,6 @@ export interface ShipDetail {
     current: number;
     max: number;
   };
-}
-
-/**
- * Determines the flight state abbreviation for a ship.
- * IDL = Idle, ARR = Arriving (<2h), TRN = Transit, DEP = Departing, ORB = Orbiting
- */
-function getFlightState(ship: PrunApi.Ship, flight: PrunApi.Flight | undefined): FlightState {
-  if (!flight) return 'IDL';
-
-  const now = Date.now();
-  const etaMs = flight.arrival.timestamp - now;
-
-  // Already arrived?
-  if (etaMs <= 0) return 'IDL';
-
-  // Within 2 hours of arrival
-  const twoHoursMs = 2 * 60 * 60 * 1000;
-  if (etaMs <= twoHoursMs) return 'ARR';
-
-  // Check current segment for more specific state
-  const segment = flight.segments[flight.currentSegmentIndex];
-  if (segment) {
-    switch (segment.type) {
-      case 'TAKE_OFF':
-      case 'DEPARTURE':
-        return 'DEP';
-      case 'APPROACH':
-      case 'LANDING':
-        return 'ARR';
-      case 'FLOAT':
-      case 'LOCK':
-        return 'ORB';
-      default:
-        return 'TRN';
-    }
-  }
-
-  return 'TRN';
 }
 
 interface StoreLoad {
@@ -106,6 +71,39 @@ export interface FleetDetailsResult {
 }
 
 /**
+ * Assemble one ship's display detail (phase, route, cargo, fuel, condition).
+ * Shared by the fleet list (`useFleetDetails`) and the single-ship drill-down
+ * sheet (`useShipDetail`) so both read identically.
+ */
+function buildShipDetail(ship: PrunApi.Ship, stores: PrunApi.Store[], now: number): ShipDetail {
+  const flight = getFlightByShipId(ship.id);
+  const { phase, stationary } = shipPhase(flight);
+
+  const destination = flight ? getDestinationName(flight.destination) : null;
+  const etaMs = flight ? flight.arrival.timestamp - now : null;
+
+  const cargoStore = getStoreLoad(ship.idShipStore, stores);
+  const stlFuelStore = getStoreLoad(ship.idStlFuelStore, stores);
+  const ftlFuelStore = getStoreLoad(ship.idFtlFuelStore, stores);
+
+  return {
+    id: ship.id,
+    name: ship.name || ship.registration,
+    registration: ship.registration,
+    location: flight ? getDestinationName(flight.origin) : getCurrentLocation(ship),
+    destination,
+    phase,
+    stationary,
+    etaMs: etaMs && etaMs > 0 ? etaMs : null,
+    condition: ship.condition,
+    cargo: cargoStore.weight,
+    cargoVolume: cargoStore.volume,
+    stlFuel: stlFuelStore.volume,
+    ftlFuel: ftlFuelStore.volume,
+  };
+}
+
+/**
  * Hook that assembles ship details with cargo, fuel, and flight info.
  */
 export function useFleetDetails(activeFilters: ReadonlySet<FleetFilter>): FleetDetailsResult {
@@ -120,39 +118,12 @@ export function useFleetDetails(activeFilters: ReadonlySet<FleetFilter>): FleetD
     const stores = useStorageStore.getState().getAll();
     const now = Date.now();
 
-    const details: ShipDetail[] = ships.map((ship) => {
-      const flight = getFlightByShipId(ship.id);
-      const state = getFlightState(ship, flight);
+    const details: ShipDetail[] = ships.map((ship) => buildShipDetail(ship, stores, now));
 
-      const destination = flight ? getDestinationName(flight.destination) : null;
-      const etaMs = flight ? flight.arrival.timestamp - now : null;
-
-      const cargoStore = getStoreLoad(ship.idShipStore, stores);
-      const stlFuelStore = getStoreLoad(ship.idStlFuelStore, stores);
-      const ftlFuelStore = getStoreLoad(ship.idFtlFuelStore, stores);
-
-      return {
-        id: ship.id,
-        name: ship.name || ship.registration,
-        registration: ship.registration,
-        location: flight ? getDestinationName(flight.origin) : getCurrentLocation(ship),
-        destination,
-        state,
-        etaMs: etaMs && etaMs > 0 ? etaMs : null,
-        condition: ship.condition,
-        cargo: cargoStore.weight,
-        cargoVolume: cargoStore.volume,
-        stlFuel: stlFuelStore.volume,
-        ftlFuel: ftlFuelStore.volume,
-      };
-    });
-
-    // Sort: idle first, then by ETA (soonest first)
+    // Sort: stationary (idle) first, then by ETA (soonest first)
     details.sort((a, b) => {
-      const aIdle = a.state === 'IDL';
-      const bIdle = b.state === 'IDL';
-      if (aIdle && !bIdle) return -1;
-      if (!aIdle && bIdle) return 1;
+      if (a.stationary && !b.stationary) return -1;
+      if (!a.stationary && b.stationary) return 1;
 
       const etaA = a.etaMs ?? Infinity;
       const etaB = b.etaMs ?? Infinity;
@@ -162,18 +133,37 @@ export function useFleetDetails(activeFilters: ReadonlySet<FleetFilter>): FleetD
     // Count by filter category
     const counts: Record<FleetFilter, number> = {
       all: details.length,
-      idle: details.filter((s) => s.state === 'IDL').length,
-      'in-transit': details.filter((s) => s.state !== 'IDL').length,
+      idle: details.filter((s) => s.stationary).length,
+      'in-transit': details.filter((s) => !s.stationary).length,
     };
 
     // Apply filter
     const filtered = activeFilters.has('all')
       ? details
       : details.filter((s) => {
-          const category: FleetFilter = s.state === 'IDL' ? 'idle' : 'in-transit';
+          const category: FleetFilter = s.stationary ? 'idle' : 'in-transit';
           return activeFilters.has(category);
         });
 
     return { ships: filtered, counts };
   }, [shipsLastUpdated, flightsLastUpdated, storageLastUpdated, activeFilters, tick]);
+}
+
+/**
+ * A single ship's live detail for the drill-down sheet, or null if the ship is
+ * gone (e.g. store cleared on reconnect — the sheet should then close itself).
+ * Subscribes to the same stores + minute tick as the list so ETA stays fresh.
+ */
+export function useShipDetail(shipId: string): ShipDetail | null {
+  const shipsLastUpdated = useShipsStore((s) => s.lastUpdated);
+  const flightsLastUpdated = useFlightsStore((s) => s.lastUpdated);
+  const storageLastUpdated = useStorageStore((s) => s.lastUpdated);
+  const tick = useTick(60000);
+
+  return useMemo(() => {
+    const ship = useShipsStore.getState().getAll().find((s) => s.id === shipId);
+    if (!ship) return null;
+    const stores = useStorageStore.getState().getAll();
+    return buildShipDetail(ship, stores, Date.now());
+  }, [shipId, shipsLastUpdated, flightsLastUpdated, storageLastUpdated, tick]);
 }

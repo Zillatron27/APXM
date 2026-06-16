@@ -25,13 +25,16 @@ export type BasesViewMode = 'sites' | 'empire';
 /**
  * A drill-down detail screen presented over the current tab as a slide-up
  * sheet. Session-scoped (not persisted) — a sheet that reopened on reload
- * would be a surprise. siteName travels in the payload so the sheet needs no
- * sites-store lookup. This is the shared primitive for base drill-downs: each
- * status tile (BURN / REPAIR / PROD) opens its dimension's detail. Future
- * drill-downs add a `type`, not a new navigation mechanism.
+ * would be a surprise. The entity name travels in the payload so the sheet
+ * needs no store lookup for its title. This is the shared primitive for all
+ * drill-downs: base status tiles (BURN / REPAIR / PROD) and fleet ship rows
+ * each open their detail through it. New drill-downs add a union variant, not
+ * a new navigation mechanism.
  */
-export type DetailViewType = 'production' | 'burn' | 'repair';
-export type DetailView = { type: DetailViewType; siteId: string; siteName: string };
+export type SiteDetailType = 'production' | 'burn' | 'repair';
+export type DetailView =
+  | { type: SiteDetailType; siteId: string; siteName: string }
+  | { type: 'ship'; shipId: string; shipName: string };
 
 // Non-ALL filter values per view, used by the toggle collapse/revert rules
 const individualBurnFilters: readonly BurnFilter[] = ['critical', 'warning', 'ok'];
