@@ -10,7 +10,7 @@ const tabs: TabConfig[] = [
   { id: 'status', label: 'STATUS' },
   { id: 'bases', label: 'BASE' },
   { id: 'fleet', label: 'FLEET' },
-  { id: 'contracts', label: 'CONTRACTS' },
+  { id: 'contracts', label: 'CONTS' },
   { id: 'settings', label: 'SET' },
 ];
 
