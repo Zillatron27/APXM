@@ -94,6 +94,36 @@ describe('buildContractDetail — dependency-aware condition flags', () => {
     expect(cond.dependencyIndexes).toEqual([]);
   });
 
+  it('marks no condition available or blocked once the contract is no longer valid', () => {
+    const terminalStatuses: PrunApi.ContractStatus[] = [
+      'REJECTED',
+      'CANCELLED',
+      'TERMINATED',
+      'BREACHED',
+      'DEADLINE_EXCEEDED',
+    ];
+
+    for (const status of terminalStatuses) {
+      const contract = createTestContract({
+        party: 'PROVIDER',
+        status,
+        conditions: [
+          // Would be available on an active contract (PENDING, no deps)...
+          selfCondition({ id: 'c1', index: 0, status: 'PENDING', dependencies: [] }),
+          // ...and this would be blocked, waiting on c1.
+          selfCondition({ id: 'c2', index: 1, status: 'PENDING', dependencies: ['c1'] }),
+        ],
+      });
+
+      const detail = buildContractDetail(contract);
+      expect(detail.actionable).toBe(false);
+      for (const cond of detail.conditions) {
+        expect(cond.available).toBe(false);
+        expect(cond.blocked).toBe(false);
+      }
+    }
+  });
+
   it('sets contract.actionable true iff at least one condition is available', () => {
     const noneAvailable = createTestContract({
       party: 'PROVIDER',

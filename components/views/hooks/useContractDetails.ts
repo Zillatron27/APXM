@@ -178,32 +178,45 @@ function formatRelativeTime(ms: number): string {
 }
 
 /**
- * A self condition is "available" (ready to action now) when it is still
- * PENDING and every condition it depends on is FULFILLED. Dependency ids that
- * don't resolve in `byId` are treated as not-fulfilled (fail-safe — we never
- * mark a condition actionable off a dependency we can't see), which the
- * `=== 'FULFILLED'` check enforces.
+ * A contract whose own status is no longer active can't be actioned — a
+ * rejected/cancelled/terminated or breached/deadline-exceeded (or fully
+ * fulfilled) contract has no live fulfilment order, so none of its conditions
+ * are "available" or "blocked", whatever the per-condition statuses say.
+ */
+function isContractActionable(contract: PrunApi.Contract): boolean {
+  return ACTIVE_STATUSES.includes(contract.status);
+}
+
+/**
+ * A self condition is "available" (ready to action now) when its contract is
+ * still active, the condition is still PENDING, and every condition it depends
+ * on is FULFILLED. Dependency ids that don't resolve in `byId` are treated as
+ * not-fulfilled (fail-safe — we never mark a condition actionable off a
+ * dependency we can't see), which the `=== 'FULFILLED'` check enforces.
  */
 function isAvailable(
   cond: PrunApi.ContractCondition,
   contract: PrunApi.Contract,
   byId: Map<string, PrunApi.ContractCondition>,
 ): boolean {
+  if (!isContractActionable(contract)) return false; // contract no longer valid
   if (cond.party !== contract.party) return false; // not yours
   if (cond.status !== 'PENDING') return false; // already moving / done / failed
   return cond.dependencies.every((depId) => byId.get(depId)?.status === 'FULFILLED');
 }
 
 /**
- * A self condition is "blocked" when it is not yet fulfilled and at least one
- * dependency is not FULFILLED. An unresolvable dependency id counts as blocking
- * (`?.status !== 'FULFILLED'` is true for `undefined`).
+ * A self condition is "blocked" when its contract is still active, the
+ * condition is not yet fulfilled, and at least one dependency is not FULFILLED.
+ * An unresolvable dependency id counts as blocking (`?.status !== 'FULFILLED'`
+ * is true for `undefined`).
  */
 function isBlocked(
   cond: PrunApi.ContractCondition,
   contract: PrunApi.Contract,
   byId: Map<string, PrunApi.ContractCondition>,
 ): boolean {
+  if (!isContractActionable(contract)) return false; // contract no longer valid
   if (cond.party !== contract.party) return false;
   if (cond.status === 'FULFILLED') return false;
   return cond.dependencies.some((depId) => byId.get(depId)?.status !== 'FULFILLED');
