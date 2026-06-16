@@ -1,1 +1,2 @@
-export { ShipCard } from './ShipCard';
+export { ShipRow } from './ShipRow';
+export { ShipDetailView } from './ShipDetailView';

@@ -52,9 +52,9 @@ describe('getEntityDisplayName', () => {
     expect(getEntityDisplayName(address)).toBe('LS-014b');
   });
 
-  it('returns station name for station address', () => {
+  it('returns the CX 3-letter code (naturalId) for a station address', () => {
     const address = makeAddress(station('Antares Station', 'ANT'));
-    expect(getEntityDisplayName(address)).toBe('Antares Station');
+    expect(getEntityDisplayName(address)).toBe('ANT');
   });
 
   it('returns Unknown for empty address', () => {

@@ -1,5 +1,5 @@
 import { FilterBar, type FilterOption, DataGate, type RequiredStore } from '../shared';
-import { ShipCard } from '../fleet';
+import { ShipRow } from '../fleet';
 import { useFleetDetails, type FleetFilter } from './hooks';
 import { useShipsStore } from '../../stores/entities/ships';
 import { useGameState } from '../../stores/gameState';
@@ -46,9 +46,9 @@ export function FleetView() {
               : 'No ships match the selected filter'}
           </p>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-1">
             {ships.map((ship) => (
-              <ShipCard key={ship.id} ship={ship} defaultExpanded={false} />
+              <ShipRow key={ship.id} ship={ship} />
             ))}
           </div>
         )}

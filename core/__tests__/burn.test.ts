@@ -513,7 +513,7 @@ describe('burn.ts', () => {
       expect(getSiteNameFromAddress(address)).toBe('MONT');
     });
 
-    it('uses station when no planet', () => {
+    it('uses the station CX code (naturalId) when no planet', () => {
       const address: PrunApi.Address = {
         lines: [
           {
@@ -522,7 +522,7 @@ describe('burn.ts', () => {
           },
         ],
       };
-      expect(getSiteNameFromAddress(address)).toBe('Station Alpha');
+      expect(getSiteNameFromAddress(address)).toBe('STN');
     });
 
     it('returns Unknown for empty address', () => {

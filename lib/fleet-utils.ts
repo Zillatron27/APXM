@@ -1,5 +1,28 @@
 import type { PrunApi } from '../types/prun-api';
 import { getEntityDisplayName } from './address';
+import { segmentStatus, STATIONARY, type ShipDisplayStatus } from './ship-status';
+
+/**
+ * A ship's current flight phase, mirroring PrUn's FLT "Status" column: the live
+ * flight-segment phase while flying, STATIONARY when parked or already arrived.
+ * `stationary` drives idle filtering/sorting; `phase` is what we display.
+ * Shared by the fleet list, the ship detail sheet, and the status mini-list so
+ * the three surfaces can't drift.
+ */
+export function shipPhase(flight: PrunApi.Flight | undefined): {
+  phase: ShipDisplayStatus;
+  stationary: boolean;
+} {
+  if (!flight) return { phase: STATIONARY, stationary: true };
+
+  // Arrival already passed — the ship is parked at its destination.
+  if (flight.arrival.timestamp - Date.now() <= 0) {
+    return { phase: STATIONARY, stationary: true };
+  }
+
+  const segment = flight.segments[flight.currentSegmentIndex];
+  return { phase: segment ? segmentStatus(segment.type) : STATIONARY, stationary: false };
+}
 
 /**
  * Extracts a human-readable destination name from an address.

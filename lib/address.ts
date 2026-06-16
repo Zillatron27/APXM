@@ -28,11 +28,14 @@ export function getEntityDisplayName(address: PrunApi.Address): string {
     return name || naturalId;
   }
 
-  // Station fallback (CX / orbital)
+  // Station fallback: show the CX 3-letter code (NaturalId, e.g. "ANT"), not
+  // the full station name ("Antares Station"). Mirrors Helm's CX label transform
+  // and the FIO display rule — for stations the NaturalId IS the human-friendly
+  // label, and the dense fleet rows need the terse code.
   const station = address.lines.find(
     (l): l is PrunApi.StationAddressLine => l.type === 'STATION' && !!l.entity
   );
-  if (station) return station.entity.name || station.entity.naturalId;
+  if (station) return station.entity.naturalId || station.entity.name;
 
   return 'Unknown';
 }

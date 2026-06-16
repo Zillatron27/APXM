@@ -1,13 +1,20 @@
 import { useEffect, useState } from 'react';
-import { useGameState, type DetailViewType } from '../../stores/gameState';
+import { useGameState, type DetailView } from '../../stores/gameState';
 import { ProductionView } from '../production';
 import { BurnDetailView, RepairDetailView } from '../burn';
+import { ShipDetailView } from '../fleet';
 
-const detailLabels: Record<DetailViewType, string> = {
+const detailLabels: Record<DetailView['type'], string> = {
   production: 'Production',
   burn: 'Burn',
   repair: 'Repair',
+  ship: 'Ship',
 };
+
+/** Sheet title: the ship name for a ship detail, otherwise the site name. */
+function detailTitle(detailView: DetailView): string {
+  return detailView.type === 'ship' ? detailView.shipName : detailView.siteName;
+}
 
 /**
  * Slide-up sheet for base drill-down detail, presented over the current tab.
@@ -66,7 +73,7 @@ export function DetailSheet() {
             <p className="text-[10px] uppercase tracking-wide text-apxm-text/40">
               {detailLabels[detailView.type]}
             </p>
-            <h2 className="font-semibold text-apxm-text truncate">{detailView.siteName}</h2>
+            <h2 className="font-semibold text-apxm-text truncate">{detailTitle(detailView)}</h2>
           </div>
           <button
             onClick={close}
@@ -84,6 +91,7 @@ export function DetailSheet() {
           )}
           {detailView.type === 'burn' && <BurnDetailView siteId={detailView.siteId} />}
           {detailView.type === 'repair' && <RepairDetailView siteId={detailView.siteId} />}
+          {detailView.type === 'ship' && <ShipDetailView shipId={detailView.shipId} />}
         </div>
       </div>
     </div>

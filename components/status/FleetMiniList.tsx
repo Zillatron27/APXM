@@ -1,43 +1,22 @@
 import { useMemo } from 'react';
 import { useShipsStore } from '../../stores/entities/ships';
 import { getFlightByShipId } from '../../stores/entities/flights';
-import { Card, SectionHeader, StateTile } from '../shared';
+import { Card, SectionHeader } from '../shared';
 import { useGameState } from '../../stores/gameState';
 import { useConnectionStore } from '../../stores/connection';
 import { useConnectionStatus } from '../../hooks/useConnectionStatus';
-import { formatEta } from '../../lib/fleet-utils';
+import { formatEta, getDestinationName, shipPhase } from '../../lib/fleet-utils';
+import type { ShipDisplayStatus } from '../../lib/ship-status';
 import { useTick } from '../../lib/use-tick';
-import type { PrunApi } from '../../types/prun-api';
-
-type FleetStatus = 'idle' | 'arriving-soon' | 'in-transit';
-
-// Map status to StateTile label (all neutral for fleet)
-const statusTileLabels: Record<FleetStatus, string> = {
-  idle: 'Idle',
-  'arriving-soon': 'Arriving',
-  'in-transit': 'Transit',
-};
 
 interface ShipSummary {
   id: string;
   name: string;
-  status: FleetStatus;
+  phase: ShipDisplayStatus;
+  stationary: boolean;
   destination: string | null;
   etaMs: number | null;
 }
-
-function getDestinationName(address: PrunApi.Address): string {
-  for (const line of address.lines) {
-    if (line.type === 'PLANET' && line.entity) {
-      return line.entity.name || line.entity.naturalId;
-    }
-    if (line.type === 'STATION' && line.entity) {
-      return line.entity.name || line.entity.naturalId;
-    }
-  }
-  return 'Unknown';
-}
-
 
 export function FleetMiniList() {
   const { setActiveTab } = useGameState();
@@ -51,54 +30,27 @@ export function FleetMiniList() {
   const topShips = useMemo(() => {
     const ships = useShipsStore.getState().getAll();
     const now = Date.now();
-    const twoHoursMs = 2 * 60 * 60 * 1000;
 
     const summaries: ShipSummary[] = ships.map((ship) => {
       const flight = getFlightByShipId(ship.id);
-
-      if (!flight) {
-        return {
-          id: ship.id,
-          name: ship.name || ship.registration,
-          status: 'idle' as FleetStatus,
-          destination: null,
-          etaMs: null,
-        };
-      }
-
-      const arrivalMs = flight.arrival.timestamp;
-      const etaMs = arrivalMs - now;
-      const destination = getDestinationName(flight.destination);
-
-      if (etaMs <= twoHoursMs) {
-        return {
-          id: ship.id,
-          name: ship.name || ship.registration,
-          status: 'arriving-soon' as FleetStatus,
-          destination,
-          etaMs,
-        };
-      }
+      const { phase, stationary } = shipPhase(flight);
+      const etaMs = flight ? flight.arrival.timestamp - now : null;
 
       return {
         id: ship.id,
         name: ship.name || ship.registration,
-        status: 'in-transit' as FleetStatus,
-        destination,
-        etaMs,
+        phase,
+        stationary,
+        destination: flight ? getDestinationName(flight.destination) : null,
+        etaMs: etaMs && etaMs > 0 ? etaMs : null,
       };
     });
 
-    // Sort: idle first, then arriving-soon by ETA, then in-transit by ETA
+    // Sort: stationary (idle) first, then by ETA (soonest first)
     summaries.sort((a, b) => {
-      const statusOrder: Record<FleetStatus, number> = { idle: 0, 'arriving-soon': 1, 'in-transit': 2 };
-      const orderDiff = statusOrder[a.status] - statusOrder[b.status];
-      if (orderDiff !== 0) return orderDiff;
-
-      // Within same status, sort by ETA
-      const etaA = a.etaMs ?? Infinity;
-      const etaB = b.etaMs ?? Infinity;
-      return etaA - etaB;
+      if (a.stationary && !b.stationary) return -1;
+      if (!a.stationary && b.stationary) return 1;
+      return (a.etaMs ?? Infinity) - (b.etaMs ?? Infinity);
     });
 
     return summaries.slice(0, 5);
@@ -137,7 +89,10 @@ export function FleetMiniList() {
               )}
             </div>
             <div className="flex items-center gap-2">
-              <StateTile label={statusTileLabels[ship.status]} variant="neutral" />
+              <span className="flex items-center gap-1 text-xs text-apxm-text/70">
+                <span aria-hidden className="text-apxm-text">{ship.phase.icon}</span>
+                {ship.phase.label}
+              </span>
               {ship.etaMs !== null && (
                 <span className="text-xs text-apxm-text/70 font-mono">
                   {formatEta(ship.etaMs)}
