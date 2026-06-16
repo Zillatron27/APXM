@@ -5,7 +5,7 @@ import { Card, SectionHeader } from '../shared';
 import { useGameState } from '../../stores/gameState';
 import { useConnectionStore } from '../../stores/connection';
 import { useConnectionStatus } from '../../hooks/useConnectionStatus';
-import { formatEta, getDestinationName, shipPhase } from '../../lib/fleet-utils';
+import { formatEta, getDestinationName, getCurrentLocation, shipPhase } from '../../lib/fleet-utils';
 import type { ShipDisplayStatus } from '../../lib/ship-status';
 import { useTick } from '../../lib/use-tick';
 
@@ -14,6 +14,7 @@ interface ShipSummary {
   name: string;
   phase: ShipDisplayStatus;
   stationary: boolean;
+  location: string;
   destination: string | null;
   etaMs: number | null;
 }
@@ -41,6 +42,7 @@ export function FleetMiniList() {
         name: ship.name || ship.registration,
         phase,
         stationary,
+        location: flight ? getDestinationName(flight.origin) : getCurrentLocation(ship),
         destination: flight ? getDestinationName(flight.destination) : null,
         etaMs: etaMs && etaMs > 0 ? etaMs : null,
       };
@@ -84,9 +86,9 @@ export function FleetMiniList() {
           <div key={ship.id} className="flex items-center justify-between py-1">
             <div className="flex-1 min-w-0 mr-2">
               <div className="text-sm text-apxm-text truncate">{ship.name}</div>
-              {ship.destination && (
-                <div className="text-xs text-apxm-muted truncate">{ship.destination}</div>
-              )}
+              <div className="text-xs text-apxm-muted truncate">
+                {ship.stationary ? ship.location : `${ship.location} → ${ship.destination}`}
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <span className="flex items-center gap-1 text-xs text-apxm-text/70">

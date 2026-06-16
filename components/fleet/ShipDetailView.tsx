@@ -26,10 +26,10 @@ export function ShipDetailView({ shipId }: ShipDetailViewProps) {
     : `${ship.location} → ${ship.destination}`;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Route + current flight phase */}
       <div className="flex items-center justify-between gap-2">
-        <span className="text-sm text-apxm-text/80 truncate">{route}</span>
+        <span className="text-sm text-apxm-text truncate">{route}</span>
         <span className="flex items-center gap-1 text-xs text-apxm-text/70 shrink-0">
           <span aria-hidden className="text-apxm-text">{ship.phase.icon}</span>
           {ship.phase.label}
@@ -40,27 +40,29 @@ export function ShipDetailView({ shipId }: ShipDetailViewProps) {
       {ship.etaMs !== null && (
         <div className="flex items-center justify-between text-xs">
           <span className="text-apxm-text/70">ETA</span>
-          <span className="font-mono text-apxm-text">{formatEta(ship.etaMs)}</span>
+          <span className="font-mono text-apxm-text tabular-nums">{formatEta(ship.etaMs)}</span>
         </div>
       )}
 
       {/* Cargo: weight + volume */}
       <div className="space-y-1">
-        <ProgressBar label="Cargo" current={ship.cargo.current} max={ship.cargo.max} color="orange" />
-        <ProgressBar current={ship.cargoVolume.current} max={ship.cargoVolume.max} color="orange" />
+        <p className="text-[10px] uppercase tracking-wide text-apxm-text/40">Cargo</p>
+        <ProgressBar label="Weight" current={ship.cargo.current} max={ship.cargo.max} color="orange" unit="t" />
+        <ProgressBar label="Vol" current={ship.cargoVolume.current} max={ship.cargoVolume.max} color="orange" unit="m³" />
       </div>
 
-      {/* Fuel: STL + FTL */}
+      {/* Fuel: STL + FTL, whole units (fractional fuel adds noise here) */}
       <div className="space-y-1">
-        <ProgressBar label="SF" current={ship.stlFuel.current} max={ship.stlFuel.max} color="yellow" />
-        <ProgressBar label="FF" current={ship.ftlFuel.current} max={ship.ftlFuel.max} color="blue" />
+        <p className="text-[10px] uppercase tracking-wide text-apxm-text/40">Fuel</p>
+        <ProgressBar label="SF" current={Math.floor(ship.stlFuel.current)} max={Math.floor(ship.stlFuel.max)} color="yellow" />
+        <ProgressBar label="FF" current={Math.floor(ship.ftlFuel.current)} max={Math.floor(ship.ftlFuel.max)} color="blue" />
       </div>
 
       {/* Condition */}
       <div className="flex items-center justify-between text-xs">
         <span className="text-apxm-text/70">Condition</span>
         <span
-          className={`font-mono ${
+          className={`font-mono tabular-nums ${
             ship.condition < 0.5
               ? 'text-status-critical'
               : ship.condition < 0.8
