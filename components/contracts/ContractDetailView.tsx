@@ -32,12 +32,13 @@ const midActionLabels: Partial<Record<ContractConditionDetail['status'], string>
 };
 
 /**
- * One condition block: indicator + party + status on the top line, the
- * description beneath, and — for an available (your-move) condition — the
- * FULFILL button. The button is a disabled placeholder: the layout is real but
- * the buffer action is the deferred next piece (blocked on the live APEX CONT
- * buffer DOM) and APXM never commits a game action without explicit human
- * authorisation.
+ * One condition block. Left column: indicator + party on the top line, the
+ * description beneath, and a dependency/mid-action hint. Right column ("Cmds",
+ * mirroring rPrun): a small FULFILL button on self conditions — accent when the
+ * condition is actionable now, muted when it's still blocked. The button is a
+ * disabled placeholder: the layout is real but the buffer action is the
+ * deferred next piece (blocked on the live APEX CONT buffer DOM) and APXM never
+ * commits a game action without explicit human authorisation.
  */
 function ConditionBlock({ cond }: { cond: ContractConditionDetail }) {
   const glyph = cond.breached ? '!' : cond.fulfilled ? '✓' : cond.available ? '●' : '✗';
@@ -49,52 +50,60 @@ function ConditionBlock({ cond }: { cond: ContractConditionDetail }) {
         ? 'text-status-warning'
         : 'text-apxm-muted';
 
+  // FULFILL is a self-condition command (you can't fulfil the partner's
+  // obligations). Hidden once the condition is done or violated.
+  const showFulfill = cond.party === 'self' && !cond.fulfilled && !cond.breached;
+
   return (
-    <div className="py-2 border-b border-apxm-surface last:border-b-0">
-      {/* Top line: index, indicator, party, deadline */}
-      <div className="flex items-center gap-2 text-xs">
-        <span className="shrink-0 w-5 text-apxm-muted font-mono">#{cond.index + 1}</span>
-        <span aria-hidden className={`shrink-0 w-4 text-center ${glyphColor}`}>
-          {glyph}
-        </span>
-        <span
-          className={`flex-1 truncate ${cond.party === 'self' ? 'text-apxm-text' : 'text-apxm-muted'}`}
-        >
-          {cond.party === 'self' ? 'Self' : cond.partnerName}
-        </span>
-        {!cond.fulfilled && cond.deadline && (
-          <span className="shrink-0 text-apxm-muted font-mono">{cond.deadline}</span>
-        )}
-      </div>
-
-      {/* Description: type + material + amount + destination */}
-      <div className="flex items-center flex-wrap gap-1 text-xs mt-1 ml-11">
-        {cond.descriptionParts.map((part, i) => (
-          <ConditionPartDisplay key={i} part={part} />
-        ))}
-      </div>
-
-      {/* State affordance: your-move button, waiting hint, or mid-action label */}
-      {cond.available ? (
-        <div className="mt-2 ml-11">
-          <button
-            type="button"
-            disabled
-            aria-label="Fulfil this condition (coming soon)"
-            className="min-h-touch px-4 text-xs font-mono uppercase tracking-wide rounded border border-status-warning/50 text-status-warning/60 cursor-not-allowed"
+    <div className="flex items-center gap-2 py-2 border-b border-apxm-surface last:border-b-0">
+      <div className="flex-1 min-w-0">
+        {/* Top line: index, indicator, party, deadline */}
+        <div className="flex items-center gap-2 text-xs">
+          <span className="shrink-0 w-5 text-apxm-muted font-mono">#{cond.index + 1}</span>
+          <span aria-hidden className={`shrink-0 w-4 text-center ${glyphColor}`}>
+            {glyph}
+          </span>
+          <span
+            className={`truncate ${cond.party === 'self' ? 'text-apxm-text' : 'text-apxm-muted'}`}
           >
-            Fulfill
-          </button>
+            {cond.party === 'self' ? 'Self' : cond.partnerName}
+          </span>
+          {!cond.fulfilled && cond.deadline && (
+            <span className="shrink-0 text-apxm-muted font-mono ml-auto">{cond.deadline}</span>
+          )}
         </div>
-      ) : cond.blocked && cond.dependencyIndexes.length > 0 ? (
-        <div className="mt-1 ml-11 text-xs text-apxm-muted">
-          waits on {cond.dependencyIndexes.map((i) => `#${i + 1}`).join(', ')}
+
+        {/* Description: type + material + amount + destination */}
+        <div className="flex items-center flex-wrap gap-1 text-xs mt-1 ml-11">
+          {cond.descriptionParts.map((part, i) => (
+            <ConditionPartDisplay key={i} part={part} />
+          ))}
         </div>
-      ) : (
-        cond.party === 'self' &&
-        midActionLabels[cond.status] && (
+
+        {/* Dependency / mid-action hint */}
+        {cond.blocked && cond.dependencyIndexes.length > 0 ? (
+          <div className="mt-1 ml-11 text-xs text-apxm-muted">
+            waits on {cond.dependencyIndexes.map((i) => `#${i + 1}`).join(', ')}
+          </div>
+        ) : cond.party === 'self' && midActionLabels[cond.status] ? (
           <div className="mt-1 ml-11 text-xs text-apxm-muted">{midActionLabels[cond.status]}</div>
-        )
+        ) : null}
+      </div>
+
+      {/* Cmds column: FULFILL (disabled placeholder until buffer wiring) */}
+      {showFulfill && (
+        <button
+          type="button"
+          disabled
+          aria-label="Fulfil this condition (coming soon)"
+          className={`shrink-0 min-h-touch px-3 text-xs font-mono uppercase tracking-wide rounded border cursor-not-allowed ${
+            cond.available
+              ? 'border-status-warning/50 text-status-warning/70'
+              : 'border-apxm-muted/30 text-apxm-muted/50'
+          }`}
+        >
+          Fulfill
+        </button>
       )}
     </div>
   );

@@ -19,9 +19,8 @@ const stateVariants: Record<ContractStateLabel, TileVariant> = {
 
 /**
  * Dense contract row, mirroring the fleet ship row: contract id + state on the
- * left, deadline on the right, partner name beneath. A "your move" pill flags
- * contracts with an actionable condition. The whole row drills into the
- * contract detail sheet (same flyover primitive as ships and base tiles).
+ * left, deadline on the right, partner name beneath. The whole row drills into
+ * the contract detail sheet (same flyover primitive as ships and base tiles).
  */
 export function ContractRow({ contract }: ContractRowProps) {
   const setDetailView = useGameState((s) => s.setDetailView);
@@ -35,9 +34,7 @@ export function ContractRow({ contract }: ContractRowProps) {
       onClick={() =>
         setDetailView({ type: 'contract', contractId: contract.id, contractName: contract.localId })
       }
-      aria-label={`Contract ${contract.localId}, ${contract.stateLabel}${
-        contract.actionable ? ', your move' : ''
-      }. Open detail.`}
+      aria-label={`Contract ${contract.localId}, ${contract.stateLabel}. Open detail.`}
       className="w-full min-h-touch flex items-center justify-between gap-2 px-3 py-2 text-left bg-apxm-surface hover:bg-apxm-accent/30 active:bg-apxm-accent/50 transition-colors motion-reduce:transition-none"
     >
       {/* Identity + partner */}
@@ -45,7 +42,6 @@ export function ContractRow({ contract }: ContractRowProps) {
         <span className="flex items-center gap-2 min-w-0">
           <span className="font-mono text-sm text-apxm-text shrink-0">{contract.localId}</span>
           <StateTile label={contract.stateLabel} variant={stateVariants[contract.stateLabel]} />
-          {contract.actionable && <StateTile label="your move" variant="warning" />}
         </span>
         <span className="text-xs text-apxm-muted truncate block mt-0.5">
           {contract.partnerName}
