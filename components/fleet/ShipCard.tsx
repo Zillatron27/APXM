@@ -1,34 +1,24 @@
 import { useState } from 'react';
-import { StateTile, ProgressBar } from '../shared';
+import { ProgressBar } from '../shared';
 import { formatEta, formatCondition } from '../../lib/fleet-utils';
-import type { ShipDetail, FlightState } from '../views/hooks';
+import type { ShipDetail } from '../views/hooks';
 
 interface ShipCardProps {
   ship: ShipDetail;
   defaultExpanded?: boolean;
 }
 
-// Flight states are all neutral/grey - informational only
-const stateLabels: Record<FlightState, string> = {
-  IDL: 'Idle',
-  ARR: 'Arriving',
-  TRN: 'Transit',
-  DEP: 'Departing',
-  ORB: 'Orbiting',
-};
-
 /**
  * Collapsible card showing ship status and details.
- * Collapsed: name, location/dest, state tile, ETA
+ * Collapsed: name, location/dest, flight phase (glyph + label), ETA
  * Expanded: cargo, fuel bars, condition
  */
 export function ShipCard({ ship, defaultExpanded = false }: ShipCardProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
-  const statusText =
-    ship.state === 'IDL'
-      ? ship.location
-      : `${ship.location} → ${ship.destination}`;
+  const statusText = ship.stationary
+    ? ship.location
+    : `${ship.location} → ${ship.destination}`;
 
   return (
     <div className="bg-apxm-surface overflow-hidden">
@@ -55,8 +45,11 @@ export function ShipCard({ ship, defaultExpanded = false }: ShipCardProps) {
             {ship.destination || ship.location}
           </span>
 
-          {/* State tile */}
-          <StateTile label={stateLabels[ship.state]} variant="neutral" />
+          {/* Flight phase — rPrun/Helm glyph + label */}
+          <span className="flex items-center gap-1 text-xs text-apxm-text/70">
+            <span aria-hidden className="text-apxm-text">{ship.phase.icon}</span>
+            {ship.phase.label}
+          </span>
 
           {/* ETA */}
           {ship.etaMs && (

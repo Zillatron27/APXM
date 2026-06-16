@@ -5,7 +5,7 @@ export {
   type FleetFilter,
   type FleetDetailsResult,
   type ShipDetail,
-  type FlightState,
+  type ShipDisplayStatus,
 } from './useFleetDetails';
 export {
   useContractDetails,

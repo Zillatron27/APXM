@@ -3,14 +3,14 @@ import { useShipsStore } from '../../../stores/entities/ships';
 import { useFlightsStore, getFlightByShipId } from '../../../stores/entities/flights';
 import { useStorageStore } from '../../../stores/entities/storage';
 import { getDestinationName, formatEta, getCurrentLocation } from '../../../lib/fleet-utils';
+import { segmentStatus, STATIONARY, type ShipDisplayStatus } from '../../../lib/ship-status';
 import { useTick } from '../../../lib/use-tick';
 import type { PrunApi } from '../../../types/prun-api';
 
 import type { FleetFilter } from '../../../stores/gameState';
 
 export type { FleetFilter };
-
-export type FlightState = 'IDL' | 'ARR' | 'TRN' | 'DEP' | 'ORB';
+export type { ShipDisplayStatus };
 
 export interface ShipDetail {
   id: string;
@@ -18,7 +18,10 @@ export interface ShipDetail {
   registration: string;
   location: string;
   destination: string | null;
-  state: FlightState;
+  /** Current flight phase (Helm/rPrun vocabulary), or STATIONARY when parked. */
+  phase: ShipDisplayStatus;
+  /** True when the ship is parked (no active flight) — drives idle filter/sort. */
+  stationary: boolean;
   etaMs: number | null;
   condition: number;
   cargo: {
@@ -40,41 +43,23 @@ export interface ShipDetail {
 }
 
 /**
- * Determines the flight state abbreviation for a ship.
- * IDL = Idle, ARR = Arriving (<2h), TRN = Transit, DEP = Departing, ORB = Orbiting
+ * A ship's current flight phase, mirroring PrUn's FLT "Status" column: the live
+ * segment phase while flying, STATIONARY when parked or already arrived.
+ * `stationary` drives the idle filter/sort; `phase` is what we display.
  */
-function getFlightState(ship: PrunApi.Ship, flight: PrunApi.Flight | undefined): FlightState {
-  if (!flight) return 'IDL';
+function getShipPhase(flight: PrunApi.Flight | undefined): {
+  phase: ShipDisplayStatus;
+  stationary: boolean;
+} {
+  if (!flight) return { phase: STATIONARY, stationary: true };
 
-  const now = Date.now();
-  const etaMs = flight.arrival.timestamp - now;
-
-  // Already arrived?
-  if (etaMs <= 0) return 'IDL';
-
-  // Within 2 hours of arrival
-  const twoHoursMs = 2 * 60 * 60 * 1000;
-  if (etaMs <= twoHoursMs) return 'ARR';
-
-  // Check current segment for more specific state
-  const segment = flight.segments[flight.currentSegmentIndex];
-  if (segment) {
-    switch (segment.type) {
-      case 'TAKE_OFF':
-      case 'DEPARTURE':
-        return 'DEP';
-      case 'APPROACH':
-      case 'LANDING':
-        return 'ARR';
-      case 'FLOAT':
-      case 'LOCK':
-        return 'ORB';
-      default:
-        return 'TRN';
-    }
+  // Arrival already passed — the ship is parked at its destination.
+  if (flight.arrival.timestamp - Date.now() <= 0) {
+    return { phase: STATIONARY, stationary: true };
   }
 
-  return 'TRN';
+  const segment = flight.segments[flight.currentSegmentIndex];
+  return { phase: segment ? segmentStatus(segment.type) : STATIONARY, stationary: false };
 }
 
 interface StoreLoad {
@@ -122,7 +107,7 @@ export function useFleetDetails(activeFilters: ReadonlySet<FleetFilter>): FleetD
 
     const details: ShipDetail[] = ships.map((ship) => {
       const flight = getFlightByShipId(ship.id);
-      const state = getFlightState(ship, flight);
+      const { phase, stationary } = getShipPhase(flight);
 
       const destination = flight ? getDestinationName(flight.destination) : null;
       const etaMs = flight ? flight.arrival.timestamp - now : null;
@@ -137,7 +122,8 @@ export function useFleetDetails(activeFilters: ReadonlySet<FleetFilter>): FleetD
         registration: ship.registration,
         location: flight ? getDestinationName(flight.origin) : getCurrentLocation(ship),
         destination,
-        state,
+        phase,
+        stationary,
         etaMs: etaMs && etaMs > 0 ? etaMs : null,
         condition: ship.condition,
         cargo: cargoStore.weight,
@@ -147,12 +133,10 @@ export function useFleetDetails(activeFilters: ReadonlySet<FleetFilter>): FleetD
       };
     });
 
-    // Sort: idle first, then by ETA (soonest first)
+    // Sort: stationary (idle) first, then by ETA (soonest first)
     details.sort((a, b) => {
-      const aIdle = a.state === 'IDL';
-      const bIdle = b.state === 'IDL';
-      if (aIdle && !bIdle) return -1;
-      if (!aIdle && bIdle) return 1;
+      if (a.stationary && !b.stationary) return -1;
+      if (!a.stationary && b.stationary) return 1;
 
       const etaA = a.etaMs ?? Infinity;
       const etaB = b.etaMs ?? Infinity;
@@ -162,15 +146,15 @@ export function useFleetDetails(activeFilters: ReadonlySet<FleetFilter>): FleetD
     // Count by filter category
     const counts: Record<FleetFilter, number> = {
       all: details.length,
-      idle: details.filter((s) => s.state === 'IDL').length,
-      'in-transit': details.filter((s) => s.state !== 'IDL').length,
+      idle: details.filter((s) => s.stationary).length,
+      'in-transit': details.filter((s) => !s.stationary).length,
     };
 
     // Apply filter
     const filtered = activeFilters.has('all')
       ? details
       : details.filter((s) => {
-          const category: FleetFilter = s.state === 'IDL' ? 'idle' : 'in-transit';
+          const category: FleetFilter = s.stationary ? 'idle' : 'in-transit';
           return activeFilters.has(category);
         });
 
