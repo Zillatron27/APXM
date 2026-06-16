@@ -1,5 +1,5 @@
 import { FilterBar, type FilterOption, DataGate, type RequiredStore } from '../shared';
-import { ContractCard } from '../contracts';
+import { ContractRow } from '../contracts';
 import { useContractDetails, type ContractFilter } from './hooks';
 import { useContractsStore } from '../../stores/entities/contracts';
 import { useGameState } from '../../stores/gameState';
@@ -48,11 +48,7 @@ export function ContractsView() {
         ) : (
           <div className="space-y-2">
             {contracts.map((contract) => (
-              <ContractCard
-                key={contract.id}
-                contract={contract}
-                defaultExpanded={false}
-              />
+              <ContractRow key={contract.id} contract={contract} />
             ))}
           </div>
         )}

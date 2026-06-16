@@ -269,6 +269,22 @@ export function buildContractDetail(contract: PrunApi.Contract): ContractDetail 
   };
 }
 
+/**
+ * A single contract's detail for the drill-down sheet, or null if the contract
+ * is gone (e.g. store cleared on reconnect — the sheet should then close
+ * itself). Mirrors useShipDetail.
+ */
+export function useContractDetail(contractId: string): ContractDetail | null {
+  const contractsLastUpdated = useContractsStore((s) => s.lastUpdated);
+
+  return useMemo(() => {
+    const contract = useContractsStore.getState().getById(contractId);
+    return contract ? buildContractDetail(contract) : null;
+    // contractsLastUpdated re-derives when the contract's data changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contractId, contractsLastUpdated]);
+}
+
 export interface ContractDetailsResult {
   contracts: ContractDetail[];
   counts: Record<ContractFilter, number>;

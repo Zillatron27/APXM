@@ -3,17 +3,26 @@ import { useGameState, type DetailView } from '../../stores/gameState';
 import { ProductionView } from '../production';
 import { BurnDetailView, RepairDetailView } from '../burn';
 import { ShipDetailView } from '../fleet';
+import { ContractDetailView } from '../contracts';
 
 const detailLabels: Record<DetailView['type'], string> = {
   production: 'Production',
   burn: 'Burn',
   repair: 'Repair',
   ship: 'Ship',
+  contract: 'Contract',
 };
 
-/** Sheet title: the ship name for a ship detail, otherwise the site name. */
+/** Sheet title: the entity name carried in the detail payload. */
 function detailTitle(detailView: DetailView): string {
-  return detailView.type === 'ship' ? detailView.shipName : detailView.siteName;
+  switch (detailView.type) {
+    case 'ship':
+      return detailView.shipName;
+    case 'contract':
+      return detailView.contractName;
+    default:
+      return detailView.siteName;
+  }
 }
 
 /**
@@ -92,6 +101,7 @@ export function DetailSheet() {
           {detailView.type === 'burn' && <BurnDetailView siteId={detailView.siteId} />}
           {detailView.type === 'repair' && <RepairDetailView siteId={detailView.siteId} />}
           {detailView.type === 'ship' && <ShipDetailView shipId={detailView.shipId} />}
+          {detailView.type === 'contract' && <ContractDetailView contractId={detailView.contractId} />}
         </div>
       </div>
     </div>

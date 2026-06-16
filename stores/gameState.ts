@@ -34,7 +34,8 @@ export type BasesViewMode = 'sites' | 'empire';
 export type SiteDetailType = 'production' | 'burn' | 'repair';
 export type DetailView =
   | { type: SiteDetailType; siteId: string; siteName: string }
-  | { type: 'ship'; shipId: string; shipName: string };
+  | { type: 'ship'; shipId: string; shipName: string }
+  | { type: 'contract'; contractId: string; contractName: string };
 
 // Non-ALL filter values per view, used by the toggle collapse/revert rules
 const individualBurnFilters: readonly BurnFilter[] = ['critical', 'warning', 'ok'];
