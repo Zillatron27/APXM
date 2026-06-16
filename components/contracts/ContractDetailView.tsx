@@ -40,7 +40,7 @@ const midActionLabels: Partial<Record<ContractConditionDetail['status'], string>
  * deferred next piece (blocked on the live APEX CONT buffer DOM) and APXM never
  * commits a game action without explicit human authorisation.
  */
-function ConditionBlock({ cond }: { cond: ContractConditionDetail }) {
+function ConditionBlock({ cond, accepted }: { cond: ContractConditionDetail; accepted: boolean }) {
   const glyph = cond.breached ? '!' : cond.fulfilled ? '✓' : cond.available ? '●' : '✗';
   const glyphColor = cond.breached
     ? 'text-status-critical'
@@ -51,8 +51,9 @@ function ConditionBlock({ cond }: { cond: ContractConditionDetail }) {
         : 'text-apxm-muted';
 
   // FULFILL is a self-condition command (you can't fulfil the partner's
-  // obligations). Hidden once the condition is done or violated.
-  const showFulfill = cond.party === 'self' && !cond.fulfilled && !cond.breached;
+  // obligations), and only once the contract is accepted — an unaccepted OPEN
+  // contract's action is ACCEPT, not fulfil. Hidden once done or violated.
+  const showFulfill = accepted && cond.party === 'self' && !cond.fulfilled && !cond.breached;
 
   return (
     <div className="flex items-center gap-2 py-2 border-b border-apxm-surface last:border-b-0">
@@ -137,11 +138,38 @@ export function ContractDetailView({ contractId }: ContractDetailViewProps) {
         <span>Due {formatDeadline(contract.dueDateMs)}</span>
       </div>
 
+      {/* Acceptance: a contract is accepted before its conditions can be
+          fulfilled. ACCEPT/REJECT are contract-level commands; disabled
+          placeholders for now (wiring deferred to the CONT buffer piece). */}
+      {contract.acceptance === 'awaiting-mine' && (
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled
+            aria-label="Accept this contract (coming soon)"
+            className="min-h-touch flex-1 text-xs font-mono uppercase tracking-wide rounded border border-status-warning/50 text-status-warning/70 cursor-not-allowed"
+          >
+            Accept
+          </button>
+          <button
+            type="button"
+            disabled
+            aria-label="Reject this contract (coming soon)"
+            className="min-h-touch flex-1 text-xs font-mono uppercase tracking-wide rounded border border-status-critical/40 text-status-critical/60 cursor-not-allowed"
+          >
+            Reject
+          </button>
+        </div>
+      )}
+      {contract.acceptance === 'awaiting-partner' && (
+        <p className="text-xs text-apxm-muted">Awaiting partner acceptance.</p>
+      )}
+
       {/* Conditions */}
       <div>
         <p className="text-[10px] uppercase tracking-wide text-apxm-text/40 mb-1">Conditions</p>
         {contract.conditions.map((cond) => (
-          <ConditionBlock key={cond.id} cond={cond} />
+          <ConditionBlock key={cond.id} cond={cond} accepted={contract.accepted} />
         ))}
       </div>
     </div>

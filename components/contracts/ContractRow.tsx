@@ -42,6 +42,10 @@ export function ContractRow({ contract }: ContractRowProps) {
         <span className="flex items-center gap-2 min-w-0">
           <span className="font-mono text-sm text-apxm-text shrink-0">{contract.localId}</span>
           <StateTile label={contract.stateLabel} variant={stateVariants[contract.stateLabel]} />
+          {/* Acceptance state (rPrun parlance): an OPEN contract is awaiting
+              acceptance — yours to ACCEPT, or sent and waiting on the partner. */}
+          {contract.acceptance === 'awaiting-mine' && <StateTile label="accept" variant="warning" />}
+          {contract.acceptance === 'awaiting-partner' && <StateTile label="sent" variant="muted" />}
         </span>
         <span className="text-xs text-apxm-muted truncate block mt-0.5">
           {contract.partnerName}

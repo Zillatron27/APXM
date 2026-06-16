@@ -13,12 +13,20 @@ function selfCondition(overrides: Partial<PrunApi.ContractCondition>): PrunApi.C
   return createContractCondition({ party: 'PROVIDER', ...overrides });
 }
 
+/**
+ * Conditions are only fulfillable once the contract is accepted. CLOSED is the
+ * accepted/active status, so the dependency-flag tests build accepted
+ * contracts; OPEN (awaiting acceptance) is covered separately below.
+ */
+function acceptedContract(conditions: PrunApi.ContractCondition[]): PrunApi.Contract {
+  return createTestContract({ party: 'PROVIDER', status: 'CLOSED', conditions });
+}
+
 describe('buildContractDetail — dependency-aware condition flags', () => {
   it('marks a self PENDING condition with no dependencies as available', () => {
-    const contract = createTestContract({
-      party: 'PROVIDER',
-      conditions: [selfCondition({ id: 'c1', index: 0, status: 'PENDING', dependencies: [] })],
-    });
+    const contract = acceptedContract([
+      selfCondition({ id: 'c1', index: 0, status: 'PENDING', dependencies: [] }),
+    ]);
 
     const [cond] = buildContractDetail(contract).conditions;
     expect(cond.available).toBe(true);
@@ -26,13 +34,10 @@ describe('buildContractDetail — dependency-aware condition flags', () => {
   });
 
   it('marks a self condition waiting on an unfulfilled dependency as blocked, not available', () => {
-    const contract = createTestContract({
-      party: 'PROVIDER',
-      conditions: [
-        selfCondition({ id: 'c1', index: 0, status: 'PENDING', dependencies: [] }),
-        selfCondition({ id: 'c2', index: 1, status: 'PENDING', dependencies: ['c1'] }),
-      ],
-    });
+    const contract = acceptedContract([
+      selfCondition({ id: 'c1', index: 0, status: 'PENDING', dependencies: [] }),
+      selfCondition({ id: 'c2', index: 1, status: 'PENDING', dependencies: ['c1'] }),
+    ]);
 
     const c2 = buildContractDetail(contract).conditions.find((c) => c.id === 'c2')!;
     expect(c2.available).toBe(false);
@@ -42,13 +47,10 @@ describe('buildContractDetail — dependency-aware condition flags', () => {
   });
 
   it('flips a dependent condition to available once its dependency is fulfilled', () => {
-    const contract = createTestContract({
-      party: 'PROVIDER',
-      conditions: [
-        selfCondition({ id: 'c1', index: 0, status: 'FULFILLED', dependencies: [] }),
-        selfCondition({ id: 'c2', index: 1, status: 'PENDING', dependencies: ['c1'] }),
-      ],
-    });
+    const contract = acceptedContract([
+      selfCondition({ id: 'c1', index: 0, status: 'FULFILLED', dependencies: [] }),
+      selfCondition({ id: 'c2', index: 1, status: 'PENDING', dependencies: ['c1'] }),
+    ]);
 
     const c2 = buildContractDetail(contract).conditions.find((c) => c.id === 'c2')!;
     expect(c2.available).toBe(true);
@@ -66,10 +68,9 @@ describe('buildContractDetail — dependency-aware condition flags', () => {
     ];
 
     for (const status of statuses) {
-      const contract = createTestContract({
-        party: 'PROVIDER',
-        conditions: [createContractCondition({ id: 'p1', index: 0, party: 'CUSTOMER', status, dependencies: [] })],
-      });
+      const contract = acceptedContract([
+        createContractCondition({ id: 'p1', index: 0, party: 'CUSTOMER', status, dependencies: [] }),
+      ]);
 
       const [cond] = buildContractDetail(contract).conditions;
       expect(cond.party).toBe('partner');
@@ -79,12 +80,9 @@ describe('buildContractDetail — dependency-aware condition flags', () => {
   });
 
   it('treats an unresolvable dependency id as not-fulfilled (fail-safe)', () => {
-    const contract = createTestContract({
-      party: 'PROVIDER',
-      conditions: [
-        selfCondition({ id: 'c1', index: 0, status: 'PENDING', dependencies: ['ghost'] }),
-      ],
-    });
+    const contract = acceptedContract([
+      selfCondition({ id: 'c1', index: 0, status: 'PENDING', dependencies: ['ghost'] }),
+    ]);
 
     const [cond] = buildContractDetail(contract).conditions;
     // Never available off a dependency we can't see; and a missing dep blocks.
@@ -108,7 +106,7 @@ describe('buildContractDetail — dependency-aware condition flags', () => {
         party: 'PROVIDER',
         status,
         conditions: [
-          // Would be available on an active contract (PENDING, no deps)...
+          // Would be available on an accepted contract (PENDING, no deps)...
           selfCondition({ id: 'c1', index: 0, status: 'PENDING', dependencies: [] }),
           // ...and this would be blocked, waiting on c1.
           selfCondition({ id: 'c2', index: 1, status: 'PENDING', dependencies: ['c1'] }),
@@ -125,32 +123,25 @@ describe('buildContractDetail — dependency-aware condition flags', () => {
   });
 
   it('sets contract.actionable true iff at least one condition is available', () => {
-    const noneAvailable = createTestContract({
-      party: 'PROVIDER',
-      conditions: [
-        selfCondition({ id: 'c1', index: 0, status: 'PENDING', dependencies: [] }),
-        selfCondition({ id: 'c2', index: 1, status: 'PENDING', dependencies: ['c1'] }),
-      ],
-    });
+    const oneAvailable = acceptedContract([
+      selfCondition({ id: 'c1', index: 0, status: 'PENDING', dependencies: [] }),
+      selfCondition({ id: 'c2', index: 1, status: 'PENDING', dependencies: ['c1'] }),
+    ]);
     // c1 available (no deps) → contract is actionable.
-    expect(buildContractDetail(noneAvailable).actionable).toBe(true);
+    expect(buildContractDetail(oneAvailable).actionable).toBe(true);
 
-    const blockedOnly = createTestContract({
-      party: 'PROVIDER',
-      conditions: [
-        selfCondition({ id: 'c1', index: 0, status: 'IN_PROGRESS', dependencies: [] }),
-        selfCondition({ id: 'c2', index: 1, status: 'PENDING', dependencies: ['c1'] }),
-      ],
-    });
+    const noneAvailable = acceptedContract([
+      selfCondition({ id: 'c1', index: 0, status: 'IN_PROGRESS', dependencies: [] }),
+      selfCondition({ id: 'c2', index: 1, status: 'PENDING', dependencies: ['c1'] }),
+    ]);
     // c1 is mid-action (not PENDING → not available); c2 blocked on it. None available.
-    expect(buildContractDetail(blockedOnly).actionable).toBe(false);
+    expect(buildContractDetail(noneAvailable).actionable).toBe(false);
   });
 
   it('keeps breached as a convenience for the VIOLATED condition status', () => {
-    const contract = createTestContract({
-      party: 'PROVIDER',
-      conditions: [selfCondition({ id: 'c1', index: 0, status: 'VIOLATED', dependencies: [] })],
-    });
+    const contract = acceptedContract([
+      selfCondition({ id: 'c1', index: 0, status: 'VIOLATED', dependencies: [] }),
+    ]);
 
     const [cond] = buildContractDetail(contract).conditions;
     expect(cond.status).toBe('VIOLATED');
@@ -160,5 +151,58 @@ describe('buildContractDetail — dependency-aware condition flags', () => {
     // neither available (status !== PENDING) nor blocked (no unfulfilled dep).
     expect(cond.available).toBe(false);
     expect(cond.blocked).toBe(false);
+  });
+});
+
+describe('buildContractDetail — acceptance semantics (rPrun parlance)', () => {
+  it('an OPEN contract where you are the customer is awaiting YOUR acceptance', () => {
+    const contract = createTestContract({
+      party: 'CUSTOMER',
+      status: 'OPEN',
+      conditions: [
+        // A self (CUSTOMER) condition that would be available IF accepted.
+        createContractCondition({ id: 'c1', index: 0, party: 'CUSTOMER', status: 'PENDING', dependencies: [] }),
+      ],
+    });
+
+    const detail = buildContractDetail(contract);
+    expect(detail.acceptance).toBe('awaiting-mine');
+    expect(detail.accepted).toBe(false);
+    // You must ACCEPT before you can fulfil — the condition is NOT available yet.
+    expect(detail.conditions[0].available).toBe(false);
+    expect(detail.actionable).toBe(false);
+  });
+
+  it('an OPEN contract where you are the provider is awaiting the PARTNER acceptance', () => {
+    const contract = createTestContract({ party: 'PROVIDER', status: 'OPEN' });
+    const detail = buildContractDetail(contract);
+    expect(detail.acceptance).toBe('awaiting-partner');
+    expect(detail.accepted).toBe(false);
+  });
+
+  it('an accepted contract (CLOSED / PARTIALLY_FULFILLED) is no longer awaiting acceptance', () => {
+    for (const status of ['CLOSED', 'PARTIALLY_FULFILLED'] as PrunApi.ContractStatus[]) {
+      const detail = buildContractDetail(createTestContract({ party: 'CUSTOMER', status }));
+      expect(detail.acceptance).toBeNull();
+      expect(detail.accepted).toBe(true);
+    }
+  });
+
+  it('a terminal contract is neither awaiting acceptance nor accepted', () => {
+    const detail = buildContractDetail(createTestContract({ party: 'CUSTOMER', status: 'FULFILLED' }));
+    expect(detail.acceptance).toBeNull();
+    expect(detail.accepted).toBe(false);
+  });
+
+  it('flags a faction contract by the partner countryCode', () => {
+    const faction = createTestContract({
+      partner: { id: 'p', name: 'Antares Logistics Officer', code: null, countryCode: 'AI' },
+    });
+    expect(buildContractDetail(faction).isFaction).toBe(true);
+
+    const commercial = createTestContract({
+      partner: { id: 'p', name: 'Trade Partner Corp', code: 'TPC' },
+    });
+    expect(buildContractDetail(commercial).isFaction).toBe(false);
   });
 });
