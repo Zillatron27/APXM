@@ -159,17 +159,22 @@ export function ContractCard({ contract, defaultExpanded = false }: ContractCard
                   #{cond.index + 1}
                 </span>
 
-                {/* Condition indicator */}
+                {/* Condition indicator — breached > fulfilled > available > waiting.
+                    `available` is the only state that earns the accent colour;
+                    its filled dot is shape-distinct so the state never relies on
+                    colour alone (CVD). It is the row that will later host FULFILL. */}
                 <span
                   className={`shrink-0 w-4 text-center ${
                     cond.breached
                       ? 'text-status-critical'
                       : cond.fulfilled
                         ? 'text-status-ok'
-                        : 'text-apxm-muted'
+                        : cond.available
+                          ? 'text-status-warning'
+                          : 'text-apxm-muted'
                   }`}
                 >
-                  {cond.breached ? '!' : cond.fulfilled ? '✓' : '✗'}
+                  {cond.breached ? '!' : cond.fulfilled ? '✓' : cond.available ? '●' : '✗'}
                 </span>
 
                 {/* Party indicator (company name for partner, Self for self) */}
@@ -187,6 +192,13 @@ export function ContractCard({ contract, defaultExpanded = false }: ContractCard
                     <ConditionPartDisplay key={i} part={part} />
                   ))}
                 </span>
+
+                {/* What a blocked condition is waiting on (deps are 0-based; show +1) */}
+                {cond.blocked && cond.dependencyIndexes.length > 0 && (
+                  <span className="shrink-0 text-apxm-muted">
+                    waits on {cond.dependencyIndexes.map((i) => `#${i + 1}`).join(', ')}
+                  </span>
+                )}
 
                 {/* Deadline if not fulfilled */}
                 {!cond.fulfilled && cond.deadline && (

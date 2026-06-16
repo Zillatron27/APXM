@@ -22,13 +22,29 @@ export interface ConditionPart {
 
 export interface ContractConditionDetail {
   index: number;
+  id: string;
   party: 'self' | 'partner';
   partnerName: string;
   type: string;
   description: string;
   descriptionParts: ConditionPart[];
+  /** Full wire status, the source of truth for all derived flags below. */
+  status: PrunApi.ContractConditionStatus;
+  /** Convenience: status === 'FULFILLED'. */
   fulfilled: boolean;
+  /**
+   * Convenience: status === 'VIOLATED'. This is the *condition* failing —
+   * distinct from the contract-level BREACHED/DEADLINE_EXCEEDED status
+   * (which drives the card's `stateLabel`). A condition is never BREACHED;
+   * its failure value is VIOLATED.
+   */
   breached: boolean;
+  /** Self ∧ PENDING ∧ every dependency FULFILLED — your move now. */
+  available: boolean;
+  /** Self ∧ not-fulfilled ∧ some dependency not yet FULFILLED — waiting. */
+  blocked: boolean;
+  /** Resolved dependency ids → their 0-based condition index (card renders +1). */
+  dependencyIndexes: number[];
   deadline: string | null;
 }
 
@@ -42,6 +58,8 @@ export interface ContractDetail {
   dueDateMs: number | null;
   createdMs: number;
   conditions: ContractConditionDetail[];
+  /** Any condition is `available` — drives the future "your move" pill / filter. */
+  actionable: boolean;
 }
 
 /**
@@ -159,6 +177,85 @@ function formatRelativeTime(ms: number): string {
   return diffMs < 0 ? `${text} ago` : text;
 }
 
+/**
+ * A self condition is "available" (ready to action now) when it is still
+ * PENDING and every condition it depends on is FULFILLED. Dependency ids that
+ * don't resolve in `byId` are treated as not-fulfilled (fail-safe — we never
+ * mark a condition actionable off a dependency we can't see), which the
+ * `=== 'FULFILLED'` check enforces.
+ */
+function isAvailable(
+  cond: PrunApi.ContractCondition,
+  contract: PrunApi.Contract,
+  byId: Map<string, PrunApi.ContractCondition>,
+): boolean {
+  if (cond.party !== contract.party) return false; // not yours
+  if (cond.status !== 'PENDING') return false; // already moving / done / failed
+  return cond.dependencies.every((depId) => byId.get(depId)?.status === 'FULFILLED');
+}
+
+/**
+ * A self condition is "blocked" when it is not yet fulfilled and at least one
+ * dependency is not FULFILLED. An unresolvable dependency id counts as blocking
+ * (`?.status !== 'FULFILLED'` is true for `undefined`).
+ */
+function isBlocked(
+  cond: PrunApi.ContractCondition,
+  contract: PrunApi.Contract,
+  byId: Map<string, PrunApi.ContractCondition>,
+): boolean {
+  if (cond.party !== contract.party) return false;
+  if (cond.status === 'FULFILLED') return false;
+  return cond.dependencies.some((depId) => byId.get(depId)?.status !== 'FULFILLED');
+}
+
+/**
+ * Pure assembly of a single contract's display detail, including the derived
+ * dependency-aware condition flags. Kept separate from the hook so it is
+ * testable without a React renderer or store population.
+ */
+export function buildContractDetail(contract: PrunApi.Contract): ContractDetail {
+  const byId = new Map(contract.conditions.map((c) => [c.id, c]));
+
+  const conditions: ContractConditionDetail[] = contract.conditions.map((cond) => {
+    const { description, parts } = buildConditionDescription(cond);
+    return {
+      index: cond.index,
+      id: cond.id,
+      party: cond.party === contract.party ? 'self' : 'partner',
+      partnerName: contract.partner.name,
+      type: formatConditionType(cond.type),
+      description,
+      descriptionParts: parts,
+      status: cond.status,
+      fulfilled: cond.status === 'FULFILLED',
+      breached: cond.status === 'VIOLATED',
+      available: isAvailable(cond, contract, byId),
+      blocked: isBlocked(cond, contract, byId),
+      dependencyIndexes: cond.dependencies
+        .map((depId) => byId.get(depId)?.index)
+        .filter((idx): idx is number => idx !== undefined),
+      deadline: cond.deadline ? formatRelativeTime(cond.deadline.timestamp) : null,
+    };
+  });
+
+  // Sort conditions by index
+  conditions.sort((a, b) => a.index - b.index);
+
+  return {
+    id: contract.id,
+    localId: contract.localId,
+    partnerName: contract.partner.name,
+    partnerCode: contract.partner.code ?? null,
+    status: contract.status,
+    stateLabel: getStateLabel(contract.status),
+    dueDateMs: contract.dueDate?.timestamp ?? null,
+    createdMs: contract.date.timestamp,
+    conditions,
+    actionable: conditions.some((c) => c.available),
+  };
+}
+
 export interface ContractDetailsResult {
   contracts: ContractDetail[];
   counts: Record<ContractFilter, number>;
@@ -173,37 +270,7 @@ export function useContractDetails(activeFilters: ReadonlySet<ContractFilter>): 
   return useMemo(() => {
     const contracts = useContractsStore.getState().getAll();
 
-    const details: ContractDetail[] = contracts.map((contract) => {
-      const conditions: ContractConditionDetail[] = contract.conditions.map((cond) => {
-        const { description, parts } = buildConditionDescription(cond);
-        return {
-          index: cond.index,
-          party: cond.party === contract.party ? 'self' : 'partner',
-          partnerName: contract.partner.name,
-          type: formatConditionType(cond.type),
-          description,
-          descriptionParts: parts,
-          fulfilled: cond.status === 'FULFILLED',
-          breached: cond.status === 'VIOLATED',
-          deadline: cond.deadline ? formatRelativeTime(cond.deadline.timestamp) : null,
-        };
-      });
-
-      // Sort conditions by index
-      conditions.sort((a, b) => a.index - b.index);
-
-      return {
-        id: contract.id,
-        localId: contract.localId,
-        partnerName: contract.partner.name,
-        partnerCode: contract.partner.code ?? null,
-        status: contract.status,
-        stateLabel: getStateLabel(contract.status),
-        dueDateMs: contract.dueDate?.timestamp ?? null,
-        createdMs: contract.date.timestamp,
-        conditions,
-      };
-    });
+    const details: ContractDetail[] = contracts.map(buildContractDetail);
 
     // Sort: OPEN first, then by due date
     details.sort((a, b) => {
