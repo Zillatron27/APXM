@@ -7,14 +7,18 @@ function balance(currency: string, amount = 1000): PrunApi.CurrencyAmount {
 }
 
 describe('primaryCurrencyFor', () => {
-  it('maps known faction countryIds to their currency', () => {
-    expect(primaryCurrencyFor('AI')).toBe('AIC');
-    expect(primaryCurrencyFor('CI')).toBe('CIS');
-    expect(primaryCurrencyFor('IC')).toBe('ICA');
-    expect(primaryCurrencyFor('NC')).toBe('NCC');
+  // GUID keys from FIO GET /global/countries (CountryRegistryCountryId).
+  // COMPANY_DATA delivers these GUIDs as countryId, not the 2-letter code.
+  it('maps known faction countryId GUIDs to their currency', () => {
+    expect(primaryCurrencyFor('18419e6fd11b5af8bf0d0a996ad1a622')).toBe('AIC');
+    expect(primaryCurrencyFor('981c095a8ddc128232a149e109448ed8')).toBe('CIS');
+    expect(primaryCurrencyFor('4a2fe1ae3e1ca07dcfebbdf25c4b8d6a')).toBe('ICA');
+    expect(primaryCurrencyFor('a6d40e12e79f0b2d644bfe0880fd219d')).toBe('NCC');
   });
 
   it('returns null for unknown countryIds', () => {
+    // 2-letter codes are the pre-#57 bug: they must NOT resolve.
+    expect(primaryCurrencyFor('AI')).toBeNull();
     expect(primaryCurrencyFor('XX')).toBeNull();
     expect(primaryCurrencyFor('')).toBeNull();
   });
