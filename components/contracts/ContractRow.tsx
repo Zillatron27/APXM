@@ -35,7 +35,7 @@ export function ContractRow({ contract }: ContractRowProps) {
         setDetailView({ type: 'contract', contractId: contract.id, contractName: contract.localId })
       }
       aria-label={`Contract ${contract.localId}, ${contract.stateLabel}. Open detail.`}
-      className="w-full min-h-touch flex items-center justify-between gap-2 px-3 py-2 text-left bg-apxm-surface hover:bg-apxm-accent/30 active:bg-apxm-accent/50 transition-colors motion-reduce:transition-none"
+      className="w-full min-h-touch flex items-center justify-between gap-2 px-3 py-2 text-left bg-apxm-surface border border-apxm-accent hover:bg-apxm-accent/30 active:bg-apxm-accent/50 transition-colors motion-reduce:transition-none"
     >
       {/* Identity + partner */}
       <div className="min-w-0">

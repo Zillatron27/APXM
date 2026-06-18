@@ -3,11 +3,11 @@ import { reconcileOrder, applyReorder } from '../reorder-utils';
 
 describe('reconcileOrder', () => {
   it('returns the canonical order for an empty/default input', () => {
-    expect(reconcileOrder([])).toEqual(['bases', 'fleet', 'contracts']);
+    expect(reconcileOrder([])).toEqual(['bases', 'fleet', 'contracts', 'empire']);
   });
 
   it('preserves a valid saved order', () => {
-    const saved = ['fleet', 'contracts', 'bases'];
+    const saved = ['fleet', 'empire', 'contracts', 'bases'];
     expect(reconcileOrder(saved)).toEqual(saved);
   });
 
@@ -17,12 +17,18 @@ describe('reconcileOrder', () => {
       'bases',
       // appended in canonical order
       'contracts',
+      'empire',
     ]);
   });
 
   it('appends known panels missing from a stale saved order', () => {
-    // Saved order predates 'contracts' being added.
-    expect(reconcileOrder(['fleet', 'bases'])).toEqual(['fleet', 'bases', 'contracts']);
+    // Saved order predates 'empire' being added.
+    expect(reconcileOrder(['fleet', 'bases', 'contracts'])).toEqual([
+      'fleet',
+      'bases',
+      'contracts',
+      'empire',
+    ]);
   });
 });
 

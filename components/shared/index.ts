@@ -1,8 +1,7 @@
 export { ConnectionStatusBadge } from './ConnectionStatusBadge';
-export { Card } from './Card';
 export { Panel } from './Panel';
 export { SectionHeader } from './SectionHeader';
-export { btnSecondary, btnPress } from './button';
+export { btnSecondary, btnPrimary, btnPress } from './button';
 export { TimeBadge } from './TimeBadge';
 export { FilterBar, type FilterOption } from './FilterBar';
 export { StateTile, type TileVariant } from './StateTile';

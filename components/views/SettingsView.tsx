@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, MaterialTile } from '../shared';
+import { Panel, MaterialTile, btnPrimary, btnSecondary } from '../shared';
 import {
   useSettingsStore,
   DEFAULT_THRESHOLDS,
@@ -247,39 +247,38 @@ export function SettingsView() {
   return (
     <div className="space-y-4">
       {/* Burn Thresholds Section */}
-      <Card>
-        <h2 className="text-prun-yellow text-sm font-semibold mb-1">Burn Thresholds</h2>
+      <Panel title="Burn Thresholds">
         <p className="text-xs text-apxm-muted mb-3">All fields in days</p>
 
         <div className="space-y-3">
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="block text-apxm-muted text-xs mb-1">Critical (red)</label>
+              <label className="block font-mono text-[10px] uppercase tracking-wide text-apxm-muted mb-1">Critical (red)</label>
               <input
                 type="number"
                 value={critical}
                 onChange={(e) => handleThresholdChange('critical', e.target.value)}
-                className="w-full min-h-touch px-3 py-2 text-sm bg-apxm-bg border border-apxm-accent rounded text-apxm-text outline-none focus:border-prun-yellow"
+                className="w-full min-h-touch px-3 py-2 text-sm font-mono bg-apxm-bg border border-apxm-accent text-apxm-text outline-none focus:border-prun-yellow"
               />
             </div>
 
             <div className="flex-1">
-              <label className="block text-apxm-muted text-xs mb-1">Warning (yellow)</label>
+              <label className="block font-mono text-[10px] uppercase tracking-wide text-apxm-muted mb-1">Warning (yellow)</label>
               <input
                 type="number"
                 value={warning}
                 onChange={(e) => handleThresholdChange('warning', e.target.value)}
-                className="w-full min-h-touch px-3 py-2 text-sm bg-apxm-bg border border-apxm-accent rounded text-apxm-text outline-none focus:border-prun-yellow"
+                className="w-full min-h-touch px-3 py-2 text-sm font-mono bg-apxm-bg border border-apxm-accent text-apxm-text outline-none focus:border-prun-yellow"
               />
             </div>
 
             <div className="flex-1">
-              <label className="block text-apxm-muted text-xs mb-1">Resupply</label>
+              <label className="block font-mono text-[10px] uppercase tracking-wide text-apxm-muted mb-1">Resupply</label>
               <input
                 type="number"
                 value={resupply}
                 onChange={(e) => handleThresholdChange('resupply', e.target.value)}
-                className="w-full min-h-touch px-3 py-2 text-sm bg-apxm-bg border border-apxm-accent rounded text-apxm-text outline-none focus:border-prun-yellow"
+                className="w-full min-h-touch px-3 py-2 text-sm font-mono bg-apxm-bg border border-apxm-accent text-apxm-text outline-none focus:border-prun-yellow"
               />
             </div>
           </div>
@@ -292,16 +291,15 @@ export function SettingsView() {
 
           <button
             onClick={handleResetThresholds}
-            className="w-full min-h-touch px-4 py-2 text-sm rounded border border-apxm-accent text-apxm-muted font-semibold hover:border-prun-yellow hover:text-prun-yellow"
+            className={`w-full min-h-touch px-4 py-2 ${btnSecondary}`}
           >
             Reset to Defaults
           </button>
         </div>
-      </Card>
+      </Panel>
 
       {/* Repair Thresholds Section */}
-      <Card>
-        <h2 className="text-prun-yellow text-sm font-semibold mb-1">Repair Thresholds</h2>
+      <Panel title="Repair Thresholds">
         <p className="text-xs text-apxm-muted mb-3">
           Days since last repair on a base's production buildings
         </p>
@@ -309,22 +307,22 @@ export function SettingsView() {
         <div className="space-y-3">
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="block text-apxm-muted text-xs mb-1">Threshold (red)</label>
+              <label className="block font-mono text-[10px] uppercase tracking-wide text-apxm-muted mb-1">Threshold (red)</label>
               <input
                 type="number"
                 value={repairThreshold}
                 onChange={(e) => handleRepairChange('threshold', e.target.value)}
-                className="w-full min-h-touch px-3 py-2 text-sm bg-apxm-bg border border-apxm-accent rounded text-apxm-text outline-none focus:border-prun-yellow"
+                className="w-full min-h-touch px-3 py-2 text-sm font-mono bg-apxm-bg border border-apxm-accent text-apxm-text outline-none focus:border-prun-yellow"
               />
             </div>
 
             <div className="flex-1">
-              <label className="block text-apxm-muted text-xs mb-1">Offset (yellow)</label>
+              <label className="block font-mono text-[10px] uppercase tracking-wide text-apxm-muted mb-1">Offset (yellow)</label>
               <input
                 type="number"
                 value={repairOffset}
                 onChange={(e) => handleRepairChange('offset', e.target.value)}
-                className="w-full min-h-touch px-3 py-2 text-sm bg-apxm-bg border border-apxm-accent rounded text-apxm-text outline-none focus:border-prun-yellow"
+                className="w-full min-h-touch px-3 py-2 text-sm font-mono bg-apxm-bg border border-apxm-accent text-apxm-text outline-none focus:border-prun-yellow"
               />
             </div>
           </div>
@@ -337,37 +335,36 @@ export function SettingsView() {
 
           <button
             onClick={handleResetRepairThresholds}
-            className="w-full min-h-touch px-4 py-2 text-sm rounded border border-apxm-accent text-apxm-muted font-semibold hover:border-prun-yellow hover:text-prun-yellow"
+            className={`w-full min-h-touch px-4 py-2 ${btnSecondary}`}
           >
             Reset to Defaults
           </button>
         </div>
-      </Card>
+      </Panel>
 
       {/* FIO API Key Section */}
-      <Card>
-        <h2 className="text-prun-yellow text-sm font-semibold mb-3">FIO API Key</h2>
+      <Panel title="FIO API Key">
 
         <div className="space-y-3">
           <div>
-            <label className="block text-apxm-muted text-xs mb-1">Username</label>
+            <label className="block font-mono text-[10px] uppercase tracking-wide text-apxm-muted mb-1">Username</label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="FIO username"
-              className="w-full min-h-touch px-3 py-2 text-sm bg-apxm-bg border border-apxm-accent rounded text-apxm-text placeholder:text-apxm-muted/50 outline-none focus:border-prun-yellow"
+              className="w-full min-h-touch px-3 py-2 text-sm bg-apxm-bg border border-apxm-accent text-apxm-text placeholder:text-apxm-muted/50 outline-none focus:border-prun-yellow"
             />
           </div>
 
           <div>
-            <label className="block text-apxm-muted text-xs mb-1">API Key</label>
+            <label className="block font-mono text-[10px] uppercase tracking-wide text-apxm-muted mb-1">API Key</label>
             <input
               type="text"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder="Your FIO API key"
-              className="w-full min-h-touch px-3 py-2 text-sm bg-apxm-bg border border-apxm-accent rounded text-apxm-text placeholder:text-apxm-muted/50 outline-none focus:border-prun-yellow font-mono"
+              className="w-full min-h-touch px-3 py-2 text-sm bg-apxm-bg border border-apxm-accent text-apxm-text placeholder:text-apxm-muted/50 outline-none focus:border-prun-yellow font-mono"
             />
           </div>
 
@@ -375,14 +372,14 @@ export function SettingsView() {
             <button
               onClick={handleSave}
               disabled={!hasUnsavedChanges}
-              className="flex-1 min-h-touch px-4 py-2 text-sm rounded bg-prun-yellow text-apxm-bg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`flex-1 min-h-touch px-4 py-2 ${btnPrimary} disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               Save
             </button>
             <button
               onClick={handleTestConnection}
               disabled={connectionStatus === 'testing'}
-              className="flex-1 min-h-touch px-4 py-2 text-sm rounded border border-prun-yellow text-prun-yellow font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`flex-1 min-h-touch px-4 py-2 ${btnSecondary} disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {connectionStatus === 'testing' ? 'Testing...' : 'Test Connection'}
             </button>
@@ -407,11 +404,10 @@ export function SettingsView() {
             </div>
           )}
         </div>
-      </Card>
+      </Panel>
 
       {/* FIO Data Section */}
-      <Card>
-        <h2 className="text-prun-yellow text-sm font-semibold mb-3">FIO Data</h2>
+      <Panel title="FIO Data">
 
         <div className="space-y-3">
           <div className="flex items-center justify-between text-sm">
@@ -424,7 +420,7 @@ export function SettingsView() {
           <button
             onClick={handleRefresh}
             disabled={isRefreshing || !fio.apiKey || !fio.username}
-            className="w-full min-h-touch px-4 py-2 text-sm rounded border border-prun-yellow text-prun-yellow font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`w-full min-h-touch px-4 py-2 ${btnSecondary} disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             {isRefreshing && refreshStep
               ? `Fetching ${STEP_LABELS[refreshStep]}...`
@@ -447,17 +443,16 @@ export function SettingsView() {
             <button
               onClick={handleClearCache}
               disabled={isClearing}
-              className="w-full min-h-touch px-4 py-2 text-sm rounded border border-apxm-accent text-apxm-muted font-semibold hover:border-prun-yellow hover:text-prun-yellow disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`w-full min-h-touch px-4 py-2 ${btnSecondary} disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {isClearing ? 'Clearing...' : 'Clear Cached Data'}
             </button>
           </div>
         </div>
-      </Card>
+      </Panel>
 
       {/* UI Theme Section */}
-      <Card>
-        <h2 className="text-prun-yellow text-sm font-semibold mb-3">Theme</h2>
+      <Panel title="Theme">
 
         <div className="grid grid-cols-2 gap-2">
           {themePresets.map((preset, index) => {
@@ -472,7 +467,7 @@ export function SettingsView() {
                 key={preset.id}
                 onClick={() => setUiTheme(preset.id)}
                 aria-pressed={selected}
-                className={`min-h-touch flex flex-col items-start gap-2 rounded p-2 border ${
+                className={`min-h-touch flex flex-col items-start gap-2 p-2 border ${
                   isLoneLast ? 'col-span-2 justify-self-center w-[calc(50%-0.25rem)]' : ''
                 } ${selected ? 'border-prun-yellow' : 'border-apxm-accent'}`}
                 style={{ backgroundColor: toCssHex(tokens.bg) }}
@@ -499,11 +494,10 @@ export function SettingsView() {
             );
           })}
         </div>
-      </Card>
+      </Panel>
 
       {/* Material Theme Section */}
-      <Card>
-        <h2 className="text-prun-yellow text-sm font-semibold mb-3">Material Theme</h2>
+      <Panel title="Material Theme">
 
         <div className="space-y-3">
           <div className="flex gap-2">
@@ -511,7 +505,7 @@ export function SettingsView() {
               <button
                 key={option.id}
                 onClick={() => setMaterialTheme(option.id)}
-                className={`flex-1 min-h-touch px-4 py-2 text-sm rounded font-semibold ${
+                className={`flex-1 min-h-touch px-4 py-2 font-mono text-[11px] font-semibold uppercase tracking-wider ${
                   materialTheme === option.id
                     ? 'bg-prun-yellow text-apxm-bg'
                     : 'border border-apxm-accent text-apxm-muted'
@@ -534,7 +528,7 @@ export function SettingsView() {
             <MaterialTile ticker="SAR" category="electronic-devices" size="sm" />
           </div>
         </div>
-      </Card>
+      </Panel>
     </div>
   );
 }

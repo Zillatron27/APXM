@@ -8,8 +8,8 @@
  * idiom for actual buttons. Use on surfaces that own their border and fill
  * (e.g. the tier-tinted attention tiles).
  *
- * `btnSecondary` is the bordered text variant (e.g. SHOW APEX / Show APXM). Add
- * a filled `btnPrimary` here when a primary action surface needs one.
+ * `btnSecondary` is the bordered text variant (e.g. SHOW APEX / Show APXM);
+ * `btnPrimary` is the filled amber variant for primary actions (e.g. Save).
  */
 export const btnPress =
   'shadow-[0_2px_4px_rgba(0,0,0,0.5)] ' +
@@ -21,4 +21,9 @@ export const btnSecondary =
   'font-mono text-[11px] font-semibold tracking-wider uppercase ' +
   'text-apxm-text border border-apxm-accent ' +
   'hover:border-prun-yellow hover:text-prun-yellow ' +
+  btnPress;
+
+export const btnPrimary =
+  'font-mono text-[11px] font-bold tracking-wider uppercase ' +
+  'bg-prun-yellow text-apxm-bg border border-prun-yellow ' +
   btnPress;

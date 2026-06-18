@@ -8,8 +8,6 @@ import type { BurnFilter } from '../../../stores/gameState';
 export interface EmpireBurnResult {
   /** Aggregated material rows, filtered and sorted for display. */
   rows: BurnRate[];
-  /** Per-material tier counts for the filter bar (surplus folds into ok). */
-  counts: Record<BurnFilter, number>;
 }
 
 /**
@@ -30,8 +28,8 @@ export function sortEmpireRows(rows: BurnRate[]): BurnRate[] {
 }
 
 /**
- * Empire-wide burn rollup for the BASES tab's EMPIRE mode: one row per
- * material across all sites, filtered by the shared urgency selection.
+ * Empire-wide burn rollup for the Status tab's collapsible Empire panel: one row
+ * per material across all sites, filtered by the given urgency selection.
  */
 export function useEmpireBurn(
   activeFilters: ReadonlySet<BurnFilter>
@@ -42,20 +40,10 @@ export function useEmpireBurn(
   return useMemo(() => {
     const sorted = sortEmpireRows(aggregateEmpireBurn(summaries, thresholds));
 
-    const counts: Record<BurnFilter, number> = {
-      all: sorted.length,
-      critical: 0,
-      warning: 0,
-      ok: 0,
-    };
-    for (const row of sorted) {
-      counts[getFilterForUrgency(row.urgency)]++;
-    }
-
     const rows = activeFilters.has('all')
       ? sorted
       : sorted.filter((r) => activeFilters.has(getFilterForUrgency(r.urgency)));
 
-    return { rows, counts };
+    return { rows };
   }, [summaries, thresholds, activeFilters]);
 }

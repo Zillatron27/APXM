@@ -9,6 +9,12 @@ interface PanelProps {
   onViewAll?: () => void;
   /** Optional drag handle, rendered at the titlebar's right edge (Status tab only). */
   handle?: ReactNode;
+  /** When set, the titlebar gains a chevron that toggles the body via onToggleCollapse. */
+  collapsible?: boolean;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
+  /** Optional titlebar summary (e.g. a collapsed-state count), right-aligned. */
+  summary?: ReactNode;
   children: ReactNode;
   className?: string;
   /** Body padding override; defaults to the standard panel inset. */
@@ -18,22 +24,40 @@ interface PanelProps {
 /**
  * Window panel — the Retro Terminal screen-style container: square corners, a
  * 1px border, and a titlebar bar carrying a mono highlight label plus an
- * optional dim buffer-code suffix. Used on the Status tab, where the titlebar
- * also hosts the drag handle for panel reordering. The blueprint-bracket `Card`
- * stays in use on the other screens.
+ * optional dim buffer-code suffix. The single container used across every
+ * screen; on the Status tab the titlebar also hosts the drag handle for panel
+ * reordering. (Superseded the blueprint-bracket Card, now retired.)
  */
 export function Panel({
   title,
   code,
   onViewAll,
   handle,
+  collapsible = false,
+  collapsed = false,
+  onToggleCollapse,
+  summary,
   children,
   className = '',
   bodyClassName = 'p-3',
 }: PanelProps) {
   return (
     <div className={`border border-apxm-accent bg-apxm-surface ${className}`}>
-      <div className="flex items-center gap-2 h-9 px-3 bg-apxm-accent/40 border-b border-apxm-accent">
+      <div
+        className={`flex items-center gap-2 h-9 px-3 bg-apxm-accent/40 border-b ${
+          collapsible && collapsed ? 'border-transparent' : 'border-apxm-accent'
+        }`}
+      >
+        {collapsible && (
+          <button
+            onClick={onToggleCollapse}
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? 'Expand panel' : 'Collapse panel'}
+            className="-ml-1 px-1 text-apxm-muted hover:text-apxm-text leading-none"
+          >
+            <span aria-hidden className="text-xs">{collapsed ? '▶' : '▼'}</span>
+          </button>
+        )}
         <span className="font-mono text-[13px] font-bold tracking-wider uppercase text-prun-yellow leading-none">
           {title}
         </span>
@@ -43,6 +67,11 @@ export function Panel({
           </span>
         )}
         <div className="flex-1" />
+        {summary && (
+          <span className="font-mono text-[10px] tracking-wide uppercase text-apxm-muted leading-none">
+            {summary}
+          </span>
+        )}
         {onViewAll && (
           <button
             onClick={onViewAll}
@@ -53,7 +82,21 @@ export function Panel({
         )}
         {handle}
       </div>
-      <div className={bodyClassName}>{children}</div>
+      {collapsible ? (
+        // grid-rows 0fr→1fr animates to natural height (height:auto isn't
+        // transitionable); the visible titlebar anchors, body grows downward.
+        <div
+          className={`grid transition-[grid-template-rows] duration-150 ease-out motion-reduce:transition-none ${
+            collapsed ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]'
+          }`}
+        >
+          <div className="overflow-hidden">
+            <div className={bodyClassName}>{children}</div>
+          </div>
+        </div>
+      ) : (
+        <div className={bodyClassName}>{children}</div>
+      )}
     </div>
   );
 }

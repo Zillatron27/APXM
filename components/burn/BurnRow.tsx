@@ -69,7 +69,7 @@ export function BurnRow({ burn }: BurnRowProps) {
           </span>
 
           {/* Need amount (only if consuming and has need) */}
-          <span className="w-12 text-right text-xs text-status-warning">
+          <span className="w-12 text-right font-mono text-xs text-status-warning">
             {isConsuming && need > 0 ? `+${Math.ceil(need)}` : ''}
           </span>
         </div>
