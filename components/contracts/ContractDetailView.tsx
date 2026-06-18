@@ -32,15 +32,12 @@ const midActionLabels: Partial<Record<ContractConditionDetail['status'], string>
 };
 
 /**
- * One condition block. Left column: indicator + party on the top line, the
- * description beneath, and a dependency/mid-action hint. Right column ("Cmds",
- * mirroring rPrun): a small FULFILL button on self conditions — accent when the
- * condition is actionable now, muted when it's still blocked. The button is a
- * disabled placeholder: the layout is real but the buffer action is the
- * deferred next piece (blocked on the live APEX CONT buffer DOM) and APXM never
- * commits a game action without explicit human authorisation.
+ * One condition block. Indicator + party on the top line, the description
+ * beneath, and a dependency/mid-action hint. The per-condition FULFILL action
+ * is intentionally NOT rendered yet — game-state-changing commands stay hidden
+ * until the CONT-buffer action passthrough is built (no dead buttons shipped).
  */
-function ConditionBlock({ cond, accepted }: { cond: ContractConditionDetail; accepted: boolean }) {
+function ConditionBlock({ cond }: { cond: ContractConditionDetail }) {
   const glyph = cond.breached ? '!' : cond.fulfilled ? '✓' : cond.available ? '●' : '✗';
   const glyphColor = cond.breached
     ? 'text-status-critical'
@@ -49,11 +46,6 @@ function ConditionBlock({ cond, accepted }: { cond: ContractConditionDetail; acc
       : cond.available
         ? 'text-status-warning'
         : 'text-apxm-muted';
-
-  // FULFILL is a self-condition command (you can't fulfil the partner's
-  // obligations), and only once the contract is accepted — an unaccepted OPEN
-  // contract's action is ACCEPT, not fulfil. Hidden once done or violated.
-  const showFulfill = accepted && cond.party === 'self' && !cond.fulfilled && !cond.breached;
 
   return (
     <div className="flex items-center gap-2 py-2 border-b border-apxm-surface last:border-b-0">
@@ -90,30 +82,15 @@ function ConditionBlock({ cond, accepted }: { cond: ContractConditionDetail; acc
           <div className="mt-1 ml-11 text-xs text-apxm-muted">{midActionLabels[cond.status]}</div>
         ) : null}
       </div>
-
-      {/* Cmds column: FULFILL (disabled placeholder until buffer wiring) */}
-      {showFulfill && (
-        <button
-          type="button"
-          disabled
-          aria-label="Fulfil this condition (coming soon)"
-          className={`shrink-0 min-h-touch px-3 text-xs font-mono uppercase tracking-wide rounded border cursor-not-allowed ${
-            cond.available
-              ? 'border-status-warning/50 text-status-warning/70'
-              : 'border-apxm-muted/30 text-apxm-muted/50'
-          }`}
-        >
-          Fulfill
-        </button>
-      )}
     </div>
   );
 }
 
 /**
- * Read-only contract drill-down for the slide-up sheet: partner, timing, and
- * the full condition list with dependency-aware states. The FULFILL action on
- * available conditions is a disabled placeholder pending the CONT buffer work.
+ * Read-only contract drill-down for the slide-up sheet: partner, timing,
+ * acceptance status, and the full condition list with dependency-aware states.
+ * Game actions (FULFILL / ACCEPT / REJECT) are not rendered until the
+ * CONT-buffer action passthrough is built — the view ships read-only.
  */
 export function ContractDetailView({ contractId }: ContractDetailViewProps) {
   const contract = useContractDetail(contractId);
@@ -138,28 +115,11 @@ export function ContractDetailView({ contractId }: ContractDetailViewProps) {
         <span>Due {formatDeadline(contract.dueDateMs)}</span>
       </div>
 
-      {/* Acceptance: a contract is accepted before its conditions can be
-          fulfilled. ACCEPT/REJECT are contract-level commands; disabled
-          placeholders for now (wiring deferred to the CONT buffer piece). */}
+      {/* Acceptance status (informational). ACCEPT/REJECT are contract-level
+          game commands — not shown until the CONT-buffer action passthrough
+          exists, so no dead buttons ship. */}
       {contract.acceptance === 'awaiting-mine' && (
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            disabled
-            aria-label="Accept this contract (coming soon)"
-            className="min-h-touch flex-1 text-xs font-mono uppercase tracking-wide rounded border border-status-warning/50 text-status-warning/70 cursor-not-allowed"
-          >
-            Accept
-          </button>
-          <button
-            type="button"
-            disabled
-            aria-label="Reject this contract (coming soon)"
-            className="min-h-touch flex-1 text-xs font-mono uppercase tracking-wide rounded border border-status-critical/40 text-status-critical/60 cursor-not-allowed"
-          >
-            Reject
-          </button>
-        </div>
+        <p className="text-xs text-status-warning">Awaiting your acceptance.</p>
       )}
       {contract.acceptance === 'awaiting-partner' && (
         <p className="text-xs text-apxm-muted">Awaiting partner acceptance.</p>
@@ -169,7 +129,7 @@ export function ContractDetailView({ contractId }: ContractDetailViewProps) {
       <div>
         <p className="text-[10px] uppercase tracking-wide text-apxm-text/40 mb-1">Conditions</p>
         {contract.conditions.map((cond) => (
-          <ConditionBlock key={cond.id} cond={cond} accepted={contract.accepted} />
+          <ConditionBlock key={cond.id} cond={cond} />
         ))}
       </div>
     </div>
