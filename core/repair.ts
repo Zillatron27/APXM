@@ -26,6 +26,20 @@ export interface RepairStatusSummary {
   oldestBuildingCondition: number | null;
 }
 
+/** Per-building repair detail for one site (the repair drill-down sheet). */
+export interface BuildingRepairStatus {
+  /** Platform id. */
+  id: string;
+  /** Building ticker (e.g. "SME"). */
+  ticker: string;
+  /** Full building name (e.g. "Smelter"). */
+  name: string;
+  /** Days since this building was last repaired (or built). */
+  ageDays: number;
+  /** Building condition, 0–1. */
+  condition: number;
+}
+
 export type RepairUrgency = 'critical' | 'warning' | 'ok';
 
 // ============================================================================
@@ -105,4 +119,24 @@ export function calculateSiteRepairStatus(siteId: string): RepairStatusSummary {
 export function calculateAllRepairStatuses(): RepairStatusSummary[] {
   const sites = useSitesStore.getState().getAll();
   return sites.map((site) => calculateSiteRepairStatus(site.siteId));
+}
+
+/**
+ * Per-building repair detail for one site, oldest-since-repair first. Only
+ * repairable buildings (PRODUCTION/RESOURCES) are included.
+ */
+export function calculateSiteRepairBuildings(siteId: string): BuildingRepairStatus[] {
+  const site = useSitesStore.getState().getById(siteId);
+  const now = Date.now();
+
+  return (site?.platforms ?? [])
+    .filter(isRepairableBuilding)
+    .map((p) => ({
+      id: p.id,
+      ticker: p.module.reactorTicker,
+      name: p.module.reactorName,
+      ageDays: (now - getBuildingLastRepairTimestamp(p)) / MS_PER_DAY,
+      condition: p.condition,
+    }))
+    .sort((a, b) => b.ageDays - a.ageDays);
 }
