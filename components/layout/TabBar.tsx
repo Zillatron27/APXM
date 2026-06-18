@@ -23,7 +23,7 @@ export function TabBar() {
         <button
           key={tab.id}
           onClick={() => setActiveTab(tab.id)}
-          className={`flex-1 min-h-touch flex items-center justify-center relative font-mono text-xl font-semibold tracking-wide uppercase border-l border-apxm-surface first:border-l-0 ${
+          className={`flex-1 min-h-touch flex items-center justify-center relative font-mono text-sm font-semibold tracking-wide uppercase border-l border-apxm-surface first:border-l-0 ${
             activeTab === tab.id ? 'text-prun-yellow' : 'text-apxm-muted hover:text-apxm-text'
           }`}
         >
