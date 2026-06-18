@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { useContractsStore } from '../../stores/entities/contracts';
 import { Panel, StateTile, type TileVariant } from '../shared';
 import { useGameState } from '../../stores/gameState';
@@ -67,7 +67,7 @@ function getDeadlineColor(dueDate: number | null): string {
   return 'text-apxm-muted';
 }
 
-export function ContractsMiniList() {
+export function ContractsMiniList({ handle }: { handle?: ReactNode }) {
   const { setActiveTab } = useGameState();
   const apexUnresponsive = useConnectionStore((s) => s.apexUnresponsive);
   const contractsLastUpdated = useContractsStore((s) => s.lastUpdated);
@@ -124,7 +124,7 @@ export function ContractsMiniList() {
 
   if (topContracts.length === 0) {
     return (
-      <Panel title="Contracts" code="CONT" onViewAll={() => setActiveTab('contracts')}>
+      <Panel title="Contracts" code="CONT" onViewAll={() => setActiveTab('contracts')} handle={handle}>
         <p className={`text-xs ${apexUnresponsive && !contractsFetched ? 'text-status-critical' : 'text-apxm-muted'} ${emptyMessage.pulse ? 'animate-pulse' : ''}`}>
           {emptyMessage.text}
         </p>
@@ -133,7 +133,7 @@ export function ContractsMiniList() {
   }
 
   return (
-    <Panel title="Contracts" code="CONT" onViewAll={() => setActiveTab('contracts')}>
+    <Panel title="Contracts" code="CONT" onViewAll={() => setActiveTab('contracts')} handle={handle}>
       <div className="space-y-0">
         {topContracts.map((contract) => {
           const tileConfig = statusTileConfig[contract.status];

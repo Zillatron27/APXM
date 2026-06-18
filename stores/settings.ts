@@ -27,6 +27,11 @@ export interface FioConfig {
   lastFetch: number | null;
 }
 
+/** The reorderable Status-tab panels, in default display order. The company
+ *  (cash) and attention panels are pinned above these and are not reorderable. */
+export type StatusPanelId = 'bases' | 'fleet' | 'contracts';
+export const STATUS_PANEL_IDS: StatusPanelId[] = ['bases', 'fleet', 'contracts'];
+
 interface SettingsState {
   burnThresholds: BurnThresholds;
   repairThresholds: RepairThresholds;
@@ -34,6 +39,9 @@ interface SettingsState {
   materialTheme: MaterialTheme;
   uiTheme: ApxmThemeId;
   rprunFeaturesDisabled: boolean;
+  /** User's Status-tab panel order. Untrusted (storage) — reconciled against
+   *  STATUS_PANEL_IDS by the view, which drops unknowns and appends new panels. */
+  statusPanelOrder: string[];
 }
 
 interface SettingsActions {
@@ -44,6 +52,7 @@ interface SettingsActions {
   setMaterialTheme: (theme: MaterialTheme) => void;
   setUiTheme: (theme: ApxmThemeId) => void;
   setRprunFeaturesDisabled: (disabled: boolean) => void;
+  setStatusPanelOrder: (order: string[]) => void;
   reset: () => void;
 }
 
@@ -67,6 +76,7 @@ const initialState: SettingsState = {
   materialTheme: 'rprun',
   uiTheme: DEFAULT_THEME_ID,
   rprunFeaturesDisabled: false,
+  statusPanelOrder: [...STATUS_PANEL_IDS],
 };
 
 // Check if browser storage API is available
@@ -160,6 +170,8 @@ export const useSettingsStore = create<SettingsStore>()(
       setUiTheme: (theme) => set({ uiTheme: theme }),
 
       setRprunFeaturesDisabled: (disabled) => set({ rprunFeaturesDisabled: disabled }),
+
+      setStatusPanelOrder: (order) => set({ statusPanelOrder: order }),
 
       reset: () => set(initialState),
     }),

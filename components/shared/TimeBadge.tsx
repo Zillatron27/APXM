@@ -1,8 +1,12 @@
 import type { Urgency } from '../../core/burn';
+import { keycapClasses } from './keycap';
 
 interface TimeBadgeProps {
   daysRemaining: number;
   urgency: Urgency;
+  /** Pass when the badge drills into the burn sheet — gains the keycap
+   *  affordance (tap handler lives on the wrapper). */
+  interactive?: boolean;
 }
 
 const urgencyBgColors: Record<Urgency, string> = {
@@ -12,7 +16,7 @@ const urgencyBgColors: Record<Urgency, string> = {
   surplus: 'bg-apxm-surface text-apxm-muted',
 };
 
-export function TimeBadge({ daysRemaining, urgency }: TimeBadgeProps) {
+export function TimeBadge({ daysRemaining, urgency, interactive = false }: TimeBadgeProps) {
   const displayText =
     daysRemaining === Infinity
       ? 'OK'
@@ -20,8 +24,9 @@ export function TimeBadge({ daysRemaining, urgency }: TimeBadgeProps) {
         ? '<1d'
         : `${Math.floor(daysRemaining)}d`;
 
+  const keycap = interactive ? ` ${keycapClasses}` : '';
   return (
-    <span className={`block w-full text-center py-0.5 text-xs font-medium ${urgencyBgColors[urgency]}`}>
+    <span className={`block w-full text-center py-0.5 text-xs font-medium ${urgencyBgColors[urgency]}${keycap}`}>
       {displayText}
     </span>
   );

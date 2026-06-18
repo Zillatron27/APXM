@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import {
   useSiteBurns,
   sortByUrgency,
@@ -15,7 +15,7 @@ import { useWorkforceStore } from '../../stores/entities/workforce';
 import { useProductionStore } from '../../stores/entities/production';
 import { useStorageStore } from '../../stores/entities/storage';
 
-export function BasesMiniList() {
+export function BasesMiniList({ handle }: { handle?: ReactNode }) {
   const { setActiveTab, setDetailView } = useGameState();
   const siteBurns = useSiteBurns();
   const repairStatuses = useRepairStatus();
@@ -54,7 +54,7 @@ export function BasesMiniList() {
 
   if (topBases.length === 0) {
     return (
-      <Panel title="Bases" code="BS" onViewAll={() => setActiveTab('bases')}>
+      <Panel title="Bases" code="BS" onViewAll={() => setActiveTab('bases')} handle={handle}>
         <p className={`text-xs ${apexUnresponsive && !sitesFetched ? 'text-status-critical' : 'text-apxm-muted'} ${emptyMessage.pulse ? 'animate-pulse' : ''}`}>
           {emptyMessage.text}
         </p>
@@ -63,10 +63,10 @@ export function BasesMiniList() {
   }
 
   return (
-    <Panel title="Bases" code="BS" onViewAll={() => setActiveTab('bases')}>
+    <Panel title="Bases" code="BS" onViewAll={() => setActiveTab('bases')} handle={handle}>
       {/* Three equal fixed columns keep the BURN/REPAIR/PROD chips a uniform
           width regardless of content (<1d vs 18/19 vs ✓), like material tiles. */}
-      <div className="grid grid-cols-[minmax(0,1fr)_3.5rem_3.5rem_3.5rem] gap-x-2 items-center">
+      <div className="grid grid-cols-[minmax(0,1fr)_3.5rem_3.5rem_3.5rem] gap-x-2 gap-y-1 items-center">
         {/* Column headers */}
         <span />
         <span className="font-mono text-[10px] text-apxm-text/40 uppercase tracking-wide text-center">Burn</span>
@@ -75,24 +75,42 @@ export function BasesMiniList() {
 
         {topBases.map((site) => (
           <div key={site.siteId} className="contents">
-            <span className="text-sm text-apxm-text truncate py-1">{site.siteName}</span>
+            <span className="text-sm text-apxm-text truncate">{site.siteName}</span>
+            {/* Each chip drills into its dimension's detail sheet. Chips are
+                tappable only when there's something to show: an OK burn with no
+                rates, or a site with no repairable buildings, render plain. */}
             {site.mostUrgent ? (
-              <TimeBadge
-                daysRemaining={site.mostUrgent.daysRemaining}
-                urgency={site.mostUrgent.urgency}
-              />
+              <button
+                onClick={() => setDetailView({ type: 'burn', siteId: site.siteId, siteName: site.siteName })}
+                aria-label={`Burn detail for ${site.siteName}`}
+                className="flex w-full items-center justify-center"
+              >
+                <TimeBadge
+                  daysRemaining={site.mostUrgent.daysRemaining}
+                  urgency={site.mostUrgent.urgency}
+                  interactive
+                />
+              </button>
             ) : (
               <span className="block w-full text-center py-0.5 font-mono text-xs font-medium bg-apxm-bg text-apxm-muted">
                 OK
               </span>
             )}
-            <RepairAgeBadge ageDays={repairBySite.get(site.siteId)?.oldestBuildingAgeDays ?? null} />
-            {/* PROD chip taps through to the production sheet. min-h-touch
-                makes the whole row a 44pt target without enlarging the chip. */}
+            {repairBySite.get(site.siteId)?.oldestBuildingAgeDays != null ? (
+              <button
+                onClick={() => setDetailView({ type: 'repair', siteId: site.siteId, siteName: site.siteName })}
+                aria-label={`Repair detail for ${site.siteName}`}
+                className="flex w-full items-center justify-center"
+              >
+                <RepairAgeBadge ageDays={repairBySite.get(site.siteId)!.oldestBuildingAgeDays} interactive />
+              </button>
+            ) : (
+              <RepairAgeBadge ageDays={null} />
+            )}
             <button
               onClick={() => setDetailView({ type: 'production', siteId: site.siteId, siteName: site.siteName })}
               aria-label={`Production detail for ${site.siteName}`}
-              className="flex w-full min-h-touch items-center justify-center"
+              className="flex w-full items-center justify-center"
             >
               <ProdStatusBadge status={prodStatuses.get(site.siteId) ?? null} interactive />
             </button>
