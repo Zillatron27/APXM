@@ -7,7 +7,7 @@ import {
   RepairAgeBadge,
   ProdStatusBadge,
 } from '../burn';
-import { Card, SectionHeader, TimeBadge } from '../shared';
+import { Panel, TimeBadge } from '../shared';
 import { useGameState } from '../../stores/gameState';
 import { useConnectionStore } from '../../stores/connection';
 import { useSitesStore } from '../../stores/entities/sites';
@@ -54,29 +54,24 @@ export function BasesMiniList() {
 
   if (topBases.length === 0) {
     return (
-      <Card>
-        <SectionHeader title="Bases" onViewAll={() => setActiveTab('bases')} />
+      <Panel title="Bases" code="BS" onViewAll={() => setActiveTab('bases')}>
         <p className={`text-xs ${apexUnresponsive && !sitesFetched ? 'text-status-critical' : 'text-apxm-muted'} ${emptyMessage.pulse ? 'animate-pulse' : ''}`}>
           {emptyMessage.text}
         </p>
-      </Card>
+      </Panel>
     );
   }
 
   return (
-    <Card>
-      <SectionHeader
-        title="Bases"
-        onViewAll={() => setActiveTab('bases')}
-      />
+    <Panel title="Bases" code="BS" onViewAll={() => setActiveTab('bases')}>
       {/* Three equal fixed columns keep the BURN/REPAIR/PROD chips a uniform
           width regardless of content (<1d vs 18/19 vs ✓), like material tiles. */}
       <div className="grid grid-cols-[minmax(0,1fr)_3.5rem_3.5rem_3.5rem] gap-x-2 items-center">
         {/* Column headers */}
         <span />
-        <span className="text-[10px] text-apxm-text/40 uppercase tracking-wide text-center">Burn</span>
-        <span className="text-[10px] text-apxm-text/40 uppercase tracking-wide text-center">Repair</span>
-        <span className="text-[10px] text-apxm-text/40 uppercase tracking-wide text-center">Prod</span>
+        <span className="font-mono text-[10px] text-apxm-text/40 uppercase tracking-wide text-center">Burn</span>
+        <span className="font-mono text-[10px] text-apxm-text/40 uppercase tracking-wide text-center">Repair</span>
+        <span className="font-mono text-[10px] text-apxm-text/40 uppercase tracking-wide text-center">Prod</span>
 
         {topBases.map((site) => (
           <div key={site.siteId} className="contents">
@@ -87,7 +82,7 @@ export function BasesMiniList() {
                 urgency={site.mostUrgent.urgency}
               />
             ) : (
-              <span className="block w-full text-center py-0.5 text-xs font-medium bg-apxm-bg text-apxm-muted">
+              <span className="block w-full text-center py-0.5 font-mono text-xs font-medium bg-apxm-bg text-apxm-muted">
                 OK
               </span>
             )}
@@ -104,6 +99,6 @@ export function BasesMiniList() {
           </div>
         ))}
       </div>
-    </Card>
+    </Panel>
   );
 }

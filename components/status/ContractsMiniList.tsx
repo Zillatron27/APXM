@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useContractsStore } from '../../stores/entities/contracts';
-import { Card, SectionHeader, StateTile, type TileVariant } from '../shared';
+import { Panel, StateTile, type TileVariant } from '../shared';
 import { useGameState } from '../../stores/gameState';
 import { useConnectionStore } from '../../stores/connection';
 import { useConnectionStatus } from '../../hooks/useConnectionStatus';
@@ -124,18 +124,16 @@ export function ContractsMiniList() {
 
   if (topContracts.length === 0) {
     return (
-      <Card>
-        <SectionHeader title="Contracts" onViewAll={() => setActiveTab('contracts')} />
+      <Panel title="Contracts" code="CONT" onViewAll={() => setActiveTab('contracts')}>
         <p className={`text-xs ${apexUnresponsive && !contractsFetched ? 'text-status-critical' : 'text-apxm-muted'} ${emptyMessage.pulse ? 'animate-pulse' : ''}`}>
           {emptyMessage.text}
         </p>
-      </Card>
+      </Panel>
     );
   }
 
   return (
-    <Card>
-      <SectionHeader title="Contracts" onViewAll={() => setActiveTab('contracts')} />
+    <Panel title="Contracts" code="CONT" onViewAll={() => setActiveTab('contracts')}>
       <div className="space-y-0">
         {topContracts.map((contract) => {
           const tileConfig = statusTileConfig[contract.status];
@@ -148,13 +146,13 @@ export function ContractsMiniList() {
                 </div>
                 <div className="text-sm text-apxm-text truncate">{contract.partnerName}</div>
               </div>
-              <span className={`text-xs whitespace-nowrap ${getDeadlineColor(contract.dueDate)}`}>
+              <span className={`font-mono text-xs whitespace-nowrap ${getDeadlineColor(contract.dueDate)}`}>
                 {contract.dueDate ? formatDeadline(contract.dueDate) : '--'}
               </span>
             </div>
           );
         })}
       </div>
-    </Card>
+    </Panel>
   );
 }
