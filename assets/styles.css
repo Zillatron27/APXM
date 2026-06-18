@@ -33,8 +33,11 @@ input[type='number'] {
   overflow: visible !important;
 }
 
-/* WXT container inside shadow root must fill the host */
+/* WXT container inside shadow root must fill the host. Also sets the overlay's
+   default typeface — without this the UI inherits APEX's page font. Structure
+   text defaults to Plex Sans; data elements opt into Plex Mono via `font-mono`. */
 :host > * {
   width: 100% !important;
   height: 100% !important;
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
 }

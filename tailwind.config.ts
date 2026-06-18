@@ -28,6 +28,13 @@ export default {
           surplus: 'rgb(var(--apxm-status-surplus-rgb) / <alpha-value>)',
         },
       },
+      fontFamily: {
+        // IBM Plex, bundled via assets/fonts.css. Sans carries structure
+        // (titles, names, body); mono carries all data (numbers, tickers,
+        // codes, labels, tabs, nav) per the Retro Terminal screen style.
+        sans: ['IBM Plex Sans', 'system-ui', 'sans-serif'],
+        mono: ['IBM Plex Mono', 'ui-monospace', 'monospace'],
+      },
       minHeight: {
         touch: '44px',
       },

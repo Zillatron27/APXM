@@ -15,6 +15,7 @@ import { executeBatchRefresh } from '../lib/buffer-refresh';
 import { useSitesStore } from '../stores/entities';
 import { useSiteSourceStore } from '../stores/site-data-sources';
 import { applyTheme } from '../lib/theme';
+import '../assets/fonts.css';
 import '../assets/styles.css';
 
 export default defineContentScript({
