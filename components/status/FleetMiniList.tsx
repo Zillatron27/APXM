@@ -1,7 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { useShipsStore } from '../../stores/entities/ships';
 import { getFlightByShipId } from '../../stores/entities/flights';
-import { Card, SectionHeader } from '../shared';
+import { Panel } from '../shared';
 import { useGameState } from '../../stores/gameState';
 import { useConnectionStore } from '../../stores/connection';
 import { useConnectionStatus } from '../../hooks/useConnectionStatus';
@@ -19,7 +19,7 @@ interface ShipSummary {
   etaMs: number | null;
 }
 
-export function FleetMiniList() {
+export function FleetMiniList({ handle }: { handle?: ReactNode }) {
   const { setActiveTab } = useGameState();
   const apexUnresponsive = useConnectionStore((s) => s.apexUnresponsive);
   const shipsLastUpdated = useShipsStore((s) => s.lastUpdated);
@@ -69,18 +69,16 @@ export function FleetMiniList() {
 
   if (topShips.length === 0) {
     return (
-      <Card>
-        <SectionHeader title="Fleet" onViewAll={() => setActiveTab('fleet')} />
+      <Panel title="Fleet" code="FLT" onViewAll={() => setActiveTab('fleet')} handle={handle}>
         <p className={`text-xs ${apexUnresponsive && !shipsFetched ? 'text-status-critical' : 'text-apxm-muted'} ${emptyMessage.pulse ? 'animate-pulse' : ''}`}>
           {emptyMessage.text}
         </p>
-      </Card>
+      </Panel>
     );
   }
 
   return (
-    <Card>
-      <SectionHeader title="Fleet" onViewAll={() => setActiveTab('fleet')} />
+    <Panel title="Fleet" code="FLT" onViewAll={() => setActiveTab('fleet')} handle={handle}>
       <div className="space-y-0">
         {topShips.map((ship) => (
           <div key={ship.id} className="flex items-center justify-between py-1">
@@ -104,6 +102,6 @@ export function FleetMiniList() {
           </div>
         ))}
       </div>
-    </Card>
+    </Panel>
   );
 }

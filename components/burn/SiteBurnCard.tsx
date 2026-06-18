@@ -91,7 +91,7 @@ export function SiteBurnCard({ summary, repairAgeDays, prodStatus }: SiteBurnCar
   }
 
   return (
-    <div className="bg-apxm-surface overflow-hidden">
+    <div className="bg-apxm-surface border border-apxm-accent overflow-hidden">
       <div className="w-full flex items-center justify-between gap-2 p-3">
         {/* Site name + staleness */}
         <div className="min-w-0">

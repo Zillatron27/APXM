@@ -33,8 +33,8 @@ export function BaseStatusTile({
         interactive ? keycapClasses : ''
       }`}
     >
-      <span className="text-[9px] uppercase tracking-wide opacity-80">{label}</span>
-      <span className="text-xs font-semibold">{value}</span>
+      <span className="font-mono text-[9px] uppercase tracking-wide opacity-80">{label}</span>
+      <span className="font-mono text-xs font-semibold">{value}</span>
     </div>
   );
 }

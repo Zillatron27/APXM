@@ -1,1 +1,2 @@
-export { ContractCard } from './ContractCard';
+export { ContractRow } from './ContractRow';
+export { ContractDetailView } from './ContractDetailView';

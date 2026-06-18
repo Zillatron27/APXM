@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Card, SectionHeader } from '../shared';
+import { Panel } from '../shared';
 import { useBalancesStore } from '../../stores/entities/balances';
 import { useCompanyStore } from '../../stores/company';
 import { primaryCurrencyFor, sortBalances } from '../../lib/currency';
@@ -15,21 +15,27 @@ interface BalanceRowProps {
   indicator?: string;
   /** Collapsed-state hint that more currencies exist. */
   hiddenCount?: number;
+  /** Headline row — the primary balance, rendered at the style-guide data scale. */
+  prominent?: boolean;
 }
 
-function BalanceRow({ currency, amount, indicator, hiddenCount }: BalanceRowProps) {
+function BalanceRow({ currency, amount, indicator, hiddenCount, prominent }: BalanceRowProps) {
   // Ledger layout: fixed-width right-aligned amount column directly beside
   // the code column, so amounts share one right edge near their labels
-  // instead of stretching to the card edge.
+  // instead of stretching to the card edge. The primary balance is the panel's
+  // headline, so it scales up to fill the space (mono data, per the style guide).
+  const s = prominent
+    ? { ind: 'text-base w-5', code: 'text-sm w-12', amount: 'text-2xl w-48', hint: 'text-sm', pad: 'py-1' }
+    : { ind: 'text-xs w-4', code: 'text-xs w-9', amount: 'text-sm w-32', hint: 'text-xs', pad: 'py-0.5' };
   return (
-    <div className="flex items-center gap-2 py-0.5">
-      <span className="text-apxm-text/50 text-xs w-4 shrink-0">{indicator ?? ''}</span>
-      <span className="text-xs text-apxm-text/70 w-9 shrink-0">{currency}</span>
-      <span className="text-xs text-apxm-text tabular-nums w-28 shrink-0 text-right">
+    <div className={`flex items-baseline gap-2 ${s.pad}`}>
+      <span className={`text-apxm-text/50 shrink-0 ${s.ind}`}>{indicator ?? ''}</span>
+      <span className={`font-mono text-apxm-text/70 shrink-0 ${s.code}`}>{currency}</span>
+      <span className={`font-mono text-apxm-text tabular-nums text-right shrink-0 ${s.amount}`}>
         {formatAmount(amount)}
       </span>
       {hiddenCount !== undefined && hiddenCount > 0 && (
-        <span className="text-xs text-apxm-muted">+{hiddenCount}</span>
+        <span className={`text-apxm-muted ${s.hint}`}>+{hiddenCount}</span>
       )}
     </div>
   );
@@ -64,17 +70,14 @@ export function CashBalancePane() {
   const [primary, ...rest] = balances;
 
   return (
-    <Card>
-      <SectionHeader title={title} />
+    <Panel title={title}>
       {!fetched ? (
         <p className="text-xs text-apxm-muted animate-pulse">Loading balances...</p>
       ) : balances.length === 0 ? (
         <p className="text-xs text-apxm-muted">No balances</p>
       ) : balances.length === 1 ? (
         // Single currency — nothing to expand, render a plain row
-        <div className="pt-3">
-          <BalanceRow currency={balances[0].currency} amount={balances[0].amount} />
-        </div>
+        <BalanceRow currency={balances[0].currency} amount={balances[0].amount} prominent />
       ) : (
         // flex-col overrides the browser's default vertical centring of
         // button content: the first row keeps the same offset below the
@@ -82,13 +85,14 @@ export function CashBalancePane() {
         <button
           onClick={() => setExpanded(!expanded)}
           aria-expanded={expanded}
-          className="w-full min-h-[44px] flex flex-col items-stretch justify-start pt-3 text-left hover:bg-apxm-accent/30"
+          className="w-full min-h-[44px] flex flex-col items-stretch justify-start text-left hover:bg-apxm-accent/30"
         >
           <BalanceRow
             currency={primary.currency}
             amount={primary.amount}
             indicator={expanded ? '▼' : '▶'}
             hiddenCount={!expanded ? rest.length : undefined}
+            prominent
           />
           {/* grid-rows 0fr→1fr animates to the list's natural height
               (height:auto isn't transitionable); motion-reduce disables it */}
@@ -105,6 +109,6 @@ export function CashBalancePane() {
           </div>
         </button>
       )}
-    </Card>
+    </Panel>
   );
 }

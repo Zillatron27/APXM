@@ -4,9 +4,14 @@
  */
 import { useMemo } from 'react';
 import { useSitesStore } from '../../stores/entities/sites';
-import { calculateAllRepairStatuses, type RepairStatusSummary } from '../../core/repair';
+import {
+  calculateAllRepairStatuses,
+  calculateSiteRepairBuildings,
+  type RepairStatusSummary,
+  type BuildingRepairStatus,
+} from '../../core/repair';
 
-export type { RepairStatusSummary };
+export type { RepairStatusSummary, BuildingRepairStatus };
 
 /**
  * Hook that calculates repair status for all sites.
@@ -20,4 +25,14 @@ export function useRepairStatus(): RepairStatusSummary[] {
     // sitesLastUpdated is the recompute trigger; the data is read from the store
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sitesLastUpdated]);
+}
+
+/** Per-building repair detail for one site (oldest-since-repair first). */
+export function useSiteRepairBuildings(siteId: string): BuildingRepairStatus[] {
+  const sitesLastUpdated = useSitesStore((s) => s.lastUpdated);
+
+  return useMemo(() => {
+    return calculateSiteRepairBuildings(siteId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [siteId, sitesLastUpdated]);
 }

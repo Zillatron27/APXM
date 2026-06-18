@@ -10,10 +10,12 @@ export {
 } from './useFleetDetails';
 export {
   useContractDetails,
+  useContractDetail,
   type ContractFilter,
   type ContractDetailsResult,
   type ContractDetail,
   type ContractConditionDetail,
+  type ContractAcceptance,
   type ContractStateLabel,
   type ConditionPart,
 } from './useContractDetails';

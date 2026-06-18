@@ -1,5 +1,5 @@
 import { useGameState } from '../../stores/gameState';
-import { ConnectionStatusBadge } from '../shared';
+import { ConnectionStatusBadge, btnSecondary } from '../shared';
 import { BUILD_VERSION } from '../../lib/constants';
 
 export function Header() {
@@ -28,7 +28,7 @@ export function Header() {
         <ConnectionStatusBadge />
         <button
           onClick={() => setApexVisible(true)}
-          className="px-3 min-h-touch flex items-center text-xs font-medium text-apxm-text border border-apxm-surface hover:border-prun-yellow hover:text-prun-yellow"
+          className={`px-3 min-h-touch flex items-center ${btnSecondary}`}
         >
           SHOW APEX
         </button>

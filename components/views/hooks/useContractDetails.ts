@@ -22,15 +22,39 @@ export interface ConditionPart {
 
 export interface ContractConditionDetail {
   index: number;
+  id: string;
   party: 'self' | 'partner';
   partnerName: string;
   type: string;
   description: string;
   descriptionParts: ConditionPart[];
+  /** Full wire status, the source of truth for all derived flags below. */
+  status: PrunApi.ContractConditionStatus;
+  /** Convenience: status === 'FULFILLED'. */
   fulfilled: boolean;
+  /**
+   * Convenience: status === 'VIOLATED'. This is the *condition* failing —
+   * distinct from the contract-level BREACHED/DEADLINE_EXCEEDED status
+   * (which drives the card's `stateLabel`). A condition is never BREACHED;
+   * its failure value is VIOLATED.
+   */
   breached: boolean;
+  /** Self ∧ PENDING ∧ every dependency FULFILLED — your move now. */
+  available: boolean;
+  /** Self ∧ not-fulfilled ∧ some dependency not yet FULFILLED — waiting. */
+  blocked: boolean;
+  /** Resolved dependency ids → their 0-based condition index (card renders +1). */
+  dependencyIndexes: number[];
   deadline: string | null;
 }
+
+/**
+ * Whose acceptance an OPEN contract is waiting on, or null once it's been
+ * accepted (or is otherwise not awaiting acceptance). 'awaiting-mine' means
+ * the action is yours: ACCEPT or REJECT. Mirrors rPrun's canAcceptContract /
+ * canPartnerAcceptContract.
+ */
+export type ContractAcceptance = 'awaiting-mine' | 'awaiting-partner' | null;
 
 export interface ContractDetail {
   id: string;
@@ -42,6 +66,17 @@ export interface ContractDetail {
   dueDateMs: number | null;
   createdMs: number;
   conditions: ContractConditionDetail[];
+  /** Any condition is `available` — drives a future filter ("contracts to fulfil"). */
+  actionable: boolean;
+  /**
+   * Whose acceptance is pending (OPEN). 'awaiting-mine' → you can ACCEPT/REJECT.
+   * null once accepted/terminal.
+   */
+  acceptance: ContractAcceptance;
+  /** Accepted & active (CLOSED / PARTIALLY_FULFILLED): conditions are fulfillable. */
+  accepted: boolean;
+  /** Faction/agent contract (partner carries a countryCode). */
+  isFaction: boolean;
 }
 
 /**
@@ -159,6 +194,138 @@ function formatRelativeTime(ms: number): string {
   return diffMs < 0 ? `${text} ago` : text;
 }
 
+/**
+ * Statuses where the contract has been accepted and is being worked — its
+ * conditions are fulfillable. Distinct from ACTIVE_STATUSES (which also
+ * includes OPEN, i.e. awaiting acceptance) and from the "shown in the ACTIVE
+ * tab" set. Mirrors the rPrun rule that OPEN means awaiting acceptance, not
+ * in-progress.
+ */
+const ACCEPTED_STATUSES: PrunApi.ContractStatus[] = ['CLOSED', 'PARTIALLY_FULFILLED'];
+
+/** Accepted & active: conditions can be fulfilled. */
+function isContractAccepted(contract: PrunApi.Contract): boolean {
+  return ACCEPTED_STATUSES.includes(contract.status);
+}
+
+/**
+ * Whose acceptance an OPEN contract is waiting on. Ported verbatim from rPrun's
+ * canAcceptContract / canPartnerAcceptContract: you accept the contracts where
+ * you are the CUSTOMER; the partner accepts the ones where you are the PROVIDER.
+ */
+function deriveAcceptance(contract: PrunApi.Contract): ContractAcceptance {
+  if (contract.status !== 'OPEN') return null;
+  if (contract.party === 'CUSTOMER') return 'awaiting-mine';
+  return 'awaiting-partner'; // party === 'PROVIDER'
+}
+
+/** Faction/agent contract — rPrun's isFactionContract (partner has a countryCode). */
+function isFactionContract(contract: PrunApi.Contract): boolean {
+  return !!contract.partner.countryCode;
+}
+
+/**
+ * A self condition is "available" (ready to fulfil now) only once the contract
+ * is accepted, the condition is still PENDING, and every dependency is
+ * FULFILLED. A fresh OPEN contract is NOT fulfillable — its action is ACCEPT —
+ * so the accepted gate excludes it (and all terminal states). Dependency ids
+ * that don't resolve in `byId` count as not-fulfilled (fail-safe, enforced by
+ * the `=== 'FULFILLED'` check).
+ */
+function isAvailable(
+  cond: PrunApi.ContractCondition,
+  contract: PrunApi.Contract,
+  byId: Map<string, PrunApi.ContractCondition>,
+): boolean {
+  if (!isContractAccepted(contract)) return false; // not accepted → accept first, can't fulfil
+  if (cond.party !== contract.party) return false; // not yours
+  if (cond.status !== 'PENDING') return false; // already moving / done / failed
+  return cond.dependencies.every((depId) => byId.get(depId)?.status === 'FULFILLED');
+}
+
+/**
+ * A self condition is "blocked" when the contract is accepted, the condition is
+ * not yet fulfilled, and at least one dependency is not FULFILLED. An
+ * unresolvable dependency id counts as blocking (`?.status !== 'FULFILLED'` is
+ * true for `undefined`).
+ */
+function isBlocked(
+  cond: PrunApi.ContractCondition,
+  contract: PrunApi.Contract,
+  byId: Map<string, PrunApi.ContractCondition>,
+): boolean {
+  if (!isContractAccepted(contract)) return false; // not accepted → nothing to block yet
+  if (cond.party !== contract.party) return false;
+  if (cond.status === 'FULFILLED') return false;
+  return cond.dependencies.some((depId) => byId.get(depId)?.status !== 'FULFILLED');
+}
+
+/**
+ * Pure assembly of a single contract's display detail, including the derived
+ * dependency-aware condition flags. Kept separate from the hook so it is
+ * testable without a React renderer or store population.
+ */
+export function buildContractDetail(contract: PrunApi.Contract): ContractDetail {
+  const byId = new Map(contract.conditions.map((c) => [c.id, c]));
+
+  const conditions: ContractConditionDetail[] = contract.conditions.map((cond) => {
+    const { description, parts } = buildConditionDescription(cond);
+    return {
+      index: cond.index,
+      id: cond.id,
+      party: cond.party === contract.party ? 'self' : 'partner',
+      partnerName: contract.partner.name,
+      type: formatConditionType(cond.type),
+      description,
+      descriptionParts: parts,
+      status: cond.status,
+      fulfilled: cond.status === 'FULFILLED',
+      breached: cond.status === 'VIOLATED',
+      available: isAvailable(cond, contract, byId),
+      blocked: isBlocked(cond, contract, byId),
+      dependencyIndexes: cond.dependencies
+        .map((depId) => byId.get(depId)?.index)
+        .filter((idx): idx is number => idx !== undefined),
+      deadline: cond.deadline ? formatRelativeTime(cond.deadline.timestamp) : null,
+    };
+  });
+
+  // Sort conditions by index
+  conditions.sort((a, b) => a.index - b.index);
+
+  return {
+    id: contract.id,
+    localId: contract.localId,
+    partnerName: contract.partner.name,
+    partnerCode: contract.partner.code ?? null,
+    status: contract.status,
+    stateLabel: getStateLabel(contract.status),
+    dueDateMs: contract.dueDate?.timestamp ?? null,
+    createdMs: contract.date.timestamp,
+    conditions,
+    actionable: conditions.some((c) => c.available),
+    acceptance: deriveAcceptance(contract),
+    accepted: isContractAccepted(contract),
+    isFaction: isFactionContract(contract),
+  };
+}
+
+/**
+ * A single contract's detail for the drill-down sheet, or null if the contract
+ * is gone (e.g. store cleared on reconnect — the sheet should then close
+ * itself). Mirrors useShipDetail.
+ */
+export function useContractDetail(contractId: string): ContractDetail | null {
+  const contractsLastUpdated = useContractsStore((s) => s.lastUpdated);
+
+  return useMemo(() => {
+    const contract = useContractsStore.getState().getById(contractId);
+    return contract ? buildContractDetail(contract) : null;
+    // contractsLastUpdated re-derives when the contract's data changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contractId, contractsLastUpdated]);
+}
+
 export interface ContractDetailsResult {
   contracts: ContractDetail[];
   counts: Record<ContractFilter, number>;
@@ -173,37 +340,7 @@ export function useContractDetails(activeFilters: ReadonlySet<ContractFilter>): 
   return useMemo(() => {
     const contracts = useContractsStore.getState().getAll();
 
-    const details: ContractDetail[] = contracts.map((contract) => {
-      const conditions: ContractConditionDetail[] = contract.conditions.map((cond) => {
-        const { description, parts } = buildConditionDescription(cond);
-        return {
-          index: cond.index,
-          party: cond.party === contract.party ? 'self' : 'partner',
-          partnerName: contract.partner.name,
-          type: formatConditionType(cond.type),
-          description,
-          descriptionParts: parts,
-          fulfilled: cond.status === 'FULFILLED',
-          breached: cond.status === 'VIOLATED',
-          deadline: cond.deadline ? formatRelativeTime(cond.deadline.timestamp) : null,
-        };
-      });
-
-      // Sort conditions by index
-      conditions.sort((a, b) => a.index - b.index);
-
-      return {
-        id: contract.id,
-        localId: contract.localId,
-        partnerName: contract.partner.name,
-        partnerCode: contract.partner.code ?? null,
-        status: contract.status,
-        stateLabel: getStateLabel(contract.status),
-        dueDateMs: contract.dueDate?.timestamp ?? null,
-        createdMs: contract.date.timestamp,
-        conditions,
-      };
-    });
+    const details: ContractDetail[] = contracts.map(buildContractDetail);
 
     // Sort: OPEN first, then by due date
     details.sort((a, b) => {

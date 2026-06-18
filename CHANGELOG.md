@@ -1,5 +1,35 @@
 # APXM Changelog
 
+## 1.0.0 — Retro Terminal (2026-06-18)
+
+The 1.0 release: a full visual redesign and a reworked, customisable Status tab.
+
+### A new look — "Retro Terminal"
+
+- Every screen is rebuilt as squared-off terminal windows: 1px borders, hard corners, IBM Plex type (Sans for structure, Mono for all data), an amber accent, and colour-coded status. The fonts are bundled, so it renders identically everywhere, offline. The five colour themes and the way they're applied are unchanged
+
+### Status tab
+
+- **Pinned overview** — your company and liquidity, plus a new at-a-glance attention bar (BURN / PROD / IN TRANSIT counts, each tapping through to its tab), sit at the top
+- **Customisable panels** — drag the handle on the Bases, Fleet, Contracts, and Empire panels to reorder them; your layout is remembered
+- **Empire burn moved here** — the empire-wide material rollup is now a collapsible panel on Status (sortable by Type / Status / A–Z / Z–A), freeing the Base tab to focus on individual sites
+- Base rows are denser, and tapping a base's BURN / REPAIR / PROD chip drills straight into its detail
+
+### Repair detail
+
+- Tapping a base's REPAIR tile now lists every repairable building with an age gauge that fills toward your repair threshold (green → yellow → red, with tick marks at your day settings) and the days since its last repair
+
+### Contracts
+
+- The contracts screen is a dense list that drills into a read-only contract detail sheet — partner, timing, acceptance status, and dependency-aware conditions. Fulfil / accept / reject actions are coming in a later update
+
+### Notes
+
+- This remains an observe-and-prepare tool — no change to the read-only data model
+- Tests: 448
+
+---
+
 ## 0.2.0-beta3 — Base Drill-Down Sheets (2026-06-15)
 
 Tapping a base's status now drills into detail.

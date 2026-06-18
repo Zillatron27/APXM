@@ -6,7 +6,7 @@ export function FloatingReturn() {
   return (
     <button
       onClick={() => setApexVisible(false)}
-      className="fixed top-0 left-0 right-0 z-[999999] h-11 min-h-touch px-4 bg-apxm-bg text-apxm-text text-sm font-semibold flex items-center justify-end border-b border-apxm-surface hover:bg-apxm-surface pointer-events-auto"
+      className="fixed top-0 left-0 right-0 z-[999999] h-11 min-h-touch px-4 bg-apxm-bg text-apxm-text font-mono text-[11px] font-semibold tracking-wider uppercase flex items-center justify-end border-b border-apxm-accent hover:bg-apxm-surface pointer-events-auto"
       aria-label="Return to APXM"
     >
       <span className="text-prun-yellow">←</span>

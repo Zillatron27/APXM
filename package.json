@@ -1,6 +1,6 @@
 {
   "name": "apxm",
-  "version": "0.2.0.7",
+  "version": "1.0.0",
   "description": "APXM — Mobile interface for Prosperous Universe",
   "type": "module",
   "scripts": {
@@ -26,6 +26,8 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "@fontsource/ibm-plex-mono": "^5.2.7",
+    "@fontsource/ibm-plex-sans": "^5.2.8",
     "@thedutchcoder/postcss-rem-to-px": "^0.0.2",
     "@types/react": "^19.2.10",
     "@types/react-dom": "^19.2.3",
