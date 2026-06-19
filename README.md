@@ -43,13 +43,13 @@ APXM observes and displays — it never sends messages to the game server.
 |----------|---------|-------|
 | iOS / iPadOS | Orion (Kagi) | Validated — install via the AMO listing |
 | Android | Firefox | |
-| Desktop | Chrome / Firefox | Dormant by default (APXM is a mobile tool); enable with `?apxm_force` |
+
 
 ## Install
 
-Firefox (Android & desktop) and Orion (iOS): [Firefox Add-ons (AMO)](https://addons.mozilla.org/en-US/firefox/addon/apxm/).
+Firefox (Android) and Orion (iOS): [Firefox Add-ons (AMO)](https://addons.mozilla.org/en-US/firefox/addon/apxm/
 
-Chrome: not yet on the Chrome Web Store.
+Chrome: [Chrome Web Store](https://chromewebstore.google.com/detail/apxm/ioiiigjopajjdhfcdmdhlcmkhbpdfdec) 
 
 ## Build From Source
 
