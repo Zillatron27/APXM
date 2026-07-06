@@ -25,8 +25,28 @@ import {
 } from '../../__tests__/fixtures/factories';
 import { useSiteSourceStore } from '../site-data-sources';
 import { useCompanyStore } from '../company';
+import { useWarehouseStore } from '../warehouses';
+import { useExchangeStore } from '../exchanges';
+import { useCxobStore } from '../cxob';
 
+// Dispatch using the REAL wire shape: the decoded game message wraps its data
+// as { messageType, payload }, so ProcessedMessage.payload carries that whole
+// envelope and extractPayload must unwrap it. Testing with a flat payload
+// would only exercise the backwards-compat fallback and leave the production
+// unwrapping path unguarded.
 function dispatchMessage(messageType: string, payload: unknown): void {
+  const msg: ProcessedMessage = {
+    messageType,
+    payload: { messageType, payload },
+    timestamp: Date.now(),
+    direction: 'inbound',
+    rawSize: 100,
+  };
+  processMessage(msg);
+}
+
+// Legacy flat shape (no envelope) — extractPayload's documented fallback.
+function dispatchFlatMessage(messageType: string, payload: unknown): void {
   const msg: ProcessedMessage = {
     messageType,
     payload,
@@ -43,6 +63,9 @@ describe('message-handlers', () => {
     useSiteSourceStore.getState().clear();
     useCompanyStore.getState().clear();
     useProductionLoadedStore.getState().clear();
+    useWarehouseStore.getState().clear();
+    useExchangeStore.getState().clear();
+    useCxobStore.getState().clear();
     useConnectionStore.setState({
       connected: false,
       lastMessageTimestamp: null,
@@ -65,14 +88,33 @@ describe('message-handlers', () => {
       dispatchMessage('SITE_SITES', { sites });
       expect(useSitesStore.getState().entities.size).toBe(1);
     });
+
+    it('still handles the legacy flat payload shape (no envelope)', () => {
+      const sites = [createTestSite({ siteId: 'site-flat' })];
+      dispatchFlatMessage('SITE_SITES', { sites });
+      expect(useSitesStore.getState().getById('site-flat')?.siteId).toBe('site-flat');
+    });
   });
 
   describe('CLIENT_CONNECTION_OPENED', () => {
+    // Populate the three ACT-engine stores (not covered by clearAllEntityStores).
+    function populateActStores(): void {
+      useWarehouseStore.getState().setWarehouses([
+        { warehouseId: 'w1', storeId: 's1', systemNaturalId: 'CI', stationNaturalId: 'CI1' },
+      ]);
+      useExchangeStore.getState().setExchange('CI1', 'BEN');
+      useCxobStore.getState().setOrderBook('RAT.CI1', {
+        sellingOrders: [{ amount: 10, limit: { amount: 100 } }],
+        buyingOrders: [],
+      });
+    }
+
     it('preserves entity stores on first connection', () => {
       // Populate stores with cache/FIO data
       useSitesStore.getState().setAll([createTestSite()]);
       useStorageStore.getState().setAll([createTestStorage()]);
       useShipsStore.getState().setAll([createTestShip()]);
+      populateActStores();
 
       expect(useSitesStore.getState().entities.size).toBe(1);
       expect(useStorageStore.getState().entities.size).toBe(1);
@@ -84,6 +126,9 @@ describe('message-handlers', () => {
       expect(useSitesStore.getState().entities.size).toBe(1);
       expect(useStorageStore.getState().entities.size).toBe(1);
       expect(useShipsStore.getState().entities.size).toBe(1);
+      expect(useWarehouseStore.getState().warehouses).toHaveLength(1);
+      expect(useExchangeStore.getState().getNaturalIdFromCode('CI1')).toBe('BEN');
+      expect(useCxobStore.getState().getByTicker('RAT.CI1')).toBeDefined();
     });
 
     it('clears all entity stores on reconnection', () => {
@@ -94,6 +139,7 @@ describe('message-handlers', () => {
       useSitesStore.getState().setAll([createTestSite()]);
       useStorageStore.getState().setAll([createTestStorage()]);
       useShipsStore.getState().setAll([createTestShip()]);
+      populateActStores();
 
       expect(useSitesStore.getState().entities.size).toBe(1);
       expect(useStorageStore.getState().entities.size).toBe(1);
@@ -105,6 +151,11 @@ describe('message-handlers', () => {
       expect(useSitesStore.getState().entities.size).toBe(0);
       expect(useStorageStore.getState().entities.size).toBe(0);
       expect(useShipsStore.getState().entities.size).toBe(0);
+      // Stale ACT data after a WS gap is exactly the staleness hazard —
+      // order books especially must not survive a reconnect.
+      expect(useWarehouseStore.getState().warehouses).toHaveLength(0);
+      expect(useExchangeStore.getState().getNaturalIdFromCode('CI1')).toBeUndefined();
+      expect(useCxobStore.getState().getByTicker('RAT.CI1')).toBeUndefined();
     });
 
     it('clears per-site sources on reconnection', () => {
@@ -492,6 +543,87 @@ describe('message-handlers', () => {
       );
 
       warnSpy.mockRestore();
+    });
+  });
+
+  describe('WAREHOUSE_STORAGES', () => {
+    // The game folds warehouse/store data together in three observed shapes;
+    // the handler must tolerate all of them (see extractWarehouse).
+    const address = {
+      lines: [
+        { type: 'SYSTEM', entity: { naturalId: 'CI' } },
+        { type: 'STATION', entity: { naturalId: 'CI1' } },
+      ],
+    };
+
+    it('shape 1: top-level storeId', () => {
+      dispatchMessage('WAREHOUSE_STORAGES', {
+        storages: [{ warehouseId: 'w1', storeId: 'store-1', address }],
+      });
+
+      const loc = useWarehouseStore.getState().getByEntityNaturalId('CI1');
+      expect(loc).toEqual({
+        warehouseId: 'w1',
+        storeId: 'store-1',
+        systemNaturalId: 'CI',
+        stationNaturalId: 'CI1',
+      });
+    });
+
+    it('shape 2: embedded store object — storeId taken from it AND the store lands in the storage store', () => {
+      const embedded = createTestStorage({ id: 'store-2', type: 'WAREHOUSE_STORE' });
+      dispatchMessage('WAREHOUSE_STORAGES', {
+        storages: [{ warehouseId: 'w2', store: embedded, address }],
+      });
+
+      expect(useWarehouseStore.getState().getByEntityNaturalId('CI1')?.storeId).toBe('store-2');
+      expect(useStorageStore.getState().getById('store-2')?.type).toBe('WAREHOUSE_STORE');
+    });
+
+    it('shape 3: entry is itself a Store object — id used as storeId, inventory reaches the storage store', () => {
+      const storeEntry = {
+        ...createTestStorage({ id: 'store-3', type: 'WAREHOUSE_STORE' }),
+        warehouseId: 'w3',
+        address,
+      };
+      dispatchMessage('WAREHOUSE_STORAGES', { storages: [storeEntry] });
+
+      expect(useWarehouseStore.getState().getByEntityNaturalId('CI1')?.storeId).toBe('store-3');
+      expect(useStorageStore.getState().getById('store-3')).toBeDefined();
+    });
+
+    it('missing storeId everywhere yields the documented "" sentinel, not a bogus id', () => {
+      dispatchMessage('WAREHOUSE_STORAGES', {
+        storages: [{ warehouseId: 'w4', address }],
+      });
+
+      expect(useWarehouseStore.getState().getByEntityNaturalId('CI1')?.storeId).toBe('');
+    });
+
+    it('accepts "warehouses" as the array field name', () => {
+      dispatchMessage('WAREHOUSE_STORAGES', {
+        warehouses: [{ warehouseId: 'w5', storeId: 's5', address }],
+      });
+
+      expect(useWarehouseStore.getState().warehouses).toHaveLength(1);
+    });
+
+    it('malformed payload increments discardedMessages and stores nothing', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      dispatchMessage('WAREHOUSE_STORAGES', { nope: true });
+
+      expect(useWarehouseStore.getState().warehouses).toHaveLength(0);
+      expect(useConnectionStore.getState().discardedMessages).toBe(1);
+      warnSpy.mockRestore();
+    });
+
+    it('WAREHOUSE_STORAGE upserts a single warehouse; WAREHOUSE_STORAGE_REMOVED drops it', () => {
+      dispatchMessage('WAREHOUSE_STORAGE', { warehouseId: 'w6', storeId: 's6', address });
+      expect(useWarehouseStore.getState().warehouses).toHaveLength(1);
+
+      dispatchMessage('WAREHOUSE_STORAGE_REMOVED', { warehouseId: 'w6' });
+      expect(useWarehouseStore.getState().warehouses).toHaveLength(0);
     });
   });
 

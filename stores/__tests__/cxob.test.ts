@@ -82,6 +82,37 @@ describe('cxob store', () => {
     expect(useCxobStore.getState().getByTicker('H2O.IC1')?.sellingOrders[0].amount).toBe(5);
   });
 
+  it('COMEX_BROKER_DATA teaches the exchange store the code → station mapping', async () => {
+    const { useExchangeStore } = await import('../exchanges');
+    useExchangeStore.getState().clear();
+
+    dispatch('COMEX_BROKER_DATA', {
+      ticker: 'RAT',
+      exchangeCode: 'CI1',
+      address: {
+        lines: [
+          { type: 'SYSTEM', entity: { naturalId: 'CI' } },
+          { type: 'STATION', entity: { naturalId: 'BEN' } },
+        ],
+      },
+      sellingOrders: [],
+      buyingOrders: [],
+    });
+
+    expect(useExchangeStore.getState().getNaturalIdFromCode('CI1')).toBe('BEN');
+  });
+
+  it('COMEX_BROKER_DATA falls back to itemCount for the order amount', () => {
+    dispatch('COMEX_BROKER_DATA', {
+      ticker: 'RAT',
+      exchangeCode: 'CI1',
+      sellingOrders: [{ itemCount: 42, limit: { amount: 120 } }],
+      buyingOrders: [],
+    });
+
+    expect(useCxobStore.getState().getByTicker('RAT.CI1')?.sellingOrders[0].amount).toBe(42);
+  });
+
   it('COMEX_BROKER_DATA drops orders without a numeric limit', () => {
     dispatch('COMEX_BROKER_DATA', {
       ticker: 'RAT',
