@@ -143,6 +143,21 @@ export namespace PrunApi {
   }
 
   // ============================================================================
+  // Commodity Exchange Order Book (COMEX_BROKER_DATA)
+  // ============================================================================
+
+  export interface CXOrder {
+    /** Units offered/requested. null = a market maker's infinite order. */
+    amount: number | null;
+    limit: { amount: number };
+  }
+
+  export interface CXOrderBook {
+    sellingOrders: CXOrder[];
+    buyingOrders: CXOrder[];
+  }
+
+  // ============================================================================
   // Site Types
   // ============================================================================
 

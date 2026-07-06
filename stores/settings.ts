@@ -42,6 +42,9 @@ interface SettingsState {
   /** User's Status-tab panel order. Untrusted (storage) — reconciled against
    *  STATUS_PANEL_IDS by the view, which drops unknowns and appends new panels. */
   statusPanelOrder: string[];
+  /** Material tickers the ACT engine must never generate CX Buy steps for.
+   *  No UI yet — consumed by the engine port (#25/#28). */
+  noBuy: string[];
 }
 
 interface SettingsActions {
@@ -53,6 +56,7 @@ interface SettingsActions {
   setUiTheme: (theme: ApxmThemeId) => void;
   setRprunFeaturesDisabled: (disabled: boolean) => void;
   setStatusPanelOrder: (order: string[]) => void;
+  setNoBuy: (tickers: string[]) => void;
   reset: () => void;
 }
 
@@ -77,6 +81,7 @@ const initialState: SettingsState = {
   uiTheme: DEFAULT_THEME_ID,
   rprunFeaturesDisabled: false,
   statusPanelOrder: [...STATUS_PANEL_IDS],
+  noBuy: [],
 };
 
 // Check if browser storage API is available
@@ -172,6 +177,8 @@ export const useSettingsStore = create<SettingsStore>()(
       setRprunFeaturesDisabled: (disabled) => set({ rprunFeaturesDisabled: disabled }),
 
       setStatusPanelOrder: (order) => set({ statusPanelOrder: order }),
+
+      setNoBuy: (tickers) => set({ noBuy: tickers }),
 
       reset: () => set(initialState),
     }),

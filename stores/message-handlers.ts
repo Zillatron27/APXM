@@ -17,6 +17,9 @@ import {
 } from './entities';
 import { useSiteSourceStore } from './site-data-sources';
 import { useCompanyStore } from './company';
+import { useWarehouseStore, type WarehouseLocation } from './warehouses';
+import { useExchangeStore } from './exchanges';
+import { useCxobStore } from './cxob';
 
 type MessageHandler = (msg: ProcessedMessage) => void;
 const typeHandlers = new Map<string, MessageHandler>();
@@ -104,6 +107,12 @@ export function initMessageHandlers(): void {
       // markers re-accumulate as per-site data arrives.
       useCompanyStore.getState().clear();
       useProductionLoadedStore.getState().clear();
+      // ACT-engine stores: warehouses re-arrive with the login dump;
+      // exchange mappings and order books re-learn from CX buffers.
+      // Order books especially must not survive a gap in observation.
+      useWarehouseStore.getState().clear();
+      useExchangeStore.getState().clear();
+      useCxobStore.getState().clear();
     }
     useConnectionStore.getState().incrementReconnectCount();
     useConnectionStore.getState().setConnected(true);
@@ -491,6 +500,197 @@ export function initMessageHandlers(): void {
       warn('COMPANY_DATA: unexpected payload structure', payload);
       useConnectionStore.getState().incrementDiscarded();
     }
+  });
+
+  // ============================================================================
+  // Warehouses (CX storage locations — ACT engine foundation)
+  // ============================================================================
+  // Extraction logic adapted from jackinabox86's APXM fork: the game folds
+  // warehouse and store data together inconsistently, so both parsers below
+  // tolerate the three observed shapes.
+
+  // Parse one warehouse wire entry into a WarehouseLocation, or null if the
+  // required identity/address fields are missing.
+  function extractWarehouse(wh: Record<string, unknown>): WarehouseLocation | null {
+    const warehouseId = wh.warehouseId;
+    if (typeof warehouseId !== 'string') return null;
+
+    // storeId may live at the top level ("storeId"/"storageId"), be embedded
+    // in a "store"/"storage" sub-object, or be absent entirely (inventory
+    // sent separately via STORAGE_STORAGES). '' is the documented sentinel —
+    // consumers cross-reference via Store.addressableId instead.
+    const embeddedStoreObj = (wh.store ?? wh.storage) as
+      | Record<string, unknown>
+      | undefined;
+    // wh.id is a fallback for when the entry is itself a Store object; the
+    // same UUID as warehouseId means it's the warehouse id, not a store id.
+    const whId = typeof wh.id === 'string' && wh.id !== warehouseId ? wh.id : undefined;
+    const storeId = (wh.storeId ??
+      wh.storageId ??
+      embeddedStoreObj?.id ??
+      whId ??
+      '') as string;
+
+    const address = wh.address as
+      | { lines?: Array<{ type?: string; entity?: { naturalId?: string } }> }
+      | undefined;
+    const systemNaturalId = address?.lines?.find((l) => l.type === 'SYSTEM')?.entity
+      ?.naturalId;
+    if (typeof systemNaturalId !== 'string') return null;
+    const stationEntity = address?.lines?.find((l) => l.type === 'STATION')?.entity;
+    const stationNaturalId =
+      typeof stationEntity?.naturalId === 'string' ? stationEntity.naturalId : null;
+
+    return { warehouseId, storeId, systemNaturalId, stationNaturalId };
+  }
+
+  // Extract an embedded PrunApi.Store from a warehouse entry if present, so
+  // warehouse inventory reaches the storage store even when STORAGE_STORAGES
+  // doesn't carry it separately.
+  function extractEmbeddedStore(wh: Record<string, unknown>): PrunApi.Store | null {
+    // Shape 1: store data nested in a "store"/"storage" sub-object.
+    const s = (wh.store ?? wh.storage) as Record<string, unknown> | undefined;
+    if (s && typeof s.id === 'string' && typeof s.type === 'string') {
+      return s as unknown as PrunApi.Store;
+    }
+    // Shape 2: the entry is itself a Store object — identified by a top-level
+    // "items" array (inventory) alongside "warehouseId".
+    if (
+      typeof wh.id === 'string' &&
+      typeof wh.type === 'string' &&
+      Array.isArray(wh.items)
+    ) {
+      return wh as unknown as PrunApi.Store;
+    }
+    return null;
+  }
+
+  typeHandlers.set('WAREHOUSE_STORAGES', (msg: ProcessedMessage) => {
+    const payload = extractPayload(msg) as Record<string, unknown> | null;
+    // The game uses "storages" or "warehouses" as the array field name.
+    const raw = payload?.storages ?? payload?.warehouses;
+    if (!Array.isArray(raw)) {
+      warn('WAREHOUSE_STORAGES: unexpected payload structure', payload);
+      useConnectionStore.getState().incrementDiscarded();
+      return;
+    }
+    const locations: WarehouseLocation[] = [];
+    const embeddedStores: PrunApi.Store[] = [];
+    for (const wh of raw as unknown[]) {
+      if (!wh || typeof wh !== 'object') continue;
+      const loc = extractWarehouse(wh as Record<string, unknown>);
+      if (loc) locations.push(loc);
+      const embedded = extractEmbeddedStore(wh as Record<string, unknown>);
+      if (embedded) embeddedStores.push(embedded);
+    }
+    useWarehouseStore.getState().setWarehouses(locations);
+    if (embeddedStores.length > 0) {
+      useStorageStore.getState().setMany(embeddedStores);
+    }
+  });
+
+  typeHandlers.set('WAREHOUSE_STORAGE', (msg: ProcessedMessage) => {
+    const payload = extractPayload(msg) as Record<string, unknown> | null;
+    if (payload && typeof payload === 'object') {
+      const loc = extractWarehouse(payload);
+      if (loc) {
+        useWarehouseStore.getState().addWarehouse(loc);
+        const embedded = extractEmbeddedStore(payload);
+        if (embedded) useStorageStore.getState().setOne(embedded);
+        return;
+      }
+    }
+    warn('WAREHOUSE_STORAGE: unexpected payload structure', payload);
+    useConnectionStore.getState().incrementDiscarded();
+  });
+
+  typeHandlers.set('WAREHOUSE_STORAGE_REMOVED', (msg: ProcessedMessage) => {
+    const payload = extractPayload(msg) as { warehouseId?: string };
+    if (typeof payload?.warehouseId === 'string') {
+      useWarehouseStore.getState().removeWarehouse(payload.warehouseId);
+    } else {
+      warn('WAREHOUSE_STORAGE_REMOVED: unexpected payload structure', payload);
+      useConnectionStore.getState().incrementDiscarded();
+    }
+  });
+
+  // ============================================================================
+  // Commodity Exchange — order books (ACT engine foundation)
+  // ============================================================================
+  // Arrives when a CX buffer is open. Also teaches the dynamic exchange
+  // code → station naturalId mapping. Parsing adapted from jackinabox86's fork.
+
+  typeHandlers.set('COMEX_BROKER_DATA', (msg: ProcessedMessage) => {
+    const payload = extractPayload(msg) as Record<string, unknown> | null;
+    if (!payload || typeof payload !== 'object') {
+      warn('COMEX_BROKER_DATA: unexpected payload structure', payload);
+      useConnectionStore.getState().incrementDiscarded();
+      return;
+    }
+
+    // Exchange code from the exchange sub-object or the flat field.
+    let exchangeCode: string | undefined;
+    if (typeof payload.exchangeCode === 'string') {
+      exchangeCode = payload.exchangeCode;
+    } else if (payload.exchange && typeof payload.exchange === 'object') {
+      const code = (payload.exchange as Record<string, unknown>).code;
+      if (typeof code === 'string') exchangeCode = code;
+    }
+
+    // Full CX ticker ("RAT.CI1"): payload.ticker may already be full, or be
+    // the material part only; payload.material.ticker is always material-only.
+    let cxTicker: string | undefined;
+    if (typeof payload.ticker === 'string') {
+      if (payload.ticker.includes('.')) {
+        cxTicker = payload.ticker;
+        if (!exchangeCode) {
+          const dot = payload.ticker.lastIndexOf('.');
+          if (dot > 0) exchangeCode = payload.ticker.slice(dot + 1);
+        }
+      } else if (exchangeCode) {
+        cxTicker = `${payload.ticker}.${exchangeCode}`;
+      }
+    } else if (payload.material && typeof payload.material === 'object') {
+      const ticker = (payload.material as Record<string, unknown>).ticker;
+      if (typeof ticker === 'string' && exchangeCode) {
+        cxTicker = `${ticker}.${exchangeCode}`;
+      }
+    }
+
+    if (!cxTicker || !exchangeCode) {
+      warn('COMEX_BROKER_DATA: could not parse ticker/exchange', payload);
+      useConnectionStore.getState().incrementDiscarded();
+      return;
+    }
+
+    // The exchange object carries no naturalId, but the address always has a
+    // STATION line — feed the dynamic code→naturalId mapping from it.
+    const address = payload.address as
+      | { lines?: Array<{ type?: string; entity?: { naturalId?: string } }> }
+      | undefined;
+    const stationNaturalId = address?.lines?.find((l) => l.type === 'STATION')?.entity
+      ?.naturalId;
+    if (typeof stationNaturalId === 'string') {
+      useExchangeStore.getState().setExchange(exchangeCode, stationNaturalId);
+    }
+
+    function parseOrders(raw: unknown): PrunApi.CXOrder[] {
+      if (!Array.isArray(raw)) return [];
+      return raw.flatMap((o) => {
+        if (!o || typeof o !== 'object') return [];
+        const order = o as Record<string, unknown>;
+        const limit = order.limit as Record<string, unknown> | undefined;
+        if (typeof limit?.amount !== 'number') return [];
+        const rawAmount = order.amount ?? order.itemCount ?? null;
+        const amount = typeof rawAmount === 'number' ? rawAmount : null;
+        return [{ amount, limit: { amount: limit.amount } }];
+      });
+    }
+
+    useCxobStore.getState().setOrderBook(cxTicker, {
+      sellingOrders: parseOrders(payload.sellingOrders),
+      buyingOrders: parseOrders(payload.buyingOrders),
+    });
   });
 
 }
