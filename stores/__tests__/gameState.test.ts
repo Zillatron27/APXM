@@ -38,6 +38,19 @@ describe('gameState store', () => {
     it('starts with no drill-down sheet open', () => {
       expect(useGameState.getState().detailView).toBeNull();
     });
+
+    it('starts with no manual-confirm window pending', () => {
+      expect(useGameState.getState().actConfirmPending).toBe(false);
+    });
+  });
+
+  describe('setActConfirmPending', () => {
+    it('round-trips the manual-confirm window flag', () => {
+      useGameState.getState().setActConfirmPending(true);
+      expect(useGameState.getState().actConfirmPending).toBe(true);
+      useGameState.getState().setActConfirmPending(false);
+      expect(useGameState.getState().actConfirmPending).toBe(false);
+    });
   });
 
   describe('setOverlayVisible', () => {
