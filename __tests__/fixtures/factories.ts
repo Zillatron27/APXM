@@ -517,3 +517,17 @@ export function createOrderWithIO(
     started,
   });
 }
+
+export function createTestAlert(overrides: Partial<PrunApi.Alert> = {}): PrunApi.Alert {
+  return {
+    id: nextId('alert'),
+    type: 'PRODUCTION_ORDER_FINISHED',
+    contextId: nextId('ctx'),
+    naturalId: 'XK-745b',
+    time: createDateTime(),
+    data: [],
+    seen: false,
+    read: false,
+    ...overrides,
+  };
+}
