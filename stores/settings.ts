@@ -43,6 +43,9 @@ interface SettingsState {
   /** User's Status-tab panel order. Untrusted (storage) — reconciled against
    *  STATUS_PANEL_IDS by the view, which drops unknowns and appends new panels. */
   statusPanelOrder: string[];
+  /** Material tickers the ACT engine must never generate CX Buy steps for.
+   *  No UI yet — consumed by the engine port (#25/#28). */
+  noBuy: string[];
   /** Buffer refresh trigger mode. Only dev builds surface a picker and honour
    *  the persisted value at startup; production always starts 'manual'
    *  (the apxm_refresh URL param overrides either way). */
@@ -58,6 +61,7 @@ interface SettingsActions {
   setUiTheme: (theme: ApxmThemeId) => void;
   setRprunFeaturesDisabled: (disabled: boolean) => void;
   setStatusPanelOrder: (order: string[]) => void;
+  setNoBuy: (tickers: string[]) => void;
   setRefreshMode: (mode: RefreshMode) => void;
   reset: () => void;
 }
@@ -83,6 +87,7 @@ const initialState: SettingsState = {
   uiTheme: DEFAULT_THEME_ID,
   rprunFeaturesDisabled: false,
   statusPanelOrder: [...STATUS_PANEL_IDS],
+  noBuy: [],
   refreshMode: 'manual',
 };
 
@@ -180,6 +185,7 @@ export const useSettingsStore = create<SettingsStore>()(
 
       setStatusPanelOrder: (order) => set({ statusPanelOrder: order }),
 
+      setNoBuy: (tickers) => set({ noBuy: tickers }),
       setRefreshMode: (mode) => set({ refreshMode: mode }),
 
       reset: () => set(initialState),
