@@ -1,5 +1,18 @@
 # APXM Changelog
 
+## 1.0.1 (2026-07-06)
+
+Bugfix release for the first public wave.
+
+### Fixed
+
+- **Logged-out first use** (#64) — APXM now stays out of the way while APEX shows its login screen, instead of covering the login form and then showing a misleading "isn't receiving game data" error. Log in as normal and APXM appears once your session starts
+- **DryDock material tints** (#61) — the DryDock theme's agricultural products, basic/luxury consumables, and liquids tiles now use the rPrun colours (agricultural products reads green, not stock red)
+
+### Notes
+
+- Tests: 450
+
 ## 1.0.0 — Retro Terminal (2026-06-18)
 
 The 1.0 release: a full visual redesign and a reworked, customisable Status tab.
