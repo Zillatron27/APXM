@@ -4,6 +4,7 @@ import { deriveAvailability } from '../useAvailabilityStatus';
 describe('deriveAvailability', () => {
   const base = {
     messageCount: 0,
+    loginScreen: false,
     apexErrorBanner: false,
     elapsedMs: 0,
     interceptorConflict: false,
@@ -39,6 +40,21 @@ describe('deriveAvailability', () => {
       deriveAvailability({ ...base, interceptorConflict: true, elapsedMs: 5_000 })
     ).toBe('starved');
     expect(deriveAvailability({ ...base, elapsedMs: 5_000 })).toBe('ok');
+  });
+
+  it('reports login when the APEX login screen is showing and no data (#64)', () => {
+    expect(deriveAvailability({ ...base, loginScreen: true })).toBe('login');
+    // The login screen wins over both error signals — with no session the
+    // user needs the form, not an APXM overlay.
+    expect(
+      deriveAvailability({ ...base, loginScreen: true, apexErrorBanner: true })
+    ).toBe('login');
+    expect(
+      deriveAvailability({ ...base, loginScreen: true, elapsedMs: 30_000 })
+    ).toBe('login');
+    // Flowing data still wins — a password field elsewhere must not blank a
+    // working session.
+    expect(deriveAvailability({ ...base, loginScreen: true, messageCount: 1 })).toBe('ok');
   });
 
   it('prefers the genuine maintenance signal over a starvation timeout', () => {
