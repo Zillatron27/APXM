@@ -26,6 +26,19 @@ export function primaryCurrencyFor(countryId: string): string | null {
 }
 
 /**
+ * The currency to headline in the liquidity pane. A user override wins —
+ * players often trade in a non-faction currency based on where they operate
+ * (issue #63) — otherwise fall back to the faction-derived primary.
+ */
+export function resolvePrimaryCurrency(
+  countryId: string | null,
+  override: string | null
+): string | null {
+  if (override) return override;
+  return countryId ? primaryCurrencyFor(countryId) : null;
+}
+
+/**
  * Display order for the liquidity list: ECD filtered out (legacy currency,
  * not spendable), the company's primary currency first, remaining
  * currencies alphabetical.

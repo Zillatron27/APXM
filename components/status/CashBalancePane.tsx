@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { Panel } from '../shared';
 import { useBalancesStore } from '../../stores/entities/balances';
 import { useCompanyStore } from '../../stores/company';
-import { primaryCurrencyFor, sortBalances } from '../../lib/currency';
+import { useSettingsStore } from '../../stores/settings';
+import { resolvePrimaryCurrency, sortBalances } from '../../lib/currency';
 
 function formatAmount(amount: number): string {
   return Math.round(amount).toLocaleString('en-US');
@@ -51,15 +52,16 @@ export function CashBalancePane() {
   const fetched = useBalancesStore((s) => s.fetched);
   const entities = useBalancesStore((s) => s.entities);
   const company = useCompanyStore((s) => s.company);
+  const preferredCurrency = useSettingsStore((s) => s.preferredCurrency);
   const [expanded, setExpanded] = useState(false);
 
   const balances = useMemo(
     () =>
       sortBalances(
         Array.from(entities.values()),
-        company ? primaryCurrencyFor(company.countryId) : null
+        resolvePrimaryCurrency(company?.countryId ?? null, preferredCurrency)
       ),
-    [entities, company]
+    [entities, company, preferredCurrency]
   );
 
   const title = company

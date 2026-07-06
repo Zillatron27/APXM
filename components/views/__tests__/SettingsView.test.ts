@@ -47,6 +47,23 @@ describe('SettingsView repair threshold validation', () => {
   });
 });
 
+describe('preferred currency setting (#63)', () => {
+  beforeEach(() => {
+    useSettingsStore.getState().reset();
+  });
+
+  it('defaults to null (faction-derived headline currency)', () => {
+    expect(useSettingsStore.getState().preferredCurrency).toBeNull();
+  });
+
+  it('setPreferredCurrency round-trips a code and back to Auto', () => {
+    useSettingsStore.getState().setPreferredCurrency('NCC');
+    expect(useSettingsStore.getState().preferredCurrency).toBe('NCC');
+    useSettingsStore.getState().setPreferredCurrency(null);
+    expect(useSettingsStore.getState().preferredCurrency).toBeNull();
+  });
+});
+
 describe('SettingsView burn threshold validation', () => {
   describe('validateThresholds', () => {
     it('returns null for valid thresholds', () => {
