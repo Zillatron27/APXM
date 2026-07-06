@@ -50,6 +50,11 @@ interface SettingsState {
    *  the persisted value at startup; production always starts 'manual'
    *  (the apxm_refresh URL param overrides either way). */
   refreshMode: RefreshMode;
+  /** When true the ACT step machine clicks APEX's post-ACT confirmation
+   *  overlay itself; when false (default) the user taps CONFIRM in APEX.
+   *  Opt-in per the action-authorisation rule. No UI yet — the Settings
+   *  toggle lands with the ACT views (#25 Phase D). */
+  autoConfirm: boolean;
 }
 
 interface SettingsActions {
@@ -63,6 +68,7 @@ interface SettingsActions {
   setStatusPanelOrder: (order: string[]) => void;
   setNoBuy: (tickers: string[]) => void;
   setRefreshMode: (mode: RefreshMode) => void;
+  setAutoConfirm: (enabled: boolean) => void;
   reset: () => void;
 }
 
@@ -89,6 +95,7 @@ const initialState: SettingsState = {
   statusPanelOrder: [...STATUS_PANEL_IDS],
   noBuy: [],
   refreshMode: 'manual',
+  autoConfirm: false,
 };
 
 // Check if browser storage API is available
@@ -187,6 +194,7 @@ export const useSettingsStore = create<SettingsStore>()(
 
       setNoBuy: (tickers) => set({ noBuy: tickers }),
       setRefreshMode: (mode) => set({ refreshMode: mode }),
+      setAutoConfirm: (enabled) => set({ autoConfirm: enabled }),
 
       reset: () => set(initialState),
     }),
