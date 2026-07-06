@@ -3,6 +3,7 @@ import { persist, createJSONStorage, type StateStorage } from 'zustand/middlewar
 import { browser } from 'wxt/browser';
 import { DEFAULT_THEME_ID, type ApxmThemeId } from '../lib/theme';
 import type { MaterialTheme } from '../lib/material-colors';
+import type { RefreshMode } from '../lib/buffer-refresh/types';
 
 // Re-exported so settings consumers don't need a second import; the palette
 // module owns the definition (it changes when palettes are added).
@@ -45,6 +46,10 @@ interface SettingsState {
   /** Material tickers the ACT engine must never generate CX Buy steps for.
    *  No UI yet — consumed by the engine port (#25/#28). */
   noBuy: string[];
+  /** Buffer refresh trigger mode. Only dev builds surface a picker and honour
+   *  the persisted value at startup; production always starts 'manual'
+   *  (the apxm_refresh URL param overrides either way). */
+  refreshMode: RefreshMode;
 }
 
 interface SettingsActions {
@@ -57,6 +62,7 @@ interface SettingsActions {
   setRprunFeaturesDisabled: (disabled: boolean) => void;
   setStatusPanelOrder: (order: string[]) => void;
   setNoBuy: (tickers: string[]) => void;
+  setRefreshMode: (mode: RefreshMode) => void;
   reset: () => void;
 }
 
@@ -82,6 +88,7 @@ const initialState: SettingsState = {
   rprunFeaturesDisabled: false,
   statusPanelOrder: [...STATUS_PANEL_IDS],
   noBuy: [],
+  refreshMode: 'manual',
 };
 
 // Check if browser storage API is available
@@ -179,6 +186,7 @@ export const useSettingsStore = create<SettingsStore>()(
       setStatusPanelOrder: (order) => set({ statusPanelOrder: order }),
 
       setNoBuy: (tickers) => set({ noBuy: tickers }),
+      setRefreshMode: (mode) => set({ refreshMode: mode }),
 
       reset: () => set(initialState),
     }),
