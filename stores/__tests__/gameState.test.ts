@@ -1,26 +1,21 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import {
-  useGameState,
-  type BurnFilter,
-  type FleetFilter,
-  type ContractFilter,
-} from '../gameState';
+import { useGameState, type BurnFilter } from '../gameState';
 
 /**
  * gameState store tests.
  * Note: Connection state (connected, lastMessageTimestamp, messageCount)
  * has been moved to stores/connection.ts as of Chunk 2.
  */
+// Pristine state captured at import time, before any test touches the store.
+// beforeEach restores from this snapshot instead of hand-writing the expected
+// values — so the "initial state" tests assert the SOURCE defaults and fail
+// if one ever flips. Safe to share: the filter toggles always build new Sets,
+// never mutate the ones in state.
+const pristineState = useGameState.getState();
+
 describe('gameState store', () => {
   beforeEach(() => {
-    // Reset store to initial state
-    useGameState.setState({
-      overlayVisible: true,
-      debugMode: false,
-      burnFilters: new Set<BurnFilter>(['all']),
-      fleetFilters: new Set<FleetFilter>(['all']),
-      contractFilters: new Set<ContractFilter>(['active']),
-    });
+    useGameState.setState(pristineState, true);
   });
 
   describe('initial state', () => {
@@ -30,6 +25,18 @@ describe('gameState store', () => {
 
     it('debug mode is off by default', () => {
       expect(useGameState.getState().debugMode).toBe(false);
+    });
+
+    it('APEX is hidden by default — the overlay covers it', () => {
+      expect(useGameState.getState().apexVisible).toBe(false);
+    });
+
+    it('starts on the status tab', () => {
+      expect(useGameState.getState().activeTab).toBe('status');
+    });
+
+    it('starts with no drill-down sheet open', () => {
+      expect(useGameState.getState().detailView).toBeNull();
     });
   });
 
@@ -44,6 +51,54 @@ describe('gameState store', () => {
     it('updates debug mode', () => {
       useGameState.getState().setDebugMode(true);
       expect(useGameState.getState().debugMode).toBe(true);
+    });
+  });
+
+  describe('setApexVisible', () => {
+    it('toggles APEX visibility', () => {
+      useGameState.getState().setApexVisible(true);
+      expect(useGameState.getState().apexVisible).toBe(true);
+
+      useGameState.getState().setApexVisible(false);
+      expect(useGameState.getState().apexVisible).toBe(false);
+    });
+  });
+
+  describe('setActiveTab', () => {
+    it('switches the active tab', () => {
+      useGameState.getState().setActiveTab('fleet');
+      expect(useGameState.getState().activeTab).toBe('fleet');
+
+      useGameState.getState().setActiveTab('bases');
+      expect(useGameState.getState().activeTab).toBe('bases');
+    });
+  });
+
+  describe('setDetailView', () => {
+    it('opens a site drill-down sheet with the full payload', () => {
+      useGameState.getState().setDetailView({
+        type: 'burn',
+        siteId: 'site-1',
+        siteName: 'Montem Base',
+      });
+
+      expect(useGameState.getState().detailView).toEqual({
+        type: 'burn',
+        siteId: 'site-1',
+        siteName: 'Montem Base',
+      });
+    });
+
+    it('closes the sheet when set to null', () => {
+      useGameState.getState().setDetailView({
+        type: 'production',
+        siteId: 'site-1',
+        siteName: 'Montem Base',
+      });
+
+      useGameState.getState().setDetailView(null);
+
+      expect(useGameState.getState().detailView).toBeNull();
     });
   });
 

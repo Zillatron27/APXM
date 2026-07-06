@@ -30,6 +30,15 @@ describe('reconcileOrder', () => {
       'empire',
     ]);
   });
+
+  it('dedupes a corrupted saved order (a repeated id must not render a panel twice)', () => {
+    expect(reconcileOrder(['fleet', 'fleet', 'bases'])).toEqual([
+      'fleet',
+      'bases',
+      'contracts',
+      'empire',
+    ]);
+  });
 });
 
 describe('applyReorder', () => {

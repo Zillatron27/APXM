@@ -17,6 +17,14 @@ describe('resolveGate', () => {
       const result = resolveGate([], 'connecting', false, 0, false);
       expect(result.state).toBe('ready');
     });
+
+    it('ready beats unresponsive — fetched data always renders', () => {
+      // Top link of the priority chain: even with the unresponsive flags all
+      // set, complete data must show (stale-but-present beats an error page).
+      const stores = [store('sites', true, true)];
+      const result = resolveGate(stores, 'connecting', false, 0, true);
+      expect(result.state).toBe('ready');
+    });
   });
 
   describe('unresponsive APEX', () => {

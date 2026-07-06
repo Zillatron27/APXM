@@ -75,6 +75,24 @@ describe('classifyProdStatus', () => {
     expect(classifyProdStatus([line])).toEqual({ tier: 'full', active: 2, capacity: 2 });
   });
 
+  it('caps per line, not globally: an over-capacity line cannot mask an idle line', () => {
+    // Line A: 1 building, 2 started orders (recurring queue overlap).
+    // Line B: 1 building, nothing running.
+    // Correct: min(2,1) + min(0,1) = 1 active of 2 → partial. A global
+    // min(totalRunning=2, totalCapacity=2) implementation would wrongly
+    // report 'full', letting line A's surplus orders hide line B's idle CapEx.
+    const overCapacity = createTestProductionLine({
+      capacity: 1,
+      orders: [runningOrder(), runningOrder()],
+    });
+    const idle = createTestProductionLine({ capacity: 1, orders: [] });
+    expect(classifyProdStatus([overCapacity, idle])).toEqual({
+      tier: 'partial',
+      active: 1,
+      capacity: 2,
+    });
+  });
+
   it('aggregates across lines: one full line plus one stopped line is partial', () => {
     const farm = createTestProductionLine({ capacity: 2, orders: [runningOrder(), runningOrder()] });
     const plant = createTestProductionLine({ capacity: 3, orders: [] });
@@ -137,6 +155,16 @@ describe('orderProgressPct', () => {
     expect(orderProgressPct(order, -500)).toBe(0); // skew below start
     expect(orderProgressPct(order, 5000)).toBe(100); // finished but not cleared
   });
+
+  it('is null when duration is null — no total to divide by', () => {
+    const order = createProductionOrder({ started: { timestamp: 0 }, duration: null });
+    expect(orderProgressPct(order, 1000)).toBeNull();
+  });
+
+  it('is null for a zero-millis duration — guards the divide, never NaN/Infinity', () => {
+    const order = createProductionOrder({ started: { timestamp: 0 }, duration: { millis: 0 } });
+    expect(orderProgressPct(order, 1000)).toBeNull();
+  });
 });
 
 describe('sortOrders', () => {
@@ -156,6 +184,23 @@ describe('sortOrders', () => {
     const sorted = sortOrders([queuedFirst, halted, runningLater, queuedSecond, runningSoon]);
 
     expect(sorted).toEqual([runningSoon, runningLater, queuedFirst, queuedSecond, halted]);
+  });
+
+  it('sorts a running order with no completion ETA after running orders with one', () => {
+    // A running order can briefly lack a completion timestamp; it must not
+    // jump to the top of the "soonest first" running group.
+    const runningNoEta = createProductionOrder({
+      started: { timestamp: 0 },
+      completion: null,
+    });
+    const runningWithEta = createProductionOrder({
+      started: { timestamp: 0 },
+      completion: { timestamp: 500 },
+    });
+
+    const sorted = sortOrders([runningNoEta, runningWithEta]);
+
+    expect(sorted).toEqual([runningWithEta, runningNoEta]);
   });
 
   it('does not mutate the input array', () => {

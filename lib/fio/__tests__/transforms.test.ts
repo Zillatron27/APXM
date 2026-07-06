@@ -279,11 +279,17 @@ describe('FIO Transforms', () => {
     });
 
     it('maps storage types correctly', () => {
+      // All 8 FIO storage types known to mapStorageType — each passes
+      // through unchanged rather than falling back to STORE.
       const types = [
         'STORE',
         'SHIP_STORE',
+        'STL_FUEL_STORE',
+        'FTL_FUEL_STORE',
         'WAREHOUSE_STORE',
         'CONSTRUCTION_STORE',
+        'UPKEEP_STORE',
+        'VORTEX_FUEL_STORE',
       ] as const;
 
       for (const type of types) {
@@ -420,6 +426,64 @@ describe('FIO boundary validation', () => {
     // must be skipped without dropping the valid first record.
     const malformed = { SiteId: 'broken', PlanetId: 'p2' };
     const result = transformAllWorkforce([validWorkforce, malformed]);
+    expect(result).toHaveLength(1);
+    expect(result[0].siteId).toBe('site-1');
+  });
+
+  it('transformAllStorage skips a record missing StorageItems but keeps the valid one', () => {
+    const validStorage = {
+      StorageId: 'store-1',
+      AddressableId: 'site-1',
+      Name: 'Base Storage',
+      WeightLoad: 0,
+      WeightCapacity: 1000,
+      VolumeLoad: 0,
+      VolumeCapacity: 500,
+      StorageItems: [],
+      FixedStore: false,
+      Type: 'STORE',
+    };
+    // No StorageItems array → .map throws → record skipped, not fatal.
+    const malformed = { StorageId: 'broken' };
+    const result = transformAllStorage([validStorage, malformed]);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('store-1');
+  });
+
+  it('transformAllProduction skips a record missing Orders but keeps the valid one', () => {
+    const validLine = {
+      ProductionLineId: 'line-1',
+      SiteId: 'site-1',
+      PlanetId: 'p1',
+      PlanetNaturalId: 'XY-123a',
+      PlanetName: 'Test',
+      Type: 'Farm',
+      Capacity: 1,
+      Efficiency: 1,
+      Condition: 1,
+      Orders: [],
+    };
+    // No Orders array → .map throws → record skipped, not fatal.
+    const malformed = { ProductionLineId: 'broken' };
+    const result = transformAllProduction([validLine, malformed]);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('line-1');
+  });
+
+  it('transformAllSites skips a record missing Buildings but keeps the valid one', () => {
+    const validSite = {
+      SiteId: 'site-1',
+      PlanetId: 'p1',
+      PlanetIdentifier: 'XY-123a',
+      PlanetName: 'Test',
+      PlanetFoundedEpochMs: 1704067200000,
+      InvestedPermits: 1,
+      MaximumPermits: 3,
+      Buildings: [],
+    };
+    // No Buildings array → .map throws → record skipped, not fatal.
+    const malformed = { SiteId: 'broken' };
+    const result = transformAllSites([validSite, malformed]);
     expect(result).toHaveLength(1);
     expect(result[0].siteId).toBe('site-1');
   });

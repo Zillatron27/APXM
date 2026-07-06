@@ -13,6 +13,55 @@ function createMockMessage(overrides: Partial<ProcessedMessage> = {}): Processed
   };
 }
 
+describe('production suppression contract (__DEV__ false)', () => {
+  // Vitest realizes the define entry as a globalThis property, so stubbing
+  // the global exercises the production build's logging path.
+  let logSpy: ReturnType<typeof vi.spyOn>;
+  let warnSpy: ReturnType<typeof vi.spyOn>;
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    vi.stubGlobal('__DEV__', false);
+    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    window.history.replaceState(null, '', '/');
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    logSpy.mockRestore();
+    warnSpy.mockRestore();
+    errorSpy.mockRestore();
+    window.history.replaceState(null, '', '/');
+  });
+
+  it('log and warn are silent in production', () => {
+    log('should not appear');
+    warn('should not appear');
+    logMessage(createMockMessage());
+
+    expect(logSpy).not.toHaveBeenCalled();
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it('error stays active in production — failures must remain visible', () => {
+    error('a real failure');
+
+    expect(errorSpy).toHaveBeenCalledWith('[APXM]', 'a real failure');
+  });
+
+  it('?apxm_debug in the URL re-enables log/warn in production', () => {
+    window.history.replaceState(null, '', '/?apxm_debug');
+
+    log('debug session');
+    warn('debug session');
+
+    expect(logSpy).toHaveBeenCalledWith('[APXM]', 'debug session');
+    expect(warnSpy).toHaveBeenCalledWith('[APXM]', 'debug session');
+  });
+});
+
 describe('logMessage', () => {
   let logSpy: ReturnType<typeof vi.spyOn>;
 

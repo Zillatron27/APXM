@@ -96,6 +96,18 @@ describe('message-handlers', () => {
     });
   });
 
+  describe('unregistered message types', () => {
+    it('records unhandled types via addUnknownMessageType', () => {
+      dispatchMessage('SOME_UNHANDLED_TYPE', {});
+
+      expect(useConnectionStore.getState().unknownMessageTypes).toContain(
+        'SOME_UNHANDLED_TYPE'
+      );
+      // Unknown ≠ malformed: an unhandled type is a blind spot, not a discard
+      expect(useConnectionStore.getState().discardedMessages).toBe(0);
+    });
+  });
+
   describe('CLIENT_CONNECTION_OPENED', () => {
     // Populate the three ACT-engine stores (not covered by clearAllEntityStores).
     function populateActStores(): void {
@@ -647,6 +659,27 @@ describe('message-handlers', () => {
         'SITE_SITE: unexpected payload structure',
         expect.anything()
       );
+
+      warnSpy.mockRestore();
+    });
+
+    it('malformed SITE_SITES warns but does NOT increment discardedMessages', () => {
+      // Pins the bulk-handler contract: bulk handlers (SITE_SITES et al.)
+      // only warn on a malformed payload, unlike the singular handlers
+      // (SITE_SITE does incrementDiscarded). This asymmetry is current
+      // intended behavior — visibility comes from the warn. A change to
+      // either side of it should be deliberate, not accidental.
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      dispatchMessage('SITE_SITES', { notSites: true });
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[APXM]',
+        'SITE_SITES: unexpected payload structure',
+        expect.anything()
+      );
+      expect(useConnectionStore.getState().discardedMessages).toBe(0);
+      expect(useSitesStore.getState().entities.size).toBe(0);
 
       warnSpy.mockRestore();
     });

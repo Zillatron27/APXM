@@ -332,45 +332,58 @@ export interface ContractDetailsResult {
 }
 
 /**
+ * Pure sort/count/filter over built contract details. Extracted from the hook
+ * for testability — the ACTIVE-includes-OPEN distinction (vs ACCEPTED_STATUSES,
+ * which deliberately excludes OPEN) lives here and must stay pinned by tests.
+ */
+export function assembleContractDetails(
+  contracts: PrunApi.Contract[],
+  activeFilters: ReadonlySet<ContractFilter>
+): ContractDetailsResult {
+  const details: ContractDetail[] = contracts.map(buildContractDetail);
+
+  // Sort: OPEN first, then by due date (contracts without a due date last)
+  details.sort((a, b) => {
+    if (a.status === 'OPEN' && b.status !== 'OPEN') return -1;
+    if (a.status !== 'OPEN' && b.status === 'OPEN') return 1;
+
+    const dateA = a.dueDateMs ?? Infinity;
+    const dateB = b.dueDateMs ?? Infinity;
+    return dateA - dateB;
+  });
+
+  // Count by filter category
+  const activeCount = details.filter((c) => ACTIVE_STATUSES.includes(c.status)).length;
+  const fulfilledCount = details.filter((c) => FULFILLED_STATUSES.includes(c.status)).length;
+
+  const counts: Record<ContractFilter, number> = {
+    all: details.length,
+    active: activeCount,
+    fulfilled: fulfilledCount,
+  };
+
+  // Apply filter
+  const filtered = activeFilters.has('all')
+    ? details
+    : details.filter((c) => {
+        if (activeFilters.has('active') && ACTIVE_STATUSES.includes(c.status)) return true;
+        if (activeFilters.has('fulfilled') && FULFILLED_STATUSES.includes(c.status)) return true;
+        return false;
+      });
+
+  return { contracts: filtered, counts };
+}
+
+/**
  * Hook that assembles contract details with conditions.
  */
 export function useContractDetails(activeFilters: ReadonlySet<ContractFilter>): ContractDetailsResult {
   const contractsLastUpdated = useContractsStore((s) => s.lastUpdated);
 
-  return useMemo(() => {
-    const contracts = useContractsStore.getState().getAll();
-
-    const details: ContractDetail[] = contracts.map(buildContractDetail);
-
-    // Sort: OPEN first, then by due date
-    details.sort((a, b) => {
-      if (a.status === 'OPEN' && b.status !== 'OPEN') return -1;
-      if (a.status !== 'OPEN' && b.status === 'OPEN') return 1;
-
-      const dateA = a.dueDateMs ?? Infinity;
-      const dateB = b.dueDateMs ?? Infinity;
-      return dateA - dateB;
-    });
-
-    // Count by filter category
-    const activeCount = details.filter((c) => ACTIVE_STATUSES.includes(c.status)).length;
-    const fulfilledCount = details.filter((c) => FULFILLED_STATUSES.includes(c.status)).length;
-
-    const counts: Record<ContractFilter, number> = {
-      all: details.length,
-      active: activeCount,
-      fulfilled: fulfilledCount,
-    };
-
-    // Apply filter
-    const filtered = activeFilters.has('all')
-      ? details
-      : details.filter((c) => {
-          if (activeFilters.has('active') && ACTIVE_STATUSES.includes(c.status)) return true;
-          if (activeFilters.has('fulfilled') && FULFILLED_STATUSES.includes(c.status)) return true;
-          return false;
-        });
-
-    return { contracts: filtered, counts };
-  }, [contractsLastUpdated, activeFilters]);
+  return useMemo(
+    () => assembleContractDetails(useContractsStore.getState().getAll(), activeFilters),
+    // contractsLastUpdated re-derives when contract data changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [contractsLastUpdated, activeFilters]
+  );
 }

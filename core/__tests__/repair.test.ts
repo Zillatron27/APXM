@@ -4,6 +4,8 @@ import {
   getBuildingLastRepairTimestamp,
   classifyRepairUrgency,
   calculateSiteRepairStatus,
+  calculateAllRepairStatuses,
+  calculateSiteRepairBuildings,
 } from '../repair';
 import { useSitesStore } from '../../stores/entities/sites';
 import {
@@ -123,5 +125,125 @@ describe('calculateSiteRepairStatus', () => {
     const result = calculateSiteRepairStatus('nope');
     expect(result.oldestBuildingAgeDays).toBeNull();
     expect(result.oldestBuildingCondition).toBeNull();
+  });
+});
+
+describe('calculateAllRepairStatuses', () => {
+  beforeEach(() => {
+    useSitesStore.getState().clear();
+  });
+
+  it('returns one summary per site, each computed independently', () => {
+    const now = Date.now();
+    const siteA = createTestSite({
+      siteId: 'site-a',
+      platforms: [
+        // repaired 5 days ago
+        platformOfType('PRODUCTION', {
+          siteId: 'site-a',
+          lastRepair: { timestamp: now - 5 * MS_PER_DAY },
+          condition: 0.97,
+        }),
+      ],
+    });
+    const siteB = createTestSite({
+      siteId: 'site-b',
+      platforms: [
+        // never repaired, built 25 days ago
+        platformOfType('RESOURCES', {
+          siteId: 'site-b',
+          lastRepair: null,
+          creationTime: { timestamp: now - 25 * MS_PER_DAY },
+          condition: 0.85,
+        }),
+      ],
+    });
+    useSitesStore.getState().setAll([siteA, siteB]);
+
+    const results = calculateAllRepairStatuses();
+    expect(results).toHaveLength(2);
+
+    const a = results.find((r) => r.siteId === 'site-a');
+    const b = results.find((r) => r.siteId === 'site-b');
+    expect(a?.oldestBuildingAgeDays).toBeCloseTo(5, 0);
+    expect(a?.oldestBuildingCondition).toBe(0.97);
+    expect(b?.oldestBuildingAgeDays).toBeCloseTo(25, 0);
+    expect(b?.oldestBuildingCondition).toBe(0.85);
+  });
+});
+
+describe('calculateSiteRepairBuildings', () => {
+  beforeEach(() => {
+    useSitesStore.getState().clear();
+  });
+
+  it('lists only repairable buildings, oldest-since-repair first, with ticker and name', () => {
+    const now = Date.now();
+    const site = createTestSite({
+      siteId: 'site-detail',
+      platforms: [
+        // repaired 10 days ago — second-oldest repairable
+        createPlatform({
+          siteId: 'site-detail',
+          module: createPlatformModule({
+            type: 'PRODUCTION',
+            reactorTicker: 'SME',
+            reactorName: 'Smelter',
+          }),
+          lastRepair: { timestamp: now - 10 * MS_PER_DAY },
+          condition: 0.95,
+        }),
+        // never repaired, built 30 days ago — lastRepair null falls back to
+        // creationTime, making this the oldest
+        createPlatform({
+          siteId: 'site-detail',
+          module: createPlatformModule({
+            type: 'RESOURCES',
+            reactorTicker: 'EXT',
+            reactorName: 'Extractor',
+          }),
+          lastRepair: null,
+          creationTime: { timestamp: now - 30 * MS_PER_DAY },
+          condition: 0.8,
+        }),
+        // not repairable — must all be excluded even though they are older
+        platformOfType('CORE', {
+          siteId: 'site-detail',
+          lastRepair: null,
+          creationTime: { timestamp: now - 100 * MS_PER_DAY },
+        }),
+        platformOfType('HABITATION', {
+          siteId: 'site-detail',
+          lastRepair: null,
+          creationTime: { timestamp: now - 100 * MS_PER_DAY },
+        }),
+        platformOfType('STORAGE', {
+          siteId: 'site-detail',
+          lastRepair: null,
+          creationTime: { timestamp: now - 100 * MS_PER_DAY },
+        }),
+      ],
+    });
+    useSitesStore.getState().setAll([site]);
+
+    const rows = calculateSiteRepairBuildings('site-detail');
+
+    // Only PRODUCTION and RESOURCES survive the filter
+    expect(rows).toHaveLength(2);
+
+    // Oldest first: 30 days (never-repaired extractor) before 10 days (smelter)
+    expect(rows[0].ticker).toBe('EXT');
+    expect(rows[0].name).toBe('Extractor');
+    expect(rows[0].ageDays).toBeCloseTo(30, 0);
+    expect(rows[0].condition).toBe(0.8);
+
+    expect(rows[1].ticker).toBe('SME');
+    expect(rows[1].name).toBe('Smelter');
+    expect(rows[1].ageDays).toBeCloseTo(10, 0);
+    expect(rows[1].condition).toBe(0.95);
+  });
+
+  it('returns an empty list for an unknown site', () => {
+    expect(calculateSiteRepairBuildings('nope')).toEqual([]);
   });
 });

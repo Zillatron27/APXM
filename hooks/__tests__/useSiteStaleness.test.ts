@@ -23,7 +23,7 @@ describe('deriveStaleness', () => {
     expect(result.isStale).toBe(true);
   });
 
-  it('returns cache state with stale flag and text', () => {
+  it('returns cache state with stale flag and the exact display text', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-03-24T12:00:00Z'));
 
@@ -35,8 +35,9 @@ describe('deriveStaleness', () => {
 
     expect(result.isStale).toBe(true);
     expect(result.colorClass).toBe('text-apxm-text/50');
-    expect(result.text).toMatch(/^cached/);
-    expect(result.text).toContain('ago');
+    // Fake timers make this fully deterministic — pin the whole string so a
+    // mangled middle ("cached · NaN ago", wrong unit) can't slip through.
+    expect(result.text).toBe('cached · 1m ago');
   });
 
   it('returns FIO state with amber color', () => {
@@ -61,6 +62,12 @@ describe('deriveStaleness', () => {
     expect(result.text).toContain('ago');
   });
 
+  it('the staleness threshold is 5 hours — the requirement, not whatever the constant says', () => {
+    // Deriving the boundary from STALE_THRESHOLD_MS alone would pass even if
+    // the constant were fat-fingered to 5 minutes. Pin the value itself.
+    expect(STALE_THRESHOLD_MS).toBe(5 * 60 * 60 * 1000);
+  });
+
   it('returns stale websocket state after 5 hours', () => {
     const entry: SiteSourceEntry = {
       source: 'websocket',
@@ -72,16 +79,15 @@ describe('deriveStaleness', () => {
     expect(result.colorClass).toBe('text-apxm-text/40');
   });
 
-  it('returns independent results for different entries', () => {
-    const fioEntry: SiteSourceEntry = { source: 'fio', updatedAt: 1000 };
-    const wsEntry: SiteSourceEntry = { source: 'websocket', updatedAt: Date.now() };
+  it('exactly at the threshold is still fresh (source uses strict >)', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-24T12:00:00Z'));
 
-    const result1 = deriveStaleness(fioEntry);
-    const result2 = deriveStaleness(wsEntry);
+    const entry: SiteSourceEntry = {
+      source: 'websocket',
+      updatedAt: Date.now() - STALE_THRESHOLD_MS,
+    };
 
-    expect(result1.isStale).toBe(true);
-    expect(result1.colorClass).toBe('text-amber-600/70');
-    expect(result2.isStale).toBe(false);
-    expect(result2.colorClass).toBe('text-apxm-text/50');
+    expect(deriveStaleness(entry).isStale).toBe(false);
   });
 });

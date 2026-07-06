@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildContractDetail } from '../useContractDetails';
+import { buildContractDetail, assembleContractDetails } from '../useContractDetails';
 import { createTestContract, createContractCondition } from '../../../../__tests__/fixtures/factories';
 import type { PrunApi } from '../../../../types/prun-api';
 
@@ -99,6 +99,9 @@ describe('buildContractDetail — dependency-aware condition flags', () => {
       'TERMINATED',
       'BREACHED',
       'DEADLINE_EXCEEDED',
+      // FULFILLED is terminal too: a stray PENDING condition on a fulfilled
+      // contract must not resurrect an action affordance.
+      'FULFILLED',
     ];
 
     for (const status of terminalStatuses) {
@@ -204,5 +207,67 @@ describe('buildContractDetail — acceptance semantics (rPrun parlance)', () => 
       partner: { id: 'p', name: 'Trade Partner Corp', code: 'TPC' },
     });
     expect(buildContractDetail(commercial).isFaction).toBe(false);
+  });
+});
+
+describe('assembleContractDetails (list sort/count/filter)', () => {
+  const DAY = 86400000;
+  const now = 1_700_000_000_000;
+
+  function contractWith(
+    localId: string,
+    status: PrunApi.ContractStatus,
+    dueMs: number | null
+  ): PrunApi.Contract {
+    return createTestContract({
+      localId,
+      status,
+      dueDate: dueMs === null ? undefined : { timestamp: dueMs },
+    });
+  }
+
+  const openLate = contractWith('OPEN-LATE', 'OPEN', now + 9 * DAY);
+  const openSoon = contractWith('OPEN-SOON', 'OPEN', now + 1 * DAY);
+  const closedSoon = contractWith('CLOSED-SOON', 'CLOSED', now + 2 * DAY);
+  const partial = contractWith('PARTIAL', 'PARTIALLY_FULFILLED', now + 5 * DAY);
+  const fulfilled = contractWith('DONE', 'FULFILLED', now + 3 * DAY);
+  const noDue = contractWith('NO-DUE', 'CLOSED', null);
+  const all = [fulfilled, noDue, closedSoon, openLate, partial, openSoon];
+
+  it('the ACTIVE bucket includes OPEN — awaiting-acceptance contracts need attention too', () => {
+    // Deliberately broader than the accepted set (CLOSED/PARTIALLY_FULFILLED):
+    // the filter answers "needs attention", acceptance gates actions.
+    const { counts } = assembleContractDetails(all, new Set(['all']));
+    expect(counts).toEqual({ all: 6, active: 5, fulfilled: 1 });
+  });
+
+  it('sorts OPEN first, then by due date, undated last', () => {
+    const { contracts } = assembleContractDetails(all, new Set(['all']));
+    expect(contracts.map((c) => c.localId)).toEqual([
+      'OPEN-SOON', // OPEN block first, soonest due leads
+      'OPEN-LATE',
+      'CLOSED-SOON', // then non-OPEN by due date
+      'DONE',
+      'PARTIAL',
+      'NO-DUE', // null due date sorts to the end
+    ]);
+  });
+
+  it('the active filter keeps OPEN/CLOSED/PARTIALLY_FULFILLED and drops FULFILLED', () => {
+    const { contracts } = assembleContractDetails(all, new Set(['active']));
+    expect(contracts.map((c) => c.localId)).toEqual([
+      'OPEN-SOON',
+      'OPEN-LATE',
+      'CLOSED-SOON',
+      'PARTIAL',
+      'NO-DUE',
+    ]);
+  });
+
+  it('the fulfilled filter keeps only FULFILLED; counts stay global', () => {
+    const { contracts, counts } = assembleContractDetails(all, new Set(['fulfilled']));
+    expect(contracts.map((c) => c.localId)).toEqual(['DONE']);
+    // Counts describe the whole set (filter-bar badges), not the filtered view.
+    expect(counts.all).toBe(6);
   });
 });

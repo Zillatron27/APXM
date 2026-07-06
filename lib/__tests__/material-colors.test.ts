@@ -16,6 +16,10 @@ describe('material-colors', () => {
       expect(normalizeCategory('AGRICULTURAL_PRODUCTS')).toBe('agricultural-products');
     });
 
+    it('strips parentheses — FIO CategoryName uses "consumables (basic)" format', () => {
+      expect(normalizeCategory('consumables (basic)')).toBe('consumables-basic');
+    });
+
     it('handles null/undefined', () => {
       expect(normalizeCategory(null)).toBe('default');
       expect(normalizeCategory(undefined)).toBe('default');
