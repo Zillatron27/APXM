@@ -28,6 +28,28 @@ describe('warehouse store', () => {
     expect(useWarehouseStore.getState().getByEntityNaturalId('UNKNOWN')).toBeUndefined();
   });
 
+  it('getBySystem finds a warehouse by systemNaturalId', () => {
+    useWarehouseStore.getState().setWarehouses([
+      { warehouseId: 'w1', storeId: 's1', systemNaturalId: 'CI', stationNaturalId: 'CI1' },
+      { warehouseId: 'w2', storeId: 's2', systemNaturalId: 'NC', stationNaturalId: 'NC1' },
+    ]);
+
+    expect(useWarehouseStore.getState().getBySystem('NC')?.warehouseId).toBe('w2');
+    expect(useWarehouseStore.getState().getBySystem('ZZ')).toBeUndefined();
+  });
+
+  it('station match wins over system match for the same naturalId', () => {
+    // The system-matching warehouse is listed FIRST: a naive first-match-in-
+    // list lookup would return it. The contract is station-before-system,
+    // because an exchange code is a station naturalId.
+    useWarehouseStore.getState().setWarehouses([
+      { warehouseId: 'wB', storeId: 'sB', systemNaturalId: 'X', stationNaturalId: null },
+      { warehouseId: 'wA', storeId: 'sA', systemNaturalId: 'OTHER', stationNaturalId: 'X' },
+    ]);
+
+    expect(useWarehouseStore.getState().getByEntityNaturalId('X')?.warehouseId).toBe('wA');
+  });
+
   it('addWarehouse replaces an existing entry with the same warehouseId', () => {
     const store = useWarehouseStore.getState();
     store.addWarehouse({ warehouseId: 'w1', storeId: 's1', systemNaturalId: 'CI', stationNaturalId: 'CI1' });

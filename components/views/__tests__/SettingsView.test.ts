@@ -29,8 +29,13 @@ describe('SettingsView repair threshold validation', () => {
       useSettingsStore.getState().reset();
     });
 
-    it('defaults match DEFAULT_REPAIR_THRESHOLDS (60/10)', () => {
-      expect(useSettingsStore.getState().repairThresholds).toEqual(DEFAULT_REPAIR_THRESHOLDS);
+    it('defaults are 60/10 (rPrun-XIT-REP values proven on jackinabox86 fork)', () => {
+      // Assert the literals, not just equality with the constant — the store
+      // initializes FROM that constant, so toEqual alone is circular.
+      const { repairThresholds } = useSettingsStore.getState();
+      expect(repairThresholds.threshold).toBe(60);
+      expect(repairThresholds.offset).toBe(10);
+      expect(repairThresholds).toEqual(DEFAULT_REPAIR_THRESHOLDS);
     });
 
     it('setRepairThresholds persists partial updates', () => {

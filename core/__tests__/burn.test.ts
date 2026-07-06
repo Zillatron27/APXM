@@ -658,37 +658,6 @@ describe('burn.ts', () => {
       expect(Number.isFinite(ratRate?.consumption)).toBe(true);
     });
 
-    it('handles zero inventory for consumed material (returns 0, not NaN)', () => {
-      // When inventory is 0 and consuming, daysRemaining should be 0
-      const workforce = createWorkforce({
-        needs: [
-          createNeed({
-            material: createMaterial({ ticker: 'RAT' }),
-            unitsPerInterval: 10,
-          }),
-        ],
-      });
-
-      const wfRates = calculateWorkforceConsumption([workforce]);
-      const inventory = new Map<string, number>();
-      // No RAT in inventory
-
-      const consumption = wfRates.get('RAT')?.consumption ?? 0;
-      const dailyAmount = -consumption;
-      const inventoryAmount = inventory.get('RAT') ?? 0;
-
-      // Replicate daysRemaining calculation from calculateSiteBurn
-      const daysRemaining =
-        dailyAmount >= 0
-          ? Infinity
-          : inventoryAmount === 0
-            ? 0
-            : inventoryAmount / Math.abs(dailyAmount);
-
-      expect(Number.isNaN(daysRemaining)).toBe(false);
-      expect(daysRemaining).toBe(0);
-    });
-
     it('all burn calculations return finite or Infinity daysRemaining, never NaN', () => {
       // Set up a site with workforce consuming materials with zero inventory
       const siteId = 'nan-test-site';
@@ -972,6 +941,38 @@ describe('burn.ts', () => {
       const lseBurn = result.burns.find((b) => b.materialTicker === 'LSE');
       expect(lseBurn?.daysRemaining).toBe(Infinity);
       expect(lseBurn?.urgency).toBe('surplus');
+    });
+
+    it('treats a near-balanced net rate as balanced at the site level (NET_RATE_EPSILON)', () => {
+      // The empire path already covers the epsilon; the site path must stay
+      // covered independently in case the shared buildBurnRate helper is ever
+      // split per-path (see issue #31).
+      // One order, capacity 1, 1-day duration: output 10/day, input 10.0005/day
+      // of the same ticker → net = 10 - 10.0005 = -0.0005/day. That is inside
+      // NET_RATE_EPSILON (0.001), so it is floating-point noise from a balanced
+      // chain, not real consumption.
+      const order = createOrderWithIO(
+        [{ ticker: 'RAT', amount: 10.0005 }],
+        [{ ticker: 'RAT', amount: 10 }],
+        MS_PER_DAY
+      );
+      const prodLine = createTestProductionLine({
+        siteId,
+        orders: [order],
+        capacity: 1,
+      });
+      useProductionStore.getState().setOne(prodLine);
+
+      const store = createStorageWithItems(siteId, [{ ticker: 'RAT', amount: 50 }]);
+      useStorageStore.getState().setOne(store);
+
+      const result = calculateSiteBurn(siteId);
+
+      const ratBurn = result.burns.find((b) => b.materialTicker === 'RAT');
+      // Without the epsilon this would read 50 / 0.0005 = 100,000 days — a
+      // nonsense countdown. Balanced must classify as Infinity / ok.
+      expect(ratBurn?.daysRemaining).toBe(Infinity);
+      expect(ratBurn?.urgency).toBe('ok');
     });
 
     it('handles empty production queue (no contribution)', () => {

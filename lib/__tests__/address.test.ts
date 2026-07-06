@@ -70,11 +70,18 @@ describe('getEntityDisplayName', () => {
   });
 
   it('handles multi-letter planet suffix', () => {
+    // The whole suffix after the system naturalId survives the replace,
+    // not just a single letter.
     const address = makeAddress(
       system('Romulan', 'ZV-759'),
-      planet('ZV-759d', 'ZV-759d')
+      planet('ZV-759ab', 'ZV-759ab')
     );
-    expect(getEntityDisplayName(address)).toBe('Romulan d');
+    expect(getEntityDisplayName(address)).toBe('Romulan ab');
+  });
+
+  it('falls back to station name when naturalId is empty', () => {
+    const address = makeAddress(station('Hortus Station', ''));
+    expect(getEntityDisplayName(address)).toBe('Hortus Station');
   });
 });
 

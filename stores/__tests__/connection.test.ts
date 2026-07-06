@@ -1,17 +1,16 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useConnectionStore } from '../connection';
 
+// Pristine state captured at import time, before any test touches the store.
+// beforeEach restores from this snapshot instead of hand-writing the expected
+// values — so the "initial state" tests assert the SOURCE defaults and fail
+// if one ever flips (e.g. connected: true). Safe to share: the store's
+// actions always replace unknownMessageTypes with a new array, never mutate.
+const pristineState = useConnectionStore.getState();
+
 describe('connection store', () => {
   beforeEach(() => {
-    useConnectionStore.setState({
-      connected: false,
-      lastMessageTimestamp: null,
-      messageCount: 0,
-      reconnectCount: 0,
-      discardedMessages: 0,
-      unknownMessageTypes: [],
-      apexUnresponsive: false,
-    });
+    useConnectionStore.setState(pristineState, true);
   });
 
   describe('initial state', () => {
@@ -41,6 +40,10 @@ describe('connection store', () => {
 
     it('starts with apexUnresponsive false', () => {
       expect(useConnectionStore.getState().apexUnresponsive).toBe(false);
+    });
+
+    it('starts with interceptorConflict false', () => {
+      expect(useConnectionStore.getState().interceptorConflict).toBe(false);
     });
   });
 
@@ -123,6 +126,24 @@ describe('connection store', () => {
 
       useConnectionStore.getState().setApexUnresponsive(false);
       expect(useConnectionStore.getState().apexUnresponsive).toBe(false);
+    });
+  });
+
+  describe('setInterceptorConflict', () => {
+    it('updates interceptorConflict state', () => {
+      useConnectionStore.getState().setInterceptorConflict(true);
+      expect(useConnectionStore.getState().interceptorConflict).toBe(true);
+
+      useConnectionStore.getState().setInterceptorConflict(false);
+      expect(useConnectionStore.getState().interceptorConflict).toBe(false);
+    });
+
+    it('is restored to false by reset', () => {
+      useConnectionStore.getState().setInterceptorConflict(true);
+
+      useConnectionStore.getState().reset();
+
+      expect(useConnectionStore.getState().interceptorConflict).toBe(false);
     });
   });
 

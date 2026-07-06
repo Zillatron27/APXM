@@ -1,4 +1,38 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { BUILD_VERSION } from '../../lib/constants';
+
+// In-memory stand-in for browser.storage.local so the persistence path is
+// exercised for real (what gets written/read), not stubbed out. vi.hoisted
+// because vi.mock factories run before module-scope const declarations.
+const storageMock = vi.hoisted(() => {
+  const data = new Map<string, string>();
+  return {
+    data,
+    get: vi.fn(async (key: string) => {
+      const value = data.get(key);
+      return value === undefined ? {} : { [key]: value };
+    }),
+    set: vi.fn(async (items: Record<string, string>) => {
+      for (const [key, value] of Object.entries(items)) data.set(key, value);
+    }),
+    remove: vi.fn(async (key: string) => {
+      data.delete(key);
+    }),
+  };
+});
+
+vi.mock('wxt/browser', () => ({
+  browser: {
+    storage: {
+      local: {
+        get: storageMock.get,
+        set: storageMock.set,
+        remove: storageMock.remove,
+      },
+    },
+  },
+}));
+
 import { createEntityStore } from '../create-entity-store';
 
 interface TestEntity {
@@ -328,6 +362,148 @@ describe('createEntityStore', () => {
 
       expect(store.getState().fetched).toBe(true);
       expect(store.getState().dataSource).toBe('websocket');
+    });
+  });
+
+  describe('invalid entity ids', () => {
+    let warnSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      warnSpy.mockRestore();
+    });
+
+    it('setAll skips entities with empty or missing ids and keeps valid ones', () => {
+      store.getState().setAll([
+        { id: '1', name: 'valid', value: 1 },
+        { id: '', name: 'empty-id', value: 2 },
+        { name: 'missing-id', value: 3 } as unknown as TestEntity,
+      ]);
+
+      expect(store.getState().entities.size).toBe(1);
+      expect(store.getState().getById('1')?.name).toBe('valid');
+    });
+
+    it('setMany skips entities with empty or missing ids and keeps valid ones', () => {
+      store.getState().setMany([
+        { id: '', name: 'empty-id', value: 1 },
+        { id: '2', name: 'valid', value: 2 },
+        { name: 'missing-id', value: 3 } as unknown as TestEntity,
+      ]);
+
+      expect(store.getState().entities.size).toBe(1);
+      expect(store.getState().getById('2')?.name).toBe('valid');
+    });
+  });
+
+  describe('persistence', () => {
+    // Hand-derived: source debounces saves by 2s, TTL default is 24h.
+    const DEBOUNCE_MS = 2000;
+    const HOUR_MS = 60 * 60 * 1000;
+
+    function makeCacheEntry(cachedAt: number, version = BUILD_VERSION): string {
+      return JSON.stringify({
+        entities: { e1: { id: 'e1', name: 'cached', value: 42 } },
+        lastUpdated: cachedAt,
+        dataSource: 'websocket',
+        cachedAt,
+        version,
+      });
+    }
+
+    beforeEach(() => {
+      storageMock.data.clear();
+      storageMock.get.mockClear();
+      storageMock.set.mockClear();
+      storageMock.remove.mockClear();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('debounces rapid mutations into a single storage write after 2s', async () => {
+      vi.useFakeTimers();
+      const pstore = createEntityStore<TestEntity>('p-debounce', (i) => i.id, {
+        key: 'cache-debounce',
+      });
+      pstore.getState().setFetched('websocket');
+
+      pstore.getState().setOne({ id: '1', name: 'one', value: 1 });
+      pstore.getState().setOne({ id: '2', name: 'two', value: 2 });
+
+      // Nothing written yet — the save is debounced
+      expect(storageMock.set).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
+
+      // One write for the burst, carrying both entities and the build version
+      expect(storageMock.set).toHaveBeenCalledTimes(1);
+      const written = JSON.parse(storageMock.data.get('cache-debounce')!);
+      expect(Object.keys(written.entities).sort()).toEqual(['1', '2']);
+      expect(written.dataSource).toBe('websocket');
+      expect(written.version).toBe(BUILD_VERSION);
+    });
+
+    it('rehydrate restores fresh cache and marks dataSource as cache', async () => {
+      // 1 hour old — well within the 24h TTL
+      storageMock.data.set('cache-fresh', makeCacheEntry(Date.now() - HOUR_MS));
+      const pstore = createEntityStore<TestEntity>('p-fresh', (i) => i.id, {
+        key: 'cache-fresh',
+      });
+
+      await expect(pstore.rehydrate()).resolves.toBe(true);
+
+      expect(pstore.getState().getById('e1')?.name).toBe('cached');
+      expect(pstore.getState().fetched).toBe(true);
+      // Rehydrated data must be flagged cache so staleness UI can degrade it
+      expect(pstore.getState().dataSource).toBe('cache');
+    });
+
+    it('rehydrate discards cache older than the 24h TTL', async () => {
+      // 25 hours old — one hour past the TTL
+      storageMock.data.set('cache-stale', makeCacheEntry(Date.now() - 25 * HOUR_MS));
+      const pstore = createEntityStore<TestEntity>('p-stale', (i) => i.id, {
+        key: 'cache-stale',
+      });
+
+      await expect(pstore.rehydrate()).resolves.toBe(false);
+
+      expect(pstore.getState().entities.size).toBe(0);
+      expect(pstore.getState().fetched).toBe(false);
+      expect(pstore.getState().dataSource).toBeNull();
+    });
+
+    it('rehydrate discards cache from a different build version', async () => {
+      storageMock.data.set(
+        'cache-version',
+        makeCacheEntry(Date.now() - HOUR_MS, 'v0.0.0-other')
+      );
+      const pstore = createEntityStore<TestEntity>('p-version', (i) => i.id, {
+        key: 'cache-version',
+      });
+
+      await expect(pstore.rehydrate()).resolves.toBe(false);
+
+      expect(pstore.getState().entities.size).toBe(0);
+      expect(pstore.getState().dataSource).toBeNull();
+    });
+
+    it('clear() removes the cache key from storage', async () => {
+      storageMock.data.set('cache-clear', makeCacheEntry(Date.now()));
+      const pstore = createEntityStore<TestEntity>('p-clear', (i) => i.id, {
+        key: 'cache-clear',
+      });
+
+      pstore.getState().clear();
+
+      expect(storageMock.remove).toHaveBeenCalledWith('cache-clear');
+      // The remove is fire-and-forget — let the mock's promise settle
+      await Promise.resolve();
+      expect(storageMock.data.has('cache-clear')).toBe(false);
     });
   });
 });

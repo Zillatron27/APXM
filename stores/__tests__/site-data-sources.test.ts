@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useSiteSourceStore } from '../site-data-sources';
+import {
+  useSiteSourceStore,
+  deriveWeakestSource,
+  deriveOldestUpdate,
+  type SiteSourceEntry,
+} from '../site-data-sources';
 
 describe('site-data-sources store', () => {
   beforeEach(() => {
@@ -70,5 +75,58 @@ describe('site-data-sources store', () => {
 
       expect(useSiteSourceStore.getState().entries.size).toBe(0);
     });
+  });
+});
+
+// Helper to build the Map shape the derive functions consume.
+function entriesMap(
+  ...list: Array<[string, SiteSourceEntry]>
+): Map<string, SiteSourceEntry> {
+  return new Map(list);
+}
+
+describe('deriveWeakestSource', () => {
+  it('returns null for an empty map', () => {
+    expect(deriveWeakestSource(entriesMap())).toBeNull();
+  });
+
+  it('all-websocket yields websocket', () => {
+    const entries = entriesMap(
+      ['site-1', { source: 'websocket', updatedAt: 1000 }],
+      ['site-2', { source: 'websocket', updatedAt: 2000 }]
+    );
+    expect(deriveWeakestSource(entries)).toBe('websocket');
+  });
+
+  it('fio beats websocket — mixed fio+websocket yields fio', () => {
+    const entries = entriesMap(
+      ['site-1', { source: 'websocket', updatedAt: 1000 }],
+      ['site-2', { source: 'fio', updatedAt: 2000 }]
+    );
+    expect(deriveWeakestSource(entries)).toBe('fio');
+  });
+
+  it('cache beats everything — a mixed map yields cache', () => {
+    const entries = entriesMap(
+      ['site-1', { source: 'websocket', updatedAt: 1000 }],
+      ['site-2', { source: 'fio', updatedAt: 2000 }],
+      ['site-3', { source: 'cache', updatedAt: 3000 }]
+    );
+    expect(deriveWeakestSource(entries)).toBe('cache');
+  });
+});
+
+describe('deriveOldestUpdate', () => {
+  it('returns null for an empty map', () => {
+    expect(deriveOldestUpdate(entriesMap())).toBeNull();
+  });
+
+  it('returns the oldest timestamp across all sites', () => {
+    const entries = entriesMap(
+      ['site-1', { source: 'websocket', updatedAt: 5000 }],
+      ['site-2', { source: 'fio', updatedAt: 1000 }],
+      ['site-3', { source: 'websocket', updatedAt: 3000 }]
+    );
+    expect(deriveOldestUpdate(entries)).toBe(1000);
   });
 });

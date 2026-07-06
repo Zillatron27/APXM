@@ -14,7 +14,9 @@ function move<T>(arr: T[], from: number, to: number): T[] {
  * removed, or renamed.
  */
 export function reconcileOrder(stored: string[]): StatusPanelId[] {
-  const known = stored.filter((id): id is StatusPanelId =>
+  // Set-dedupe: a corrupted saved order with a repeated id would otherwise
+  // render the same panel twice (duplicate React keys).
+  const known = [...new Set(stored)].filter((id): id is StatusPanelId =>
     (STATUS_PANEL_IDS as string[]).includes(id)
   );
   const missing = STATUS_PANEL_IDS.filter((id) => !known.includes(id));
