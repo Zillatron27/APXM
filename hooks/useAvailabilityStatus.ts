@@ -4,12 +4,14 @@ import { useConnectionStore } from '../stores/connection';
 /**
  * Why the overlay is (or isn't) showing:
  * - 'ok'          — data is flowing, or we're still within the startup grace
+ * - 'login'       — APEX is showing its login screen; APXM must stay dormant
+ *                   so the user can actually log in
  * - 'maintenance' — APEX's own error banner confirms the server is unavailable
  * - 'starved'     — no data is arriving and we don't know the server is down;
  *                   the likely cause is a competing extension intercepting the
  *                   connection (or a broken injection), not maintenance
  */
-export type AvailabilityReason = 'ok' | 'maintenance' | 'starved';
+export type AvailabilityReason = 'ok' | 'login' | 'maintenance' | 'starved';
 
 const TIMEOUT_MS = 20_000;
 /** Shorter grace once a competing interceptor is confirmed — no point making
@@ -30,16 +32,38 @@ function detectApexErrorBanner(): boolean {
 }
 
 /**
+ * Check for APEX's login screen. APEX renders a dedicated login-required
+ * frame when there is no session; its class names carry a build hash, so
+ * match on the stable BEM prefix. A password input is the fallback signal —
+ * the game UI itself has none, and APXM's own inputs live in the shadow
+ * root, which document-level queries can't reach.
+ */
+function detectLoginScreen(): boolean {
+  try {
+    return (
+      document.querySelector('[class*="Frame__loginRequired"]') !== null ||
+      document.querySelector('input[type="password"]') !== null
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Pure availability classification (extracted for testing). The starvation
- * timeout shortens when a competing interceptor is confirmed.
+ * timeout shortens when a competing interceptor is confirmed. The login
+ * screen wins over everything except flowing data — with no session there
+ * is nothing APXM can usefully say, and the user needs the form.
  */
 export function deriveAvailability(params: {
   messageCount: number;
+  loginScreen: boolean;
   apexErrorBanner: boolean;
   elapsedMs: number;
   interceptorConflict: boolean;
 }): AvailabilityReason {
   if (params.messageCount > 0) return 'ok';
+  if (params.loginScreen) return 'login';
   if (params.apexErrorBanner) return 'maintenance';
   const timeoutMs = params.interceptorConflict ? CONFLICT_GRACE_MS : TIMEOUT_MS;
   return params.elapsedMs >= timeoutMs ? 'starved' : 'ok';
@@ -62,16 +86,22 @@ export function useAvailabilityStatus(): AvailabilityReason {
       return;
     }
 
-    const startTime = Date.now();
+    let startTime = Date.now();
     const intervalId = setInterval(() => {
+      const loginScreen = detectLoginScreen();
+      // Time on the login screen doesn't count toward starvation — the
+      // grace window restarts once the user logs in.
+      if (loginScreen) startTime = Date.now();
       const next = deriveAvailability({
         messageCount: useConnectionStore.getState().messageCount,
+        loginScreen,
         apexErrorBanner: detectApexErrorBanner(),
         elapsedMs: Date.now() - startTime,
         interceptorConflict,
       });
-      if (next !== 'ok') {
-        setReason(next);
+      setReason(next);
+      // 'login' is not terminal — keep polling so APXM wakes after login.
+      if (next === 'maintenance' || next === 'starved') {
         clearInterval(intervalId);
       }
     }, POLL_INTERVAL_MS);

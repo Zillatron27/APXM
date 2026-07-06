@@ -9,6 +9,9 @@ export function App() {
   const apexVisible = useGameState((s) => s.apexVisible);
   const availability = useAvailabilityStatus();
   const interceptorConflict = useConnectionStore((s) => s.interceptorConflict);
+  // APEX is showing its login screen — APXM stays dormant (host collapsed,
+  // nothing rendered) so the user can reach the form (#64).
+  const loginRequired = availability === 'login';
 
   // Toggle shadow host between opaque fullscreen (APXM) and collapsed transparent
   // (APEX). The :host(.apex-visible) CSS rule in styles.css handles the visual
@@ -17,8 +20,8 @@ export function App() {
   useEffect(() => {
     const host = document.querySelector('apxm-overlay') as HTMLElement | null;
     if (host) {
-      host.classList.toggle('apex-visible', apexVisible);
-      if (apexVisible) {
+      host.classList.toggle('apex-visible', apexVisible || loginRequired);
+      if (apexVisible && !loginRequired) {
         host.style.opacity = '0.3';
         host.style.pointerEvents = 'none';
       } else {
@@ -26,7 +29,7 @@ export function App() {
         host.style.pointerEvents = '';
       }
     }
-  }, [apexVisible]);
+  }, [apexVisible, loginRequired]);
 
   // Manage #container visibility and offset when toggling APEX.
   // When APEX visible: ensure display, offset below FloatingReturn bar.
@@ -68,6 +71,10 @@ export function App() {
     });
     return () => observer.disconnect();
   }, [apexVisible]);
+
+  if (availability === 'login') {
+    return null;
+  }
 
   if (availability !== 'ok') {
     return (

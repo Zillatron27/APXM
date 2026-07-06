@@ -97,7 +97,7 @@ function neon(color: string): CategoryColors {
 
 /**
  * DryDock theme. The 14 categories DryDock itself defines use its palette
- * verbatim; the remaining 21 reuse the prun theme's text colours (already
+ * verbatim; the remaining 21 reuse the rprun theme's text colours (already
  * the bright variant of each category) so the whole set reads as one style.
  */
 const DRYDOCK_COLORS: Record<string, CategoryColors> = {
@@ -116,13 +116,13 @@ const DRYDOCK_COLORS: Record<string, CategoryColors> = {
   'ship-parts': neon('#ffcc33'),
   'ship-shields': neon('#ffd34d'),
   'unit-prefabs': neon('#5a8c8c'),
-  // Derived from the prun theme's text colours
-  'agricultural-products': neon('#e54a4a'),
+  // Derived from the rprun theme's text colours
+  'agricultural-products': neon('#8bb37b'),
   'construction-parts': neon('#78b0e0'),
   'construction-prefabs': neon('#4868e0'),
   'consumable-bundles': neon('#c04058'),
-  'consumables-basic': neon('#f08888'),
-  'consumables-luxury': neon('#f86080'),
+  'consumables-basic': neon('#ff989e'),
+  'consumables-luxury': neon('#db9191'),
   'drones': neon('#ff8858'),
   'electronic-devices': neon('#b868ff'),
   'electronic-parts': neon('#c0a0ff'),
@@ -130,7 +130,7 @@ const DRYDOCK_COLORS: Record<string, CategoryColors> = {
   'energy-systems': neon('#60c090'),
   'gases': neon('#48ffff'),
   'infrastructure': neon('#5050b0'),
-  'liquids': neon('#e8ffff'),
+  'liquids': neon('#f1ffff'),
   'medical-equipment': neon('#c0ffc0'),
   'ores': neon('#b0b8c8'),
   'software-components': neon('#e8e090'),

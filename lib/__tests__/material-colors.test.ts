@@ -104,6 +104,23 @@ describe('material-colors', () => {
         expect(colors.text).toBe(colors.border);
       });
 
+      it('derives non-native tints from rprun, not prun (#61)', () => {
+        // The four rprun overrides that are not DryDock-native must carry the
+        // rprun text colour — agricultural products reads green, not PrUn red.
+        expect(getCategoryColors('agricultural-products', theme).text).toBe(
+          getCategoryColors('agricultural-products', 'rprun').text
+        );
+        expect(getCategoryColors('consumables-basic', theme).text).toBe(
+          getCategoryColors('consumables-basic', 'rprun').text
+        );
+        expect(getCategoryColors('consumables-luxury', theme).text).toBe(
+          getCategoryColors('consumables-luxury', 'rprun').text
+        );
+        expect(getCategoryColors('liquids', theme).text).toBe(
+          getCategoryColors('liquids', 'rprun').text
+        );
+      });
+
       it('covers every category a material can resolve to with the full neon contract', () => {
         // MaterialTile looks up via MATERIAL_CATEGORIES, so its unique slugs
         // are the complete set of categories the tile can ever request.
