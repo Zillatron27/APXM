@@ -3,6 +3,7 @@ import { persist, createJSONStorage, type StateStorage } from 'zustand/middlewar
 import { browser } from 'wxt/browser';
 import { DEFAULT_THEME_ID, type ApxmThemeId } from '../lib/theme';
 import type { MaterialTheme } from '../lib/material-colors';
+import type { RefreshMode } from '../lib/buffer-refresh/types';
 
 // Re-exported so settings consumers don't need a second import; the palette
 // module owns the definition (it changes when palettes are added).
@@ -42,6 +43,10 @@ interface SettingsState {
   /** User's Status-tab panel order. Untrusted (storage) — reconciled against
    *  STATUS_PANEL_IDS by the view, which drops unknowns and appends new panels. */
   statusPanelOrder: string[];
+  /** Buffer refresh trigger mode. Only dev builds surface a picker and honour
+   *  the persisted value at startup; production always starts 'manual'
+   *  (the apxm_refresh URL param overrides either way). */
+  refreshMode: RefreshMode;
 }
 
 interface SettingsActions {
@@ -53,6 +58,7 @@ interface SettingsActions {
   setUiTheme: (theme: ApxmThemeId) => void;
   setRprunFeaturesDisabled: (disabled: boolean) => void;
   setStatusPanelOrder: (order: string[]) => void;
+  setRefreshMode: (mode: RefreshMode) => void;
   reset: () => void;
 }
 
@@ -77,6 +83,7 @@ const initialState: SettingsState = {
   uiTheme: DEFAULT_THEME_ID,
   rprunFeaturesDisabled: false,
   statusPanelOrder: [...STATUS_PANEL_IDS],
+  refreshMode: 'manual',
 };
 
 // Check if browser storage API is available
@@ -172,6 +179,8 @@ export const useSettingsStore = create<SettingsStore>()(
       setRprunFeaturesDisabled: (disabled) => set({ rprunFeaturesDisabled: disabled }),
 
       setStatusPanelOrder: (order) => set({ statusPanelOrder: order }),
+
+      setRefreshMode: (mode) => set({ refreshMode: mode }),
 
       reset: () => set(initialState),
     }),

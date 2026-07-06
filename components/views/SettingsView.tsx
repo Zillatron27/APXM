@@ -9,11 +9,24 @@ import {
 import { testConnection, populateStoresFromFio, type FioProgressStep } from '../../lib/fio';
 import { clearAllCache } from '../../stores/cache';
 import { themePresets } from '../../lib/theme';
+import {
+  setRefreshMode as applyRefreshMode,
+  executeBatchRefresh,
+  type RefreshMode,
+} from '../../lib/buffer-refresh';
+import { useRefreshState } from '../../stores/refreshState';
+import { useSitesStore } from '../../stores/entities';
 
 const materialThemeOptions: { id: MaterialTheme; label: string }[] = [
   { id: 'rprun', label: 'rPrUn' },
   { id: 'prun', label: 'PrUn' },
   { id: 'drydock', label: 'DryDock' },
+];
+
+const refreshModeOptions: { id: RefreshMode; label: string }[] = [
+  { id: 'manual', label: 'Manual' },
+  { id: 'batch', label: 'Batch' },
+  { id: 'auto', label: 'Auto' },
 ];
 
 /** 24-bit hex number → CSS hex string, for inline preset-preview swatches. */
@@ -22,6 +35,74 @@ function toCssHex(value: number): string {
 }
 
 type ConnectionStatus = 'untested' | 'testing' | 'valid' | 'invalid';
+
+/**
+ * Dev-build-only refresh mode picker. Surfaces the batch/auto modes that are
+ * otherwise URL-param-gated (?apxm_refresh=…) so device testing doesn't need
+ * URL editing. Dev builds honour the persisted choice at startup
+ * (initRefreshMode); production ignores it and always starts manual.
+ */
+function DevRefreshModePane() {
+  const mode = useRefreshState((s) => s.mode);
+  const isRefreshing = useRefreshState((s) => s.isRefreshing);
+  const completedCount = useRefreshState((s) => s.completedCount);
+  const totalCount = useRefreshState((s) => s.totalCount);
+  const persistRefreshMode = useSettingsStore((s) => s.setRefreshMode);
+
+  function selectMode(next: RefreshMode): void {
+    applyRefreshMode(next); // runtime: module var + refreshState store
+    persistRefreshMode(next); // storage: read back at next startup (dev only)
+  }
+
+  function handleRefreshAll(): void {
+    if (isRefreshing) return;
+    const siteIds = useSitesStore
+      .getState()
+      .getAll()
+      .map((s) => s.siteId);
+    if (siteIds.length === 0) return;
+    executeBatchRefresh({ siteIds });
+  }
+
+  return (
+    <Panel title="Refresh Mode" code="DEV">
+      <div className="space-y-3">
+        <div className="flex gap-2">
+          {refreshModeOptions.map((option) => (
+            <button
+              key={option.id}
+              onClick={() => selectMode(option.id)}
+              className={`flex-1 min-h-touch px-4 py-2 font-mono text-[11px] font-semibold uppercase tracking-wider ${
+                mode === option.id
+                  ? 'bg-prun-yellow text-apxm-bg'
+                  : 'border border-apxm-accent text-apxm-muted'
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+
+        <p className="text-xs text-apxm-muted">
+          Manual: per-base refresh buttons. Batch: adds Refresh All below. Auto:
+          refreshes every base after login — applies from the next reload.
+        </p>
+
+        {mode === 'batch' && (
+          <button
+            onClick={handleRefreshAll}
+            disabled={isRefreshing}
+            className={`${btnSecondary} w-full min-h-touch`}
+          >
+            {isRefreshing
+              ? `Refreshing ${completedCount}/${totalCount}…`
+              : 'Refresh all bases'}
+          </button>
+        )}
+      </div>
+    </Panel>
+  );
+}
 
 const STEP_LABELS: Record<FioProgressStep, string> = {
   sites: 'Sites',
@@ -529,6 +610,8 @@ export function SettingsView() {
           </div>
         </div>
       </Panel>
+
+      {__DEV__ && <DevRefreshModePane />}
     </div>
   );
 }
