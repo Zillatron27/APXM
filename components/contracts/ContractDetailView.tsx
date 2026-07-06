@@ -1,6 +1,8 @@
-import { MaterialTile } from '../shared';
+import { useState } from 'react';
+import { MaterialTile, btnPrimary, btnSecondary } from '../shared';
 import { useContractDetail, type ConditionPart, type ContractConditionDetail } from '../views/hooks';
 import { formatCreated, formatDeadline } from './format';
+import { runContractAction, type ContractActionTarget } from '../../lib/contract-actions';
 
 interface ContractDetailViewProps {
   contractId: string;
@@ -31,13 +33,21 @@ const midActionLabels: Partial<Record<ContractConditionDetail['status'], string>
   FULFILLMENT_ATTEMPTED: 'attempted',
 };
 
+interface ConditionBlockProps {
+  cond: ContractConditionDetail;
+  /** Fires the one-tap FULFILL passthrough for this condition (#73). */
+  onFulfill: () => void;
+  actionRunning: boolean;
+}
+
 /**
  * One condition block. Indicator + party on the top line, the description
- * beneath, and a dependency/mid-action hint. The per-condition FULFILL action
- * is intentionally NOT rendered yet — game-state-changing commands stay hidden
- * until the CONT-buffer action passthrough is built (no dead buttons shipped).
+ * beneath, a dependency/mid-action hint, and — when the condition is
+ * available (self + pending + dependencies fulfilled) — the FULFILL button.
+ * The tap IS the commit: APXM drives the CONT buffer off-screen and clicks
+ * APEX's own fulfill control (action-authorisation rule).
  */
-function ConditionBlock({ cond }: { cond: ContractConditionDetail }) {
+function ConditionBlock({ cond, onFulfill, actionRunning }: ConditionBlockProps) {
   const glyph = cond.breached ? '!' : cond.fulfilled ? '✓' : cond.available ? '●' : '✗';
   const glyphColor = cond.breached
     ? 'text-status-critical'
@@ -82,23 +92,48 @@ function ConditionBlock({ cond }: { cond: ContractConditionDetail }) {
           <div className="mt-1 ml-11 text-xs text-apxm-muted">{midActionLabels[cond.status]}</div>
         ) : null}
       </div>
+
+      {cond.available && (
+        <button
+          onClick={onFulfill}
+          disabled={actionRunning}
+          className={`shrink-0 min-h-touch px-3 ${btnSecondary} disabled:opacity-50 disabled:cursor-not-allowed`}
+        >
+          Fulfill
+        </button>
+      )}
     </div>
   );
 }
 
 /**
- * Read-only contract drill-down for the slide-up sheet: partner, timing,
- * acceptance status, and the full condition list with dependency-aware states.
- * Game actions (FULFILL / ACCEPT / REJECT) are not rendered until the
- * CONT-buffer action passthrough is built — the view ships read-only.
+ * Contract drill-down for the slide-up sheet: partner, timing, acceptance,
+ * and the full condition list with dependency-aware states. Game actions
+ * (ACCEPT / REJECT / per-condition FULFILL) run as one-tap passthroughs —
+ * APXM drives the CONT buffer off-screen and clicks APEX's own control; the
+ * user's tap is the commit (#73). Success needs no manual refresh: the
+ * CONTRACTS_CONTRACT delta updates the store and this view re-renders.
  */
 export function ContractDetailView({ contractId }: ContractDetailViewProps) {
   const contract = useContractDetail(contractId);
+  const [actionRunning, setActionRunning] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // The contract vanished (store cleared on reconnect). The sheet keeps its
   // title from the payload; just say the live detail is gone.
   if (!contract) {
     return <p className="text-sm text-apxm-muted">Contract data unavailable.</p>;
+  }
+
+  async function handleAction(target: ContractActionTarget): Promise<void> {
+    if (actionRunning || !contract) return;
+    setActionRunning(true);
+    setActionError(null);
+    const result = await runContractAction(contract.localId, target);
+    setActionRunning(false);
+    if (!result.ok) {
+      setActionError(result.error);
+    }
   }
 
   return (
@@ -115,21 +150,63 @@ export function ContractDetailView({ contractId }: ContractDetailViewProps) {
         <span>Due {formatDeadline(contract.dueDateMs)}</span>
       </div>
 
-      {/* Acceptance status (informational). ACCEPT/REJECT are contract-level
-          game commands — not shown until the CONT-buffer action passthrough
-          exists, so no dead buttons ship. */}
+      {/* Acceptance: contract-level ACCEPT/REJECT run as one-tap passthroughs. */}
       {contract.acceptance === 'awaiting-mine' && (
-        <p className="text-xs text-status-warning">Awaiting your acceptance.</p>
+        <div className="space-y-2">
+          <p className="text-xs text-status-warning">Awaiting your acceptance.</p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleAction({ kind: 'accept' })}
+              disabled={actionRunning}
+              className={`flex-1 min-h-touch px-4 py-2 ${btnPrimary} disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              Accept
+            </button>
+            <button
+              onClick={() => handleAction({ kind: 'reject' })}
+              disabled={actionRunning}
+              className={`flex-1 min-h-touch px-4 py-2 ${btnSecondary} disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              Reject
+            </button>
+          </div>
+        </div>
       )}
       {contract.acceptance === 'awaiting-partner' && (
         <p className="text-xs text-apxm-muted">Awaiting partner acceptance.</p>
       )}
 
-      {/* Conditions */}
+      {/* In-flight / error line for whichever action ran last */}
+      {actionRunning && (
+        <p className="text-xs text-apxm-muted animate-pulse">Working in APEX buffer...</p>
+      )}
+      {actionError && (
+        <p className="text-xs text-status-critical">
+          <span aria-hidden>! </span>
+          {actionError}
+        </p>
+      )}
+
+      {/* Conditions. Fulfill targets are addressed by their ordinal among
+          AVAILABLE conditions — APEX renders one button per fulfillable row,
+          so the raw condition index would misalign whenever earlier
+          conditions are already fulfilled or belong to the partner. */}
       <div>
         <p className="text-[10px] uppercase tracking-wide text-apxm-text/40 mb-1">Conditions</p>
         {contract.conditions.map((cond) => (
-          <ConditionBlock key={cond.id} cond={cond} />
+          <ConditionBlock
+            key={cond.id}
+            cond={cond}
+            onFulfill={() =>
+              handleAction({
+                kind: 'fulfill',
+                conditionIndex: contract.conditions
+                  .filter((c) => c.available)
+                  .findIndex((c) => c.id === cond.id),
+              })
+            }
+            actionRunning={actionRunning}
+          />
         ))}
       </div>
     </div>
