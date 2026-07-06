@@ -10,16 +10,24 @@
 
 import type { RefreshMode } from './types';
 import { useRefreshState } from '../../stores/refreshState';
+import { useSettingsStore } from '../../stores/settings';
 
 let currentMode: RefreshMode = 'manual';
 
-/** Initialize mode from URL param. Call once at startup. */
+/**
+ * Initialize mode. Call once at startup, after settings hydration.
+ * URL param wins; dev builds then honour the persisted Settings choice
+ * (the auto mode only acts at startup, so it needs persistence to be
+ * usable at all). Production without a param always starts 'manual'.
+ */
 export function initRefreshMode(): void {
   const params = new URLSearchParams(location.search);
   const param = params.get('apxm_refresh');
 
   if (param === 'manual' || param === 'batch' || param === 'auto') {
     currentMode = param;
+  } else if (__DEV__) {
+    currentMode = useSettingsStore.getState().refreshMode;
   } else {
     currentMode = 'manual';
   }
