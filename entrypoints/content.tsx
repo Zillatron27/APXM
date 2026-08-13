@@ -15,6 +15,7 @@ import { executeBatchRefresh } from '../lib/buffer-refresh';
 import { useSitesStore } from '../stores/entities';
 import { useSiteSourceStore } from '../stores/site-data-sources';
 import { applyTheme } from '../lib/theme';
+import { startSessionStalenessMonitor } from '../lib/session-staleness';
 import '../assets/fonts.css';
 import '../assets/styles.css';
 
@@ -145,6 +146,10 @@ export default defineContentScript({
         }, 0);
       }
     });
+
+    // 5b'. In-session staleness heartbeat (#7): flags silent message loss
+    // (backgrounding, tab suspension) through the data-source indicators.
+    startSessionStalenessMonitor();
 
     // 5b. Detect unresponsive APEX — if no messages arrive within 5s, flag it
     const APEX_TIMEOUT_MS = 5000;

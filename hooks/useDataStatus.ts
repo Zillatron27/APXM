@@ -6,7 +6,7 @@ import {
   deriveOldestUpdate,
 } from '../stores/site-data-sources';
 
-export type DataTone = 'live' | 'fio' | 'cached' | 'connecting';
+export type DataTone = 'live' | 'stale' | 'fio' | 'cached' | 'connecting';
 
 export interface DataStatus {
   tone: DataTone;
@@ -29,12 +29,20 @@ export interface DataStatus {
 export function useDataStatus(): DataStatus {
   const connected = useConnectionStore((s) => s.connected);
   const lastMessageTimestamp = useConnectionStore((s) => s.lastMessageTimestamp);
+  const sessionStale = useConnectionStore((s) => s.sessionStale);
   const fioLastFetch = useSettingsStore((s) => s.fio.lastFetch);
   const siteEntries = useSiteSourceStore((s) => s.entries);
 
   const oldestUpdate = deriveOldestUpdate(siteEntries);
   const weakestSource = deriveWeakestSource(siteEntries);
 
+  // Session staleness (#7): the connection is nominally open but message flow
+  // has stopped past the silence threshold. Reads as "stale, refresh
+  // suggested" — the cached presentation, not an error — because on phones
+  // this fires routinely (backgrounded tab) and must not feel alarming.
+  if (connected && sessionStale) {
+    return { tone: 'stale', label: 'Stale', since: lastMessageTimestamp };
+  }
   // Live: the game connection is up and a message arrived in the last minute
   if (connected && lastMessageTimestamp && Date.now() - lastMessageTimestamp < 60000) {
     return { tone: 'live', label: 'Live', since: oldestUpdate };

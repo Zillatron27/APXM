@@ -14,6 +14,11 @@ interface ConnectionState {
   /** true if another @prun/link interceptor was already active when ours
    *  installed (competing extension — Helm, rprun, an APXM-family tool) */
   interceptorConflict: boolean;
+  /** Session-level staleness (#7): the connection is nominally open but no
+   *  message has been handled for WS_SILENCE_THRESHOLD_MS. Set/cleared by
+   *  lib/session-staleness.ts; distinct from the per-site freshness
+   *  timestamps, but rendered through the same indicator states. */
+  sessionStale: boolean;
 }
 
 interface ConnectionActions {
@@ -25,6 +30,7 @@ interface ConnectionActions {
   addUnknownMessageType: (type: string) => void;
   setApexUnresponsive: (value: boolean) => void;
   setInterceptorConflict: (value: boolean) => void;
+  setSessionStale: (value: boolean) => void;
   reset: () => void;
 }
 
@@ -39,6 +45,7 @@ const initialState: ConnectionState = {
   unknownMessageTypes: [],
   apexUnresponsive: false,
   interceptorConflict: false,
+  sessionStale: false,
 };
 
 export const useConnectionStore = create<ConnectionStore>((set) => ({
@@ -67,6 +74,8 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
   setApexUnresponsive: (apexUnresponsive) => set({ apexUnresponsive }),
 
   setInterceptorConflict: (interceptorConflict) => set({ interceptorConflict }),
+
+  setSessionStale: (sessionStale) => set({ sessionStale }),
 
   reset: () => set(initialState),
 }));

@@ -79,6 +79,20 @@ describe('deriveStaleness', () => {
     expect(result.colorClass).toBe('text-apxm-text/40');
   });
 
+  it('session staleness (#7) forces the stale presentation on fresh websocket data', () => {
+    // The heartbeat flag means message flow has stopped: a recent per-site
+    // timestamp can't be trusted as current. Text keeps reporting true age.
+    const entry: SiteSourceEntry = {
+      source: 'websocket',
+      updatedAt: Date.now() - 60_000,
+    };
+    const result = deriveStaleness(entry, true);
+
+    expect(result.isStale).toBe(true);
+    expect(result.colorClass).toBe('text-apxm-text/40');
+    expect(result.text).toMatch(/^updated/);
+  });
+
   it('exactly at the threshold is still fresh (source uses strict >)', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-03-24T12:00:00Z'));
