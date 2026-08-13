@@ -1,5 +1,21 @@
 # APXM Changelog
 
+## 1.1.0 (2026-08-13)
+
+The contract actions release: APXM's first game actions, plus a wave of quality-of-life features — all device-tested live.
+
+### Added
+
+- **One-tap contract actions** (#73) — ACCEPT, REJECT, per-condition FULFILL, and Request Termination straight from the contract sheet. APXM drives the native CONT buffer off-screen and clicks APEX's own button — your tap is the commit, and the sheet updates live from the game's own data with no refresh. When APEX has an action gated (a shipment still in transit, insufficient stock), APXM's button greys out and the condition shows the game's `pending` status instead of failing silently
+- **Alerts panel** (#72) — APEX notifications (the NOTS data) surfaced on the Status tab as a collapsible, reorderable panel showing your unread alerts, formatted per notification type
+- **Primary currency override** (#63) — a Settings picker to headline the liquidity pane in AIC/CIS/ICA/NCC instead of your faction's currency
+- **Condition locations** — contract conditions now show where they happen ("→ Antares IV - Life"), for every condition type, matching the game's own text
+
+### Notes
+
+- Tests: 651
+- Contract actions respect the action-authorisation rule: every commit is a deliberate user tap; APXM never sends messages to the game server
+
 ## 1.0.2 (2026-08-13)
 
 Patch release — three fixes, no new features.
