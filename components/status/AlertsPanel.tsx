@@ -4,8 +4,8 @@ import { useAlertsStore } from '../../stores/entities';
 import { formatAlert } from '../../lib/format-alert';
 import { formatRelativeTime } from '../../lib/format-time';
 
-// The NOTS list can run long; cap the panel and say so rather than scroll
-// forever — the full history lives in APEX.
+// Unread can still run long (the login snapshot arrives before APEX marks
+// anything read); cap the panel and say so rather than scroll forever.
 const MAX_ROWS = 50;
 
 /**
@@ -14,19 +14,25 @@ const MAX_ROWS = 50;
  * are visible without switching to APEX. Read state is server-driven and
  * display-only — marking read would require sending a message, which APXM
  * never does.
+ *
+ * Unread only (for now): the login snapshot carries the full NOTS history,
+ * which is several screens of already-read noise on first load. Read alerts
+ * live in APEX's NOTS buffer; this panel is the "what needs my attention"
+ * view. Revisit if a history view is ever wanted here.
  */
 export function AlertsPanel({ handle }: { handle?: ReactNode }) {
   const [collapsed, setCollapsed] = useState(true);
   const fetched = useAlertsStore((s) => s.fetched);
   const entities = useAlertsStore((s) => s.entities);
 
-  const alerts = useMemo(
+  const unreadAlerts = useMemo(
     () =>
-      Array.from(entities.values()).sort((a, b) => b.time.timestamp - a.time.timestamp),
+      Array.from(entities.values())
+        .filter((a) => !a.read)
+        .sort((a, b) => b.time.timestamp - a.time.timestamp),
     [entities]
   );
-  const unread = useMemo(() => alerts.filter((a) => !a.read).length, [alerts]);
-  const rows = alerts.slice(0, MAX_ROWS);
+  const rows = unreadAlerts.slice(0, MAX_ROWS);
 
   return (
     <Panel
@@ -35,13 +41,13 @@ export function AlertsPanel({ handle }: { handle?: ReactNode }) {
       collapsible
       collapsed={collapsed}
       onToggleCollapse={() => setCollapsed((c) => !c)}
-      summary={unread > 0 ? `${unread} unread` : `${alerts.length}`}
+      summary={`${unreadAlerts.length} unread`}
       handle={handle}
     >
       {!fetched ? (
         <p className="text-xs text-apxm-muted">Waiting for game data...</p>
-      ) : alerts.length === 0 ? (
-        <p className="text-xs text-apxm-muted">No notifications</p>
+      ) : unreadAlerts.length === 0 ? (
+        <p className="text-xs text-apxm-muted">No unread notifications</p>
       ) : (
         <div className="space-y-1">
           {rows.map((alert) => {
@@ -51,24 +57,16 @@ export function AlertsPanel({ handle }: { handle?: ReactNode }) {
                 <span className="font-mono text-[10px] uppercase text-apxm-text/50 w-16 shrink-0">
                   {category}
                 </span>
-                <span
-                  className={`flex-1 min-w-0 ${
-                    alert.read ? 'text-apxm-muted' : 'text-apxm-text'
-                  }`}
-                >
-                  {/* Unread also gets a marker — colour alone can't carry state */}
-                  {!alert.read && <span className="text-prun-yellow mr-1">●</span>}
-                  {text}
-                </span>
+                <span className="flex-1 min-w-0 text-apxm-text">{text}</span>
                 <span className="font-mono text-[10px] text-apxm-text/50 shrink-0">
                   {formatRelativeTime(alert.time.timestamp)}
                 </span>
               </div>
             );
           })}
-          {alerts.length > MAX_ROWS && (
+          {unreadAlerts.length > MAX_ROWS && (
             <p className="text-[10px] text-apxm-muted pt-1">
-              +{alerts.length - MAX_ROWS} older — see NOTS in APEX
+              +{unreadAlerts.length - MAX_ROWS} more unread — see NOTS in APEX
             </p>
           )}
         </div>
