@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { formatCountdown, formatRelativeTime } from '../format-time';
+import { formatBurnDays, formatCountdown, formatRelativeTime } from '../format-time';
 
 describe('formatRelativeTime', () => {
   // Staleness display primitive: single largest unit, floored.
@@ -42,6 +42,31 @@ describe('formatRelativeTime', () => {
 
   it('shows floored days mid-range', () => {
     expect(formatRelativeTime(NOW - 3 * 86_400_000)).toBe('3d');
+  });
+});
+
+describe('formatBurnDays', () => {
+  // #75 "Infinityd": every days-remaining surface must route through this
+  // helper so a non-finite runout can never reach `${days}d` string-building.
+  it('renders Infinity as the infinity symbol, never "Infinityd"', () => {
+    expect(formatBurnDays(Infinity)).toBe('∞');
+  });
+
+  it('renders null/undefined as ∞ — absence of a finite runout, same user-facing fact', () => {
+    expect(formatBurnDays(null)).toBe('∞');
+    expect(formatBurnDays(undefined)).toBe('∞');
+  });
+
+  it('renders NaN as ∞ rather than "NaNd"', () => {
+    expect(formatBurnDays(NaN)).toBe('∞');
+  });
+
+  it('floors finite values to whole days with a d suffix', () => {
+    expect(formatBurnDays(0)).toBe('0d');
+    expect(formatBurnDays(3.7)).toBe('3d');
+    expect(formatBurnDays(0.4)).toBe('0d');
+    expect(formatBurnDays(365)).toBe('365d');
+    expect(formatBurnDays(12345.9)).toBe('12345d');
   });
 });
 

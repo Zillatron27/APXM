@@ -1,4 +1,5 @@
 import type { Urgency } from '../../core/burn';
+import { formatBurnDays } from '../../lib/format-time';
 import { keycapClasses } from './keycap';
 
 interface TimeBadgeProps {
@@ -17,12 +18,8 @@ const urgencyBgColors: Record<Urgency, string> = {
 };
 
 export function TimeBadge({ daysRemaining, urgency, interactive = false }: TimeBadgeProps) {
-  const displayText =
-    daysRemaining === Infinity
-      ? 'OK'
-      : daysRemaining < 1
-        ? '<1d'
-        : `${Math.floor(daysRemaining)}d`;
+  // Shared burn-days convention (#75): infinite runout reads ∞ (was 'OK').
+  const displayText = formatBurnDays(daysRemaining);
 
   const keycap = interactive ? ` ${keycapClasses}` : '';
   return (
