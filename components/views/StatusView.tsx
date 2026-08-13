@@ -6,6 +6,7 @@ import {
   CashBalancePane,
   AttentionPanel,
   EmpireBurnPanel,
+  AlertsPanel,
   DragHandle,
   useStatusReorder,
 } from '../status';
@@ -18,6 +19,7 @@ const PANELS: Record<StatusPanelId, (handle: ReactNode) => ReactNode> = {
   fleet: (handle) => <FleetMiniList handle={handle} />,
   contracts: (handle) => <ContractsMiniList handle={handle} />,
   empire: (handle) => <EmpireBurnPanel handle={handle} />,
+  alerts: (handle) => <AlertsPanel handle={handle} />,
 };
 
 export function StatusView() {

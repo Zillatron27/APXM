@@ -10,6 +10,7 @@ import {
   useShipsStore,
   useFlightsStore,
   useContractsStore,
+  useAlertsStore,
   useProductionLoadedStore,
   clearAllEntityStores,
 } from '../entities';
@@ -21,6 +22,7 @@ import {
   createTestShip,
   createTestFlight,
   createTestContract,
+  createTestAlert,
   createProductionOrder,
 } from '../../__tests__/fixtures/factories';
 import { useSiteSourceStore } from '../site-data-sources';
@@ -157,12 +159,17 @@ describe('message-handlers', () => {
       expect(useStorageStore.getState().entities.size).toBe(1);
       expect(useShipsStore.getState().entities.size).toBe(1);
 
+      useAlertsStore.getState().setAll([createTestAlert()]);
+      expect(useAlertsStore.getState().entities.size).toBe(1);
+
       // Reconnection (reconnectCount=1) — should clear
       dispatchMessage('CLIENT_CONNECTION_OPENED', {});
 
       expect(useSitesStore.getState().entities.size).toBe(0);
       expect(useStorageStore.getState().entities.size).toBe(0);
       expect(useShipsStore.getState().entities.size).toBe(0);
+      // Stale notifications after a WS gap must not linger either.
+      expect(useAlertsStore.getState().entities.size).toBe(0);
       // Stale ACT data after a WS gap is exactly the staleness hazard —
       // order books especially must not survive a reconnect.
       expect(useWarehouseStore.getState().warehouses).toHaveLength(0);
@@ -517,6 +524,47 @@ describe('message-handlers', () => {
       dispatchMessage('CONTRACTS_CONTRACTS', { contracts });
 
       expect(useContractsStore.getState().entities.size).toBe(2);
+    });
+  });
+
+  describe('ALERTS_* (the NOTS data)', () => {
+    it('ALERTS_ALERTS populates the store and marks it fetched', () => {
+      dispatchMessage('ALERTS_ALERTS', {
+        alerts: [createTestAlert({ id: 'a-1' }), createTestAlert({ id: 'a-2' })],
+      });
+
+      expect(useAlertsStore.getState().entities.size).toBe(2);
+      expect(useAlertsStore.getState().fetched).toBe(true);
+      expect(useAlertsStore.getState().dataSource).toBe('websocket');
+    });
+
+    it('ALERTS_ALERT upserts a single alert (delta)', () => {
+      dispatchMessage('ALERTS_ALERT', createTestAlert({ id: 'a-1', read: false }));
+      dispatchMessage('ALERTS_ALERT', createTestAlert({ id: 'a-1', read: true }));
+
+      expect(useAlertsStore.getState().entities.size).toBe(1);
+      expect(useAlertsStore.getState().getById('a-1')?.read).toBe(true);
+    });
+
+    it('ALERTS_ALERTS_DELETED removes only the listed ids', () => {
+      dispatchMessage('ALERTS_ALERTS', {
+        alerts: [createTestAlert({ id: 'a-1' }), createTestAlert({ id: 'a-2' })],
+      });
+
+      dispatchMessage('ALERTS_ALERTS_DELETED', { alertIds: ['a-1'] });
+
+      expect(useAlertsStore.getState().getById('a-1')).toBeUndefined();
+      expect(useAlertsStore.getState().getById('a-2')).toBeDefined();
+    });
+
+    it('discards malformed alert deltas without touching the store', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      dispatchMessage('ALERTS_ALERT', { nonsense: true });
+
+      expect(useAlertsStore.getState().entities.size).toBe(0);
+      expect(useConnectionStore.getState().discardedMessages).toBe(1);
+      warnSpy.mockRestore();
     });
   });
 

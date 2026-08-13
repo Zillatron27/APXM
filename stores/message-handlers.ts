@@ -11,6 +11,7 @@ import {
   useFlightsStore,
   useContractsStore,
   useBalancesStore,
+  useAlertsStore,
   useProductionLoadedStore,
   clearAllEntityStores,
   type WorkforceEntity,
@@ -442,6 +443,43 @@ export function initMessageHandlers(): void {
       useContractsStore.getState().setOne(contract);
     } else {
       warn('CONTRACTS_CONTRACT: unexpected payload structure', contract);
+      useConnectionStore.getState().incrementDiscarded();
+    }
+  });
+
+  // ============================================================================
+  // Alerts (the NOTS buffer's data) — bulk snapshot on login, then singleton
+  // deltas as things happen, plus explicit deletion notices.
+  // ============================================================================
+
+  typeHandlers.set('ALERTS_ALERTS', (msg: ProcessedMessage) => {
+    const payload = extractPayload(msg) as { alerts?: PrunApi.Alert[] };
+    if (Array.isArray(payload?.alerts)) {
+      useAlertsStore.getState().setAll(payload.alerts);
+      useAlertsStore.getState().setFetched('websocket');
+    } else {
+      warn('ALERTS_ALERTS: unexpected payload structure', payload);
+    }
+  });
+
+  typeHandlers.set('ALERTS_ALERT', (msg: ProcessedMessage) => {
+    const alert = extractPayload(msg) as PrunApi.Alert;
+    if (alert?.id) {
+      useAlertsStore.getState().setOne(alert);
+    } else {
+      warn('ALERTS_ALERT: unexpected payload structure', alert);
+      useConnectionStore.getState().incrementDiscarded();
+    }
+  });
+
+  typeHandlers.set('ALERTS_ALERTS_DELETED', (msg: ProcessedMessage) => {
+    const payload = extractPayload(msg) as { alertIds?: string[] };
+    if (Array.isArray(payload?.alertIds)) {
+      for (const id of payload.alertIds) {
+        useAlertsStore.getState().removeOne(id);
+      }
+    } else {
+      warn('ALERTS_ALERTS_DELETED: unexpected payload structure', payload);
       useConnectionStore.getState().incrementDiscarded();
     }
   });
