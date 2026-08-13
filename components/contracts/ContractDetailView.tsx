@@ -38,6 +38,9 @@ interface ConditionBlockProps {
   /** Fires the one-tap FULFILL passthrough for this condition (#73). */
   onFulfill: () => void;
   actionRunning: boolean;
+  /** APEX has this condition's button disabled (game-side gate, e.g. shipment
+   *  not yet arrived) — mirror it. Session-scoped; reopening the sheet retries. */
+  gameDisabled: boolean;
 }
 
 /**
@@ -47,7 +50,7 @@ interface ConditionBlockProps {
  * The tap IS the commit: APXM drives the CONT buffer off-screen and clicks
  * APEX's own fulfill control (action-authorisation rule).
  */
-function ConditionBlock({ cond, onFulfill, actionRunning }: ConditionBlockProps) {
+function ConditionBlock({ cond, onFulfill, actionRunning, gameDisabled }: ConditionBlockProps) {
   const glyph = cond.breached ? '!' : cond.fulfilled ? '✓' : cond.available ? '●' : '✗';
   const glyphColor = cond.breached
     ? 'text-status-critical'
@@ -96,7 +99,7 @@ function ConditionBlock({ cond, onFulfill, actionRunning }: ConditionBlockProps)
       {cond.available && (
         <button
           onClick={onFulfill}
-          disabled={actionRunning}
+          disabled={actionRunning || gameDisabled}
           className={`shrink-0 min-h-touch px-3 ${btnSecondary} disabled:opacity-50 disabled:cursor-not-allowed`}
         >
           Fulfill
@@ -118,6 +121,11 @@ export function ContractDetailView({ contractId }: ContractDetailViewProps) {
   const contract = useContractDetail(contractId);
   const [actionRunning, setActionRunning] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  // Buttons APEX reported disabled at act time, keyed by condition id (or the
+  // action kind for accept/reject). Session-scoped by design: the gate lifts
+  // on game events the WS contract data doesn't carry (a shipment arriving),
+  // so reopening the sheet is the retry.
+  const [gameDisabled, setGameDisabled] = useState<ReadonlySet<string>>(new Set());
 
   // The contract vanished (store cleared on reconnect). The sheet keeps its
   // title from the payload; just say the live detail is gone.
@@ -125,14 +133,19 @@ export function ContractDetailView({ contractId }: ContractDetailViewProps) {
     return <p className="text-sm text-apxm-muted">Contract data unavailable.</p>;
   }
 
-  async function handleAction(target: ContractActionTarget): Promise<void> {
+  async function handleAction(target: ContractActionTarget, disableKey: string): Promise<void> {
     if (actionRunning || !contract) return;
     setActionRunning(true);
     setActionError(null);
     const result = await runContractAction(contract.localId, target);
     setActionRunning(false);
     if (!result.ok) {
-      setActionError(result.error);
+      if (result.disabledInApex) {
+        // Mirror APEX's disabled button instead of surfacing a message.
+        setGameDisabled((prev) => new Set(prev).add(disableKey));
+      } else {
+        setActionError(result.error);
+      }
     }
   }
 
@@ -156,15 +169,15 @@ export function ContractDetailView({ contractId }: ContractDetailViewProps) {
           <p className="text-xs text-status-warning">Awaiting your acceptance.</p>
           <div className="flex gap-2">
             <button
-              onClick={() => handleAction({ kind: 'accept' })}
-              disabled={actionRunning}
+              onClick={() => handleAction({ kind: 'accept' }, 'accept')}
+              disabled={actionRunning || gameDisabled.has('accept')}
               className={`flex-1 min-h-touch px-4 py-2 ${btnPrimary} disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               Accept
             </button>
             <button
-              onClick={() => handleAction({ kind: 'reject' })}
-              disabled={actionRunning}
+              onClick={() => handleAction({ kind: 'reject' }, 'reject')}
+              disabled={actionRunning || gameDisabled.has('reject')}
               className={`flex-1 min-h-touch px-4 py-2 ${btnSecondary} disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               Reject
@@ -198,9 +211,10 @@ export function ContractDetailView({ contractId }: ContractDetailViewProps) {
             key={cond.id}
             cond={cond}
             onFulfill={() =>
-              handleAction({ kind: 'fulfill', conditionNumber: cond.index + 1 })
+              handleAction({ kind: 'fulfill', conditionNumber: cond.index + 1 }, cond.id)
             }
             actionRunning={actionRunning}
+            gameDisabled={gameDisabled.has(cond.id)}
           />
         ))}
       </div>

@@ -14,6 +14,7 @@ import { openMobileBuffer, closeMobileBuffer } from '../mobile-buffer-navigator'
 import {
   runContractAction,
   findContractActionButton,
+  isApexButtonDisabled,
   type ContractActionTarget,
 } from '../contract-actions';
 import { setupActGlobals } from '../act/globals-setup';
@@ -33,7 +34,7 @@ beforeAll(() => {
       dismiss: 'af-dismiss',
     },
     ActionConfirmationOverlay: { container: 'aco-container' },
-    Button: { btn: 'apex-btn' },
+    Button: { btn: 'apex-btn', disabled: 'apex-btn-disabled' },
   });
 });
 
@@ -138,6 +139,34 @@ describe('findContractActionButton', () => {
   });
 });
 
+describe('isApexButtonDisabled', () => {
+  // Device capture 2026-08-13: APEX gates buttons with a Button__disabled
+  // class, NOT the disabled attribute — clicking one is a silent no-op.
+  it('detects the parsed C.Button.disabled class', () => {
+    const btn = makeButton('fulfill');
+    btn.className = 'apex-btn-disabled apex-btn';
+    expect(isApexButtonDisabled(btn)).toBe(true);
+  });
+
+  it('detects the raw BEM prefix when stylesheet parsing is unavailable', () => {
+    const btn = makeButton('fulfill');
+    btn.className = 'Button__disabled___x8i7XF Button__btn___UJGZ1b7';
+    expect(isApexButtonDisabled(btn)).toBe(true);
+  });
+
+  it('detects the standard disabled attribute', () => {
+    const btn = makeButton('fulfill');
+    btn.disabled = true;
+    expect(isApexButtonDisabled(btn)).toBe(true);
+  });
+
+  it('an enabled button is not disabled', () => {
+    const btn = makeButton('fulfill');
+    btn.className = 'apex-btn';
+    expect(isApexButtonDisabled(btn)).toBe(false);
+  });
+});
+
 describe('runContractAction', () => {
   it('opens the CONT buffer, clicks the button, and reports success', async () => {
     const { clicks } = buildContainer(['Accept', 'Reject'], 'af-overlay af-success');
@@ -160,6 +189,23 @@ describe('runContractAction', () => {
     const result = await runContractAction('ABC123', { kind: 'accept' });
 
     expect(result).toEqual({ ok: false, error: 'Insufficient funds' });
+    expect(closeMobileBuffer).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports disabledInApex without clicking when APEX gates the button', async () => {
+    const { container, clicks } = buildContainer([], 'af-overlay af-success');
+    buildConditionsTable(container, [
+      { n: 3, label: 'fulfill', disabledClass: 'Button__disabled___x8i7XF Button__btn___UJGZ1b7' },
+    ]);
+
+    const result = await runContractAction('ABC123', { kind: 'fulfill', conditionNumber: 3 });
+
+    expect(result).toEqual({
+      ok: false,
+      disabledInApex: true,
+      error: 'Not yet enabled in APEX',
+    });
+    expect(clicks).toEqual([]);
     expect(closeMobileBuffer).toHaveBeenCalledTimes(1);
   });
 

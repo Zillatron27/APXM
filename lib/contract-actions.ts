@@ -9,6 +9,7 @@ import { openMobileBuffer, closeMobileBuffer } from './mobile-buffer-navigator';
 import { waitActionFeedback } from './act/action-feedback';
 import { setupActGlobals } from './act/globals-setup';
 import { clickElement } from './act/_compat';
+import { C } from './act/prun-css';
 import { useSettingsStore } from '../stores/settings';
 import { useGameState } from '../stores/gameState';
 
@@ -22,7 +23,30 @@ export type ContractActionTarget =
    *  available-ordinal picks the wrong row whenever the two sets differ. */
   | { kind: 'fulfill'; conditionNumber: number };
 
-export type ContractActionResult = { ok: true } | { ok: false; error: string };
+export type ContractActionResult =
+  | { ok: true }
+  | {
+      ok: false;
+      error: string;
+      /** The target button exists but APEX renders it disabled — the game
+       *  gates on state the WS data doesn't expose (shipment arrival, funds).
+       *  The view mirrors the disabled state instead of showing the error. */
+      disabledInApex?: true;
+    };
+
+/**
+ * APEX marks a gated command button with a Button__disabled class, NOT the
+ * disabled attribute (device-captured 2026-08-13; the attribute is checked
+ * anyway in case other buffers differ). Clicking one is a silent no-op — no
+ * feedback overlay ever appears — so it must be detected before clicking.
+ */
+export function isApexButtonDisabled(button: HTMLElement): boolean {
+  if (button instanceof HTMLButtonElement && button.disabled) return true;
+  const parsed = (C.Button as Record<string, string> | undefined)?.disabled;
+  if (parsed && button.classList.contains(parsed)) return true;
+  // Stylesheet parsing unavailable: the BEM prefix is stable, the hash isn't.
+  return Array.from(button.classList).some((cls) => cls.startsWith('Button__disabled'));
+}
 
 // APEX renders CSS text-transform: uppercase, so visible label case is
 // meaningless — match textContent case-insensitively (CLAUDE.md gotcha).
@@ -108,6 +132,9 @@ export async function runContractAction(
               ? 'No fulfill button found — this condition type may need APEX (see #73)'
               : `No ${target.kind} button found in the contract buffer`,
         };
+      }
+      if (isApexButtonDisabled(button)) {
+        return { ok: false, disabledInApex: true, error: 'Not yet enabled in APEX' };
       }
       await clickElement(button);
       const autoConfirm = useSettingsStore.getState().autoConfirm;
