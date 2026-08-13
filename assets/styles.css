@@ -33,6 +33,16 @@ input[type='number'] {
   overflow: visible !important;
 }
 
+/* Manual-confirm window for driven APEX actions: drop ONLY the background so
+   the user can see and tap APEX's confirmation dialog underneath. Height must
+   NOT collapse here — APEX's layout listeners treat host-height changes as a
+   navigation event and move the buffer stack mid-drive (CLAUDE.md gotcha).
+   The base :host pointer-events:none already passes taps through; the
+   ConfirmBar opts back in with pointer-events-auto. */
+:host(.act-confirm) {
+  background-color: transparent !important;
+}
+
 /* WXT container inside shadow root must fill the host. Also sets the overlay's
    default typeface — without this the UI inherits APEX's page font. Structure
    text defaults to Plex Sans; data elements opt into Plex Mono via `font-mono`. */

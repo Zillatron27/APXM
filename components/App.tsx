@@ -7,6 +7,7 @@ import { UnavailableOverlay } from './UnavailableOverlay';
 
 export function App() {
   const apexVisible = useGameState((s) => s.apexVisible);
+  const actConfirmPending = useGameState((s) => s.actConfirmPending);
   const availability = useAvailabilityStatus();
   const interceptorConflict = useConnectionStore((s) => s.interceptorConflict);
   // APEX is showing its login screen — APXM stays dormant (host collapsed,
@@ -30,6 +31,16 @@ export function App() {
       }
     }
   }, [apexVisible, loginRequired]);
+
+  // Manual-confirm window (driven APEX action awaiting the user's CONFIRM):
+  // drop only the host BACKGROUND — never the height, which APEX's layout
+  // listeners would read as navigation mid-drive. AppShell hides the shell
+  // and shows the ConfirmBar; this effect just mirrors the state onto the
+  // host element the same way apex-visible is handled above.
+  useEffect(() => {
+    const host = document.querySelector('apxm-overlay') as HTMLElement | null;
+    host?.classList.toggle('act-confirm', actConfirmPending);
+  }, [actConfirmPending]);
 
   // Manage #container visibility and offset when toggling APEX.
   // When APEX visible: ensure display, offset below FloatingReturn bar.

@@ -79,11 +79,18 @@ interface GameState {
   contractFilters: ReadonlySet<ContractFilter>;
   // The active drill-down sheet, or null when none is open. Session-scoped.
   detailView: DetailView | null;
+  /** True while a driven APEX action waits for the user's CONFIRM tap in
+   *  APEX's own dialog. AppShell hides the (opaque) shell and drops the
+   *  shadow host's background so the dialog is visible and tappable; a slim
+   *  ConfirmBar is the only APXM chrome. Set from the action-feedback
+   *  onManualConfirm signal. Session-scoped. */
+  actConfirmPending: boolean;
   setOverlayVisible: (visible: boolean) => void;
   setDebugMode: (debug: boolean) => void;
   setApexVisible: (visible: boolean) => void;
   setActiveTab: (tab: TabId) => void;
   setDetailView: (view: DetailView | null) => void;
+  setActConfirmPending: (pending: boolean) => void;
   toggleBurnFilter: (filter: BurnFilter) => void;
   toggleFleetFilter: (filter: FleetFilter) => void;
   toggleContractFilter: (filter: ContractFilter) => void;
@@ -99,11 +106,13 @@ export const useGameState = create<GameState>((set) => ({
   // Contracts default to ACTIVE — fulfilled contracts are history
   contractFilters: new Set<ContractFilter>(['active']),
   detailView: null,
+  actConfirmPending: false,
   setOverlayVisible: (overlayVisible) => set({ overlayVisible }),
   setDebugMode: (debugMode) => set({ debugMode }),
   setApexVisible: (apexVisible) => set({ apexVisible }),
   setActiveTab: (activeTab) => set({ activeTab }),
   setDetailView: (detailView) => set({ detailView }),
+  setActConfirmPending: (actConfirmPending) => set({ actConfirmPending }),
   toggleBurnFilter: (filter) =>
     set((state) => ({
       burnFilters: toggleFilterSelection(state.burnFilters, filter, individualBurnFilters),

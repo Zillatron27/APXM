@@ -2,6 +2,7 @@ import { useGameState } from '../../stores/gameState';
 import { Header } from './Header';
 import { TabBar } from './TabBar';
 import { FloatingReturn } from './FloatingReturn';
+import { ConfirmBar } from './ConfirmBar';
 import { DetailSheet } from './DetailSheet';
 import { StatusView } from '../views/StatusView';
 import { FleetView } from '../views/FleetView';
@@ -28,20 +29,32 @@ function ViewContent() {
 
 export function AppShell() {
   const apexVisible = useGameState((s) => s.apexVisible);
+  const actConfirmPending = useGameState((s) => s.actConfirmPending);
 
   if (apexVisible) {
     return <FloatingReturn />;
   }
 
+  // During a manual-confirm window the shell hides via CSS (it must stay
+  // MOUNTED — unmounting would drop the in-flight action's React owner) and
+  // the ConfirmBar is the only chrome; the host background drops via
+  // :host(.act-confirm) so APEX's dialog underneath is visible and tappable.
   return (
-    <div className="relative w-full h-dvh flex flex-col bg-apxm-bg text-apxm-text overflow-hidden pointer-events-auto">
-      <Header />
-      <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 min-w-0">
-        <ViewContent />
-      </main>
-      <TabBar />
-      {/* Drill-down sheet — overlays the whole shell when a detailView is set */}
-      <DetailSheet />
-    </div>
+    <>
+      {actConfirmPending && <ConfirmBar />}
+      <div
+        className={`relative w-full h-dvh flex-col bg-apxm-bg text-apxm-text overflow-hidden pointer-events-auto ${
+          actConfirmPending ? 'hidden' : 'flex'
+        }`}
+      >
+        <Header />
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 min-w-0">
+          <ViewContent />
+        </main>
+        <TabBar />
+        {/* Drill-down sheet — overlays the whole shell when a detailView is set */}
+        <DetailSheet />
+      </div>
+    </>
   );
 }
