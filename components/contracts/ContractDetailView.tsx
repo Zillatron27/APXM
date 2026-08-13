@@ -74,6 +74,11 @@ function ConditionBlock({ cond, onFulfill, actionRunning, gameDisabled }: Condit
           >
             {cond.party === 'self' ? 'Self' : cond.partnerName}
           </span>
+          {/* A gated tap proved APEX has this PENDING condition disabled —
+              say so in the game's own status word, next to the party. */}
+          {gameDisabled && cond.status === 'PENDING' && (
+            <span className="shrink-0 text-apxm-muted">pending</span>
+          )}
           {!cond.fulfilled && cond.deadline && (
             <span className="shrink-0 text-apxm-muted font-mono ml-auto">{cond.deadline}</span>
           )}
