@@ -72,6 +72,31 @@ beforeEach(() => {
   useGameState.getState().setActConfirmPending(false);
 });
 
+/** The CONT conditions table, as device-captured 2026-08-13: one row per
+ *  condition, index cell first ("#3"), the (possibly disabled) action button
+ *  in the last cell. */
+function buildConditionsTable(
+  host: HTMLElement,
+  rows: { n: number; label?: string; disabledClass?: string }[]
+): void {
+  const table = document.createElement('table');
+  for (const row of rows) {
+    const tr = document.createElement('tr');
+    const indexCell = document.createElement('td');
+    indexCell.textContent = `#${row.n}`;
+    tr.appendChild(indexCell);
+    const cmdCell = document.createElement('td');
+    if (row.label) {
+      const btn = makeButton(row.label);
+      if (row.disabledClass) btn.className = row.disabledClass;
+      cmdCell.appendChild(btn);
+    }
+    tr.appendChild(cmdCell);
+    table.appendChild(tr);
+  }
+  host.appendChild(table);
+}
+
 describe('findContractActionButton', () => {
   it('matches labels case-insensitively (APEX uppercases via CSS)', () => {
     const { container } = buildContainer(['ACCEPT', 'Reject'], 'af-overlay');
@@ -79,18 +104,32 @@ describe('findContractActionButton', () => {
     expect(findContractActionButton(container, { kind: 'reject' })?.textContent).toBe('Reject');
   });
 
-  it('picks the Nth fulfill button by available-ordinal', () => {
-    const { container } = buildContainer(['Fulfill', 'Fulfill'], 'af-overlay');
-    const target: ContractActionTarget = { kind: 'fulfill', conditionIndex: 1 };
-    const buttons = container.getElementsByTagName('button');
-    expect(findContractActionButton(container, target)).toBe(buttons[1]);
+  it('fulfill picks the button from the row whose index cell matches', () => {
+    const { container } = buildContainer([], 'af-overlay');
+    // Device-observed shape: APEX renders buttons on BOTH self rows (#3 deps
+    // met but game-gated, #5 deps unmet) — row addressing must not count.
+    buildConditionsTable(container, [
+      { n: 3, label: 'fulfill' },
+      { n: 4 },
+      { n: 5, label: 'fulfill' },
+    ]);
+    const target: ContractActionTarget = { kind: 'fulfill', conditionNumber: 5 };
+    const found = findContractActionButton(container, target);
+    expect(found).toBe(container.getElementsByTagName('button')[1]);
   });
 
-  it('a single fulfill match is used regardless of ordinal', () => {
+  it('falls back to a single unambiguous label match when no row matches', () => {
     const { container } = buildContainer(['Pay'], 'af-overlay');
     expect(
-      findContractActionButton(container, { kind: 'fulfill', conditionIndex: 3 })?.textContent
+      findContractActionButton(container, { kind: 'fulfill', conditionNumber: 3 })?.textContent
     ).toBe('Pay');
+  });
+
+  it('refuses to guess among multiple matches when no row matches', () => {
+    const { container } = buildContainer(['Fulfill', 'Fulfill'], 'af-overlay');
+    expect(
+      findContractActionButton(container, { kind: 'fulfill', conditionNumber: 2 })
+    ).toBeUndefined();
   });
 
   it('returns undefined when nothing matches', () => {

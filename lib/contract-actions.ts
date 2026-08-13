@@ -15,11 +15,12 @@ import { useGameState } from '../stores/gameState';
 export type ContractActionTarget =
   | { kind: 'accept' }
   | { kind: 'reject' }
-  /** conditionIndex is the ordinal among AVAILABLE (fulfillable) conditions
-   *  in contract order — APEX renders a button per fulfillable row, so the
-   *  Nth matched button belongs to the Nth available condition, not to the
-   *  condition's raw index. */
-  | { kind: 'fulfill'; conditionIndex: number };
+  /** conditionNumber is the game-displayed condition number (condition.index
+   *  + 1), matched against the CONT buffer row's Index cell ("#3"). Device
+   *  finding (2026-08-13): APEX renders a — possibly disabled — button on
+   *  EVERY self non-fulfilled row, so counting matched buttons by APXM's
+   *  available-ordinal picks the wrong row whenever the two sets differ. */
+  | { kind: 'fulfill'; conditionNumber: number };
 
 export type ContractActionResult = { ok: true } | { ok: false; error: string };
 
@@ -35,29 +36,43 @@ const TARGET_LABELS: Record<'accept' | 'reject' | 'fulfill', string[]> = {
   fulfill: ['fulfill', 'fulfil', 'pay', 'provide'],
 };
 
+function labelMatches(el: HTMLElement, labels: string[]): boolean {
+  const text = el.textContent?.trim().toLowerCase() ?? '';
+  return labels.some((label) => text === label);
+}
+
 /**
- * Finds the APEX button for a target inside the opened CONT buffer. For
- * fulfill, the available-ordinal picks among multiple matches (see
- * ContractActionTarget). Exported for tests.
+ * Finds the APEX button for a target inside the opened CONT buffer.
+ * Contract-level accept/reject match by label alone. Fulfill is addressed by
+ * ROW: the conditions table's first cell carries the game-displayed condition
+ * number ("#3"), so the button is taken from that row — never by counting
+ * matches, which misaligns against disabled rows (see ContractActionTarget).
+ * Falls back to a single unambiguous label match if the table shape ever
+ * changes. Exported for tests.
  */
 export function findContractActionButton(
   root: HTMLElement,
   target: ContractActionTarget
 ): HTMLElement | undefined {
   const labels = TARGET_LABELS[target.kind];
-  const matches: HTMLElement[] = [];
-  for (const el of Array.from(root.getElementsByTagName('button'))) {
-    const text = el.textContent?.trim().toLowerCase() ?? '';
-    if (labels.some((label) => text === label)) {
-      matches.push(el);
-    }
-  }
+  const matches = Array.from(root.getElementsByTagName('button')).filter((el) =>
+    labelMatches(el, labels)
+  );
   if (target.kind !== 'fulfill') {
     return matches[0];
   }
-  // Multiple fulfillable conditions render multiple buttons; a single match
-  // is used regardless of index (the other conditions render none).
-  return matches.length === 1 ? matches[0] : matches[target.conditionIndex];
+
+  const rowLabel = `#${target.conditionNumber}`;
+  for (const row of Array.from(root.getElementsByTagName('tr'))) {
+    const indexCell = row.getElementsByTagName('td')[0];
+    if (indexCell?.textContent?.trim() !== rowLabel) continue;
+    return Array.from(row.getElementsByTagName('button')).find((el) =>
+      labelMatches(el, labels)
+    );
+  }
+  // Row addressing found nothing — only trust a label match if it's the sole
+  // candidate; guessing among several risks committing the wrong condition.
+  return matches.length === 1 ? matches[0] : undefined;
 }
 
 // One driven action at a time — a second tap while a buffer is being driven

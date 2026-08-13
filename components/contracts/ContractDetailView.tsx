@@ -187,10 +187,10 @@ export function ContractDetailView({ contractId }: ContractDetailViewProps) {
         </p>
       )}
 
-      {/* Conditions. Fulfill targets are addressed by their ordinal among
-          AVAILABLE conditions — APEX renders one button per fulfillable row,
-          so the raw condition index would misalign whenever earlier
-          conditions are already fulfilled or belong to the partner. */}
+      {/* Conditions. Fulfill targets are addressed by the game-displayed
+          condition number — the CONT buffer's rows carry it, and APEX renders
+          (disabled) buttons even on rows APXM doesn't consider available, so
+          ordinal counting would misalign. */}
       <div>
         <p className="text-[10px] uppercase tracking-wide text-apxm-text/40 mb-1">Conditions</p>
         {contract.conditions.map((cond) => (
@@ -198,12 +198,7 @@ export function ContractDetailView({ contractId }: ContractDetailViewProps) {
             key={cond.id}
             cond={cond}
             onFulfill={() =>
-              handleAction({
-                kind: 'fulfill',
-                conditionIndex: contract.conditions
-                  .filter((c) => c.available)
-                  .findIndex((c) => c.id === cond.id),
-              })
+              handleAction({ kind: 'fulfill', conditionNumber: cond.index + 1 })
             }
             actionRunning={actionRunning}
           />
