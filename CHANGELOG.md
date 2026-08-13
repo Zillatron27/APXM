@@ -1,5 +1,19 @@
 # APXM Changelog
 
+## 1.0.2 (2026-08-13)
+
+Patch release — three fixes, no new features.
+
+### Fixed
+
+- **Contract list ordering** (#76) — contracts sharing an expiration (most visibly the never-expiring set) now sort deterministically: newest-created first within the tie, with the contract ID as a final tiebreak, so the list no longer reorders between renders
+- **"Infinityd" on base cards** (#75) — a base whose burns are all net-positive now shows ∞ on its BURN tile instead of the literal string "Infinityd"; all days-remaining displays share one formatter, and the status-tab burn badge's "OK" for infinite burn now also reads ∞
+- **In-session data staleness is now detected and shown on the data indicator** (#7, partial) — if the game connection goes silent for 10 minutes (backgrounded phone, suspended tab, network blip), the data-source light and per-site staleness lines degrade to their stale state instead of silently showing drifting numbers; any fresh game message clears it
+
+### Notes
+
+- Tests: 601
+
 ## 1.0.1 (2026-07-06)
 
 Bugfix release for the first public wave.

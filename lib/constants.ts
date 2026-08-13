@@ -1,4 +1,4 @@
-export const BUILD_VERSION = 'v1.0.1';
+export const BUILD_VERSION = 'v1.0.2';
 
 /**
  * In-session silence threshold (#7): APEX chatters continuously during a live
