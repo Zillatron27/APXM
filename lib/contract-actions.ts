@@ -16,6 +16,7 @@ import { useGameState } from '../stores/gameState';
 export type ContractActionTarget =
   | { kind: 'accept' }
   | { kind: 'reject' }
+  | { kind: 'terminate' }
   /** conditionNumber is the game-displayed condition number (condition.index
    *  + 1), matched against the CONT buffer row's Index cell ("#3"). Device
    *  finding (2026-08-13): APEX renders a — possibly disabled — button on
@@ -54,9 +55,10 @@ export function isApexButtonDisabled(button: HTMLElement): boolean {
 // the CONT buffer's DOM (rPrun never drives it), so the candidate set grows
 // from device testing. Condition types whose button opens a form instead of
 // committing are documented as not-one-tappable, not special-cased here.
-const TARGET_LABELS: Record<'accept' | 'reject' | 'fulfill', string[]> = {
+const TARGET_LABELS: Record<'accept' | 'reject' | 'terminate' | 'fulfill', string[]> = {
   accept: ['accept'],
   reject: ['reject', 'decline'],
+  terminate: ['request termination'],
   fulfill: ['fulfill', 'fulfil', 'pay', 'provide'],
 };
 

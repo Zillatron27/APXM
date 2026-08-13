@@ -141,6 +141,19 @@ describe('buildContractDetail — dependency-aware condition flags', () => {
     expect(buildContractDetail(noneAvailable).actionable).toBe(false);
   });
 
+  it('maps the termination fields straight from the wire contract', () => {
+    const detail = buildContractDetail(
+      createTestContract({
+        canRequestTermination: true,
+        terminationSent: true,
+        terminationReceived: false,
+      })
+    );
+    expect(detail.canRequestTermination).toBe(true);
+    expect(detail.terminationSent).toBe(true);
+    expect(detail.terminationReceived).toBe(false);
+  });
+
   it('keeps breached as a convenience for the VIOLATED condition status', () => {
     const contract = acceptedContract([
       selfCondition({ id: 'c1', index: 0, status: 'VIOLATED', dependencies: [] }),

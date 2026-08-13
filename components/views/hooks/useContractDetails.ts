@@ -77,6 +77,12 @@ export interface ContractDetail {
   accepted: boolean;
   /** Faction/agent contract (partner carries a countryCode). */
   isFaction: boolean;
+  /** Server-authoritative: the CONT buffer offers "request termination". */
+  canRequestTermination: boolean;
+  /** You already requested termination — the button is spent. */
+  terminationSent: boolean;
+  /** The partner requested termination. */
+  terminationReceived: boolean;
 }
 
 /**
@@ -307,6 +313,9 @@ export function buildContractDetail(contract: PrunApi.Contract): ContractDetail 
     acceptance: deriveAcceptance(contract),
     accepted: isContractAccepted(contract),
     isFaction: isFactionContract(contract),
+    canRequestTermination: contract.canRequestTermination,
+    terminationSent: contract.terminationSent,
+    terminationReceived: contract.terminationReceived,
   };
 }
 

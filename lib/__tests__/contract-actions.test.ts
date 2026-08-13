@@ -137,6 +137,13 @@ describe('findContractActionButton', () => {
     const { container } = buildContainer(['Cancel'], 'af-overlay');
     expect(findContractActionButton(container, { kind: 'accept' })).toBeUndefined();
   });
+
+  it('matches the request-termination command (device-captured label)', () => {
+    const { container } = buildContainer(['request termination'], 'af-overlay');
+    expect(findContractActionButton(container, { kind: 'terminate' })?.textContent).toBe(
+      'request termination'
+    );
+  });
 });
 
 describe('isApexButtonDisabled', () => {
