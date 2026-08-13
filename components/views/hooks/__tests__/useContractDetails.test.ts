@@ -217,12 +217,14 @@ describe('assembleContractDetails (list sort/count/filter)', () => {
   function contractWith(
     localId: string,
     status: PrunApi.ContractStatus,
-    dueMs: number | null
+    dueMs: number | null,
+    createdMs?: number
   ): PrunApi.Contract {
     return createTestContract({
       localId,
       status,
       dueDate: dueMs === null ? undefined : { timestamp: dueMs },
+      ...(createdMs !== undefined ? { date: { timestamp: createdMs } } : {}),
     });
   }
 
@@ -250,6 +252,59 @@ describe('assembleContractDetails (list sort/count/filter)', () => {
       'DONE',
       'PARTIAL',
       'NO-DUE', // null due date sorts to the end
+    ]);
+  });
+
+  // #76 tiebreakers — the no-due-date group had no secondary ordering, so
+  // contracts inside it (most visibly the infinite-expiry set) reordered
+  // arbitrarily. Chain: expiration → created newest-first → localId.
+  it('sorts the no-due-date group by creation date, newest first (#76)', () => {
+    const older = contractWith('DXOF431', 'CLOSED', null, now - 30 * DAY);
+    const newer = contractWith('NEWER', 'CLOSED', null, now - 1 * DAY);
+    const middle = contractWith('MIDDLE', 'CLOSED', null, now - 10 * DAY);
+
+    const { contracts } = assembleContractDetails([older, newer, middle], new Set(['all']));
+    expect(contracts.map((c) => c.localId)).toEqual(['NEWER', 'MIDDLE', 'DXOF431']);
+  });
+
+  it('dated contracts still sort ahead of the no-due-date group regardless of creation date', () => {
+    // The undated contract is newest-created — creation date must not lift it
+    // above dated contracts, only order it within its expiration tie.
+    const undatedNewest = contractWith('UNDATED', 'CLOSED', null, now);
+    const datedOld = contractWith('DATED', 'CLOSED', now + 1 * DAY, now - 50 * DAY);
+
+    const { contracts } = assembleContractDetails([undatedNewest, datedOld], new Set(['all']));
+    expect(contracts.map((c) => c.localId)).toEqual(['DATED', 'UNDATED']);
+  });
+
+  it('falls back to localId ascending when expiration and creation date both tie', () => {
+    const due = now + 3 * DAY;
+    const created = now - 2 * DAY;
+    const b = contractWith('CT-B', 'CLOSED', due, created);
+    const a = contractWith('CT-A', 'CLOSED', due, created);
+    const c = contractWith('CT-C', 'CLOSED', due, created);
+
+    const { contracts } = assembleContractDetails([b, a, c], new Set(['all']));
+    expect(contracts.map((c) => c.localId)).toEqual(['CT-A', 'CT-B', 'CT-C']);
+  });
+
+  it('orders a mixed list: dated by expiry, then undated by created desc, then localId', () => {
+    const due = now + 2 * DAY;
+    const list = [
+      contractWith('UNDATED-OLD', 'CLOSED', null, now - 20 * DAY),
+      contractWith('DATED-LATE', 'CLOSED', now + 6 * DAY, now - 1 * DAY),
+      contractWith('TIE-B', 'CLOSED', due, now - 5 * DAY),
+      contractWith('UNDATED-NEW', 'CLOSED', null, now - 2 * DAY),
+      contractWith('TIE-A', 'CLOSED', due, now - 5 * DAY),
+    ];
+
+    const { contracts } = assembleContractDetails(list, new Set(['all']));
+    expect(contracts.map((c) => c.localId)).toEqual([
+      'TIE-A', // dated block by expiry; full tie → localId
+      'TIE-B',
+      'DATED-LATE',
+      'UNDATED-NEW', // undated block by created, newest first
+      'UNDATED-OLD',
     ]);
   });
 
