@@ -336,21 +336,33 @@ export interface ContractDetailsResult {
  * for testability — the ACTIVE-includes-OPEN distinction (vs ACCEPTED_STATUSES,
  * which deliberately excludes OPEN) lives here and must stay pinned by tests.
  */
+/**
+ * Contract list ordering (#76): OPEN first, then expiration ascending
+ * (contracts without a due date sort after dated ones), then — within an
+ * expiration tie, most visibly the no-due-date group — creation date newest
+ * first, and finally localId ascending so identical-timestamp contracts never
+ * reorder between renders.
+ */
+export function compareContractDetails(a: ContractDetail, b: ContractDetail): number {
+  if (a.status === 'OPEN' && b.status !== 'OPEN') return -1;
+  if (a.status !== 'OPEN' && b.status === 'OPEN') return 1;
+
+  const dateA = a.dueDateMs ?? Infinity;
+  const dateB = b.dueDateMs ?? Infinity;
+  if (dateA !== dateB) return dateA - dateB;
+
+  if (a.createdMs !== b.createdMs) return b.createdMs - a.createdMs;
+
+  return a.localId < b.localId ? -1 : a.localId > b.localId ? 1 : 0;
+}
+
 export function assembleContractDetails(
   contracts: PrunApi.Contract[],
   activeFilters: ReadonlySet<ContractFilter>
 ): ContractDetailsResult {
   const details: ContractDetail[] = contracts.map(buildContractDetail);
 
-  // Sort: OPEN first, then by due date (contracts without a due date last)
-  details.sort((a, b) => {
-    if (a.status === 'OPEN' && b.status !== 'OPEN') return -1;
-    if (a.status !== 'OPEN' && b.status === 'OPEN') return 1;
-
-    const dateA = a.dueDateMs ?? Infinity;
-    const dateB = b.dueDateMs ?? Infinity;
-    return dateA - dateB;
-  });
+  details.sort(compareContractDetails);
 
   // Count by filter category
   const activeCount = details.filter((c) => ACTIVE_STATUSES.includes(c.status)).length;

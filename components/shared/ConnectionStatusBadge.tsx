@@ -4,6 +4,7 @@ import { formatRelativeTime } from '../../lib/format-time';
 
 const toneConfig: Record<DataTone, { color: string; pulse: boolean; description: string }> = {
   live: { color: 'bg-status-ok', pulse: false, description: 'Live data from the game connection' },
+  stale: { color: 'bg-apxm-muted', pulse: false, description: 'No game messages for a while — data may be stale, refresh suggested' },
   fio: { color: 'bg-status-warning', pulse: false, description: 'FIO snapshot — no live game connection' },
   cached: { color: 'bg-apxm-muted', pulse: false, description: 'Cached data from a previous session' },
   connecting: { color: 'bg-status-critical', pulse: true, description: 'Waiting for game data' },

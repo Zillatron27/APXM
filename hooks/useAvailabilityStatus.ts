@@ -22,8 +22,11 @@ const POLL_INTERVAL_MS = 1_000;
 /**
  * Check for APEX's error banner indicating connection failure.
  * This appears when the game itself can't connect to the APEX network.
+ * Exported for the session-staleness heartbeat, which must not flag
+ * silence while APEX itself reports maintenance/downtime. Scans
+ * body.innerText — call sparingly, never per-render.
  */
-function detectApexErrorBanner(): boolean {
+export function detectApexErrorBanner(): boolean {
   try {
     return document.body?.innerText?.includes('Failed to connect to APEX network') ?? false;
   } catch {

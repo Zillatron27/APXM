@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { formatBurnDays } from '../../lib/format-time';
 import type { SiteBurnSummary } from '../../core/burn';
 import { classifyRepairUrgency } from '../../core/repair';
 import { classifyProdUrgency, prodStatusLabel } from '../../core/prod';
@@ -16,10 +17,6 @@ interface SiteBurnCardProps {
   repairAgeDays: number | null;
   /** Capacity-aware production status (null = data not yet received) */
   prodStatus: ProdStatus;
-}
-
-function formatDays(days: number): string {
-  return days < 1 ? '<1d' : `${Math.floor(days)}d`;
 }
 
 /**
@@ -137,14 +134,14 @@ export function SiteBurnCard({ summary, repairAgeDays, prodStatus }: SiteBurnCar
           {/* BURN / REPAIR / PROD — each drills into its detail sheet */}
           <DrillTile
             label="Burn"
-            value={mostUrgent ? formatDays(mostUrgent.daysRemaining) : '—'}
+            value={mostUrgent ? formatBurnDays(mostUrgent.daysRemaining) : '—'}
             tone={burnTone}
             ariaLabel={`Burn detail for ${siteName}`}
             onActivate={() => setDetailView({ type: 'burn', siteId, siteName })}
           />
           <DrillTile
             label="Repair"
-            value={repairAgeDays === null ? '—' : formatDays(repairAgeDays)}
+            value={repairAgeDays === null ? '—' : formatBurnDays(repairAgeDays)}
             tone={repairTone}
             ariaLabel={`Repair detail for ${siteName}`}
             onActivate={() => setDetailView({ type: 'repair', siteId, siteName })}

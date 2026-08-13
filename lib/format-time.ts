@@ -17,6 +17,17 @@ export function formatRelativeTime(timestamp: number): string {
 }
 
 /**
+ * Formats a days-remaining figure for display. Infinity (net-positive or
+ * zero-rate burn) renders as the infinity symbol; finite values render as
+ * a rounded-down integer with a `d` suffix. Null/undefined renders as ∞
+ * as well — absence of a finite runout is the same user-facing fact.
+ */
+export function formatBurnDays(days: number | null | undefined): string {
+  if (days == null || !Number.isFinite(days)) return '∞';
+  return `${Math.floor(days)}d`;
+}
+
+/**
  * Formats a forward-looking duration (milliseconds until something finishes)
  * as a compact two-unit countdown, e.g. "23h 43m", "1d 11h", "5m". Mirrors the
  * APEX production buffer's "in 23h 43m" ETA style. Non-positive input reads
