@@ -224,24 +224,13 @@ export function ContractDetailView({ contractId }: ContractDetailViewProps) {
         ))}
       </div>
 
-      {/* Termination. canRequestTermination is server-authoritative — the
-          same one-tap passthrough as the other actions (the CONT buffer's
-          "request termination" command). */}
+      {/* Termination action lives in the sheet header (ContractTerminateButton);
+          only the state lines render here. */}
       {contract.terminationReceived && (
         <p className="text-xs text-status-warning">Partner requested termination.</p>
       )}
-      {contract.terminationSent ? (
+      {contract.terminationSent && (
         <p className="text-xs text-apxm-muted">Termination requested.</p>
-      ) : (
-        contract.canRequestTermination && (
-          <button
-            onClick={() => handleAction({ kind: 'terminate' }, 'terminate')}
-            disabled={actionRunning || gameDisabled.has('terminate')}
-            className={`w-full min-h-touch px-4 py-2 ${btnSecondary} disabled:opacity-50 disabled:cursor-not-allowed`}
-          >
-            Request Termination
-          </button>
-        )
       )}
     </div>
   );

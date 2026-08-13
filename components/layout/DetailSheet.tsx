@@ -3,7 +3,7 @@ import { useGameState, type DetailView } from '../../stores/gameState';
 import { ProductionView } from '../production';
 import { BurnDetailView, RepairDetailView } from '../burn';
 import { ShipDetailView } from '../fleet';
-import { ContractDetailView } from '../contracts';
+import { ContractDetailView, ContractTerminateButton } from '../contracts';
 
 const detailLabels: Record<DetailView['type'], string> = {
   production: 'Production',
@@ -84,6 +84,9 @@ export function DetailSheet() {
             </p>
             <h2 className="font-semibold text-apxm-text truncate">{detailTitle(detailView)}</h2>
           </div>
+          {detailView.type === 'contract' && (
+            <ContractTerminateButton contractId={detailView.contractId} />
+          )}
           <button
             onClick={close}
             aria-label="Close production view"
