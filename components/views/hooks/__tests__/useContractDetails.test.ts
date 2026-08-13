@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildContractDetail, assembleContractDetails } from '../useContractDetails';
-import { createTestContract, createContractCondition } from '../../../../__tests__/fixtures/factories';
+import { createTestContract, createContractCondition, createAddress } from '../../../../__tests__/fixtures/factories';
 import type { PrunApi } from '../../../../types/prun-api';
 
 /**
@@ -154,6 +154,62 @@ describe('buildContractDetail — dependency-aware condition flags', () => {
     // neither available (status !== PENDING) nor blocked (no unfulfilled dep).
     expect(cond.available).toBe(false);
     expect(cond.blocked).toBe(false);
+  });
+});
+
+describe('buildContractDetail — condition locations (device finding 2026-08-13)', () => {
+  // The game's CONT text always names where a condition happens; an accept
+  // decision is impossible without it. destination (deliveries) and address
+  // (provision/pickup) both surface as a destination part.
+  it('a provision condition surfaces its address as a destination part', () => {
+    const contract = acceptedContract([
+      selfCondition({
+        id: 'c1',
+        index: 0,
+        type: 'PROVISION',
+        dependencies: [],
+        address: createAddress({ planetName: 'Antares IV - Life' }),
+      }),
+    ]);
+
+    const [cond] = buildContractDetail(contract).conditions;
+    expect(cond.descriptionParts).toContainEqual({
+      type: 'destination',
+      value: 'Antares IV - Life',
+    });
+    expect(cond.description).toContain('→ Antares IV - Life');
+  });
+
+  it('a delivery condition still surfaces its destination', () => {
+    const contract = acceptedContract([
+      selfCondition({
+        id: 'c1',
+        index: 0,
+        type: 'DELIVERY',
+        dependencies: [],
+        destination: createAddress({ planetName: 'Promitor' }),
+      }),
+    ]);
+
+    const [cond] = buildContractDetail(contract).conditions;
+    expect(cond.descriptionParts).toContainEqual({ type: 'destination', value: 'Promitor' });
+  });
+
+  it('a payment condition with no address renders without a location', () => {
+    const contract = acceptedContract([
+      selfCondition({
+        id: 'c1',
+        index: 0,
+        type: 'PAYMENT',
+        dependencies: [],
+        quantity: null,
+        amount: { amount: 1000, currency: 'AIC' },
+      }),
+    ]);
+
+    const [cond] = buildContractDetail(contract).conditions;
+    expect(cond.descriptionParts.some((p) => p.type === 'destination')).toBe(false);
+    expect(cond.description).not.toContain('→');
   });
 });
 

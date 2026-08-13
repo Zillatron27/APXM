@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useContractsStore } from '../../../stores/entities/contracts';
+import { getEntityDisplayName } from '../../../lib/address';
 import type { PrunApi } from '../../../types/prun-api';
 
 import type { ContractFilter } from '../../../stores/gameState';
@@ -127,21 +128,41 @@ interface ConditionDescriptionResult {
 }
 
 /**
+ * The place a condition happens: destination for deliveries, address for
+ * provision/pickup-style conditions. The game's CONT text always names it
+ * ("@ Antares IV - Life") and an accept decision is impossible without it,
+ * so every condition carrying one displays it (device finding 2026-08-13).
+ */
+function conditionLocation(condition: PrunApi.ContractCondition): string | null {
+  const address = condition.destination ?? condition.address;
+  if (!address) return null;
+  return getEntityDisplayName(address) || null;
+}
+
+/**
  * Builds a description string and structured parts for a condition.
  */
 function buildConditionDescription(condition: PrunApi.ContractCondition): ConditionDescriptionResult {
   const type = formatConditionType(condition.type);
   const parts: ConditionPart[] = [];
+  const location = conditionLocation(condition);
 
-  // Payment condition
-  if (condition.amount) {
-    const description = `${type} ${condition.amount.amount.toLocaleString()} ${condition.amount.currency}`;
-    parts.push({ type: 'text', value: type });
-    parts.push({ type: 'amount', value: `${condition.amount.amount.toLocaleString()} ${condition.amount.currency}` });
+  function withLocation(description: string): ConditionDescriptionResult {
+    if (location) {
+      parts.push({ type: 'destination', value: location });
+      return { description: `${description} → ${location}`, parts };
+    }
     return { description, parts };
   }
 
-  // Delivery condition with material
+  // Payment condition
+  if (condition.amount) {
+    parts.push({ type: 'text', value: type });
+    parts.push({ type: 'amount', value: `${condition.amount.amount.toLocaleString()} ${condition.amount.currency}` });
+    return withLocation(`${type} ${condition.amount.amount.toLocaleString()} ${condition.amount.currency}`);
+  }
+
+  // Material condition (delivery, provision, pickup, shipment)
   if (condition.quantity) {
     const ticker = condition.quantity.material.ticker;
     const category = condition.quantity.material.category;
@@ -150,24 +171,11 @@ function buildConditionDescription(condition: PrunApi.ContractCondition): Condit
     parts.push({ type: 'text', value: type });
     parts.push({ type: 'material', value: ticker, category });
     parts.push({ type: 'amount', value: String(amount) });
-
-    let dest = '';
-    if (condition.destination) {
-      for (const line of condition.destination.lines) {
-        if ((line.type === 'PLANET' || line.type === 'STATION') && line.entity) {
-          dest = line.entity.name || line.entity.naturalId;
-          parts.push({ type: 'destination', value: dest });
-          break;
-        }
-      }
-    }
-
-    const description = `${type} [${ticker}] ${amount}${dest ? ` → ${dest}` : ''}`;
-    return { description, parts };
+    return withLocation(`${type} [${ticker}] ${amount}`);
   }
 
   parts.push({ type: 'text', value: type });
-  return { description: type, parts };
+  return withLocation(type);
 }
 
 /**
