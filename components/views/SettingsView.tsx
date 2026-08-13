@@ -29,6 +29,16 @@ const refreshModeOptions: { id: RefreshMode; label: string }[] = [
   { id: 'auto', label: 'Auto' },
 ];
 
+// PrUn's currency set is fixed (ECD excluded — legacy, not spendable).
+// null = derive from the company's faction (the unchanged default).
+const primaryCurrencyOptions: { id: string | null; label: string }[] = [
+  { id: null, label: 'Auto' },
+  { id: 'AIC', label: 'AIC' },
+  { id: 'CIS', label: 'CIS' },
+  { id: 'ICA', label: 'ICA' },
+  { id: 'NCC', label: 'NCC' },
+];
+
 /** 24-bit hex number → CSS hex string, for inline preset-preview swatches. */
 function toCssHex(value: number): string {
   return `#${value.toString(16).padStart(6, '0')}`;
@@ -150,7 +160,7 @@ export function validateRepairThresholds(
 }
 
 export function SettingsView() {
-  const { fio, setFioConfig, setFioLastFetch, materialTheme, setMaterialTheme, uiTheme, setUiTheme, burnThresholds, setBurnThresholds } = useSettingsStore();
+  const { fio, setFioConfig, setFioLastFetch, materialTheme, setMaterialTheme, uiTheme, setUiTheme, burnThresholds, setBurnThresholds, preferredCurrency, setPreferredCurrency } = useSettingsStore();
 
   // Burn threshold local state — strings for free-form editing, persist on valid input
   const [critical, setCritical] = useState(String(burnThresholds.critical));
@@ -529,6 +539,31 @@ export function SettingsView() {
               {isClearing ? 'Clearing...' : 'Clear Cached Data'}
             </button>
           </div>
+        </div>
+      </Panel>
+
+      {/* Primary Currency Section */}
+      <Panel title="Primary Currency">
+        <div className="space-y-3">
+          <div className="flex gap-2">
+            {primaryCurrencyOptions.map((option) => (
+              <button
+                key={option.label}
+                onClick={() => setPreferredCurrency(option.id)}
+                className={`flex-1 min-h-touch px-2 py-2 font-mono text-[11px] font-semibold uppercase tracking-wider ${
+                  preferredCurrency === option.id
+                    ? 'bg-prun-yellow text-apxm-bg'
+                    : 'border border-apxm-accent text-apxm-muted'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-apxm-muted">
+            The headline balance on the Status tab. Auto uses your company&apos;s
+            faction currency.
+          </p>
         </div>
       </Panel>
 

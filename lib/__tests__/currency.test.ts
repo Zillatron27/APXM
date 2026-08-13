@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { primaryCurrencyFor, sortBalances } from '../currency';
+import { primaryCurrencyFor, resolvePrimaryCurrency, sortBalances } from '../currency';
 import type { PrunApi } from '../../types/prun-api';
 
 function balance(currency: string, amount = 1000): PrunApi.CurrencyAmount {
@@ -21,6 +21,27 @@ describe('primaryCurrencyFor', () => {
     expect(primaryCurrencyFor('AI')).toBeNull();
     expect(primaryCurrencyFor('XX')).toBeNull();
     expect(primaryCurrencyFor('')).toBeNull();
+  });
+});
+
+describe('resolvePrimaryCurrency', () => {
+  const AI_GUID = '18419e6fd11b5af8bf0d0a996ad1a622';
+
+  it('override wins over the faction-derived currency (#63)', () => {
+    expect(resolvePrimaryCurrency(AI_GUID, 'NCC')).toBe('NCC');
+  });
+
+  it('falls back to the faction currency when no override is set', () => {
+    expect(resolvePrimaryCurrency(AI_GUID, null)).toBe('AIC');
+  });
+
+  it('override works even without company data', () => {
+    expect(resolvePrimaryCurrency(null, 'CIS')).toBe('CIS');
+  });
+
+  it('returns null with no override and no/unknown countryId', () => {
+    expect(resolvePrimaryCurrency(null, null)).toBeNull();
+    expect(resolvePrimaryCurrency('unknown-guid', null)).toBeNull();
   });
 });
 

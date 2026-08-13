@@ -55,6 +55,10 @@ interface SettingsState {
    *  Opt-in per the action-authorisation rule. No UI yet — the Settings
    *  toggle lands with the ACT views (#25 Phase D). */
   autoConfirm: boolean;
+  /** Headline currency for the liquidity pane. null (default) derives it from
+   *  the company's faction; a currency code overrides — players often trade
+   *  in a non-faction currency based on location (#63). */
+  preferredCurrency: string | null;
 }
 
 interface SettingsActions {
@@ -69,6 +73,7 @@ interface SettingsActions {
   setNoBuy: (tickers: string[]) => void;
   setRefreshMode: (mode: RefreshMode) => void;
   setAutoConfirm: (enabled: boolean) => void;
+  setPreferredCurrency: (currency: string | null) => void;
   reset: () => void;
 }
 
@@ -96,6 +101,7 @@ const initialState: SettingsState = {
   noBuy: [],
   refreshMode: 'manual',
   autoConfirm: false,
+  preferredCurrency: null,
 };
 
 // Check if browser storage API is available
@@ -195,6 +201,7 @@ export const useSettingsStore = create<SettingsStore>()(
       setNoBuy: (tickers) => set({ noBuy: tickers }),
       setRefreshMode: (mode) => set({ refreshMode: mode }),
       setAutoConfirm: (enabled) => set({ autoConfirm: enabled }),
+      setPreferredCurrency: (currency) => set({ preferredCurrency: currency }),
 
       reset: () => set(initialState),
     }),
