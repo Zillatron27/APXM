@@ -12,7 +12,12 @@ vi.mock('../../mobile-buffer-navigator', () => ({
 
 import { openMobileBuffer, closeMobileBuffer } from '../../mobile-buffer-navigator';
 import { openSendSession } from '../sfc-driver';
+import { installInputBridge } from '../input-bridge-main';
 import { isActionInFlight } from '../action-lock';
+
+// jsdom is single-world: the input-bridge responder runs in the same document
+// and performs the typing/click sequences the driver requests.
+installInputBridge();
 import { useFlightsStore } from '../../../stores/entities';
 import { createTestFlight } from '../../../__tests__/fixtures/factories';
 
@@ -172,7 +177,10 @@ describe('SendSession', () => {
 
     const opened = await openSendSession('AVI-063I6', 'ship-1');
     if (!opened.ok) throw new Error('open failed');
-    const result = await opened.session.setDestination('Benten Station', 'Benten Station (Benten)');
+    const result = await opened.session.setDestination({
+      query: 'Benten Station',
+      label: 'Benten Station (Benten)',
+    });
     expect(result.ok).toBe(true);
 
     const snap = opened.session.readSnapshot();
@@ -187,11 +195,39 @@ describe('SendSession', () => {
     await opened.session.close();
   }, 15000);
 
+  it('matches a base suggestion by naturalId suffix when the label differs', async () => {
+    const fx = buildSfcFixture();
+    fx.input.addEventListener('input', () => {
+      if (fx.input.value === 'Bober') {
+        // APEX renders the FULL planet label; the WS-derived label is shorter.
+        fx.setSuggestions(['Antares I - Bober (ZV-307b)']);
+      }
+    });
+    fx.container.querySelector('ul')!.addEventListener('click', () => {
+      fx.status.textContent = 'valid';
+      fx.setRoute('4h');
+    });
+    const opened = await openSendSession('AVI-063I6', 'ship-1');
+    if (!opened.ok) throw new Error('open failed');
+    const result = await opened.session.setDestination({
+      query: 'Bober',
+      label: 'Bober (ZV-307b)',
+      naturalId: 'ZV-307b',
+    });
+    expect(result.ok).toBe(true);
+    expect(opened.session.readSnapshot().status).toBe('valid');
+    await opened.session.close();
+  }, 15000);
+
   it('refuses the destination when the suggestion never appears (no guessing)', async () => {
     buildSfcFixture(); // suggestions never populate
     const opened = await openSendSession('AVI-063I6', 'ship-1');
     if (!opened.ok) throw new Error('open failed');
-    const result = await opened.session.setDestination('Nowhere', 'Nowhere (XX-000x)');
+    const result = await opened.session.setDestination({
+      query: 'Nowhere',
+      label: 'Nowhere (XX-000x)',
+      naturalId: 'XX-000x',
+    });
     expect(result.ok).toBe(false);
     await opened.session.close();
   }, 15000);

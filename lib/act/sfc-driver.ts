@@ -17,6 +17,7 @@
 import { openMobileBuffer, closeMobileBuffer } from '../mobile-buffer-navigator';
 import { setupActGlobals } from './globals-setup';
 import { sleep, waitUntil } from './_compat';
+import { driveType, driveKey, driveClick } from './input-bridge';
 import { acquireActionLock, releaseActionLock } from './action-lock';
 import { isApexButtonDisabled } from './apex-button';
 import { useFlightsStore } from '../../stores/entities';
@@ -153,50 +154,44 @@ export class SendSession {
     };
   }
 
-  async setDestination(query: string, suggestionLabel: string): Promise<SfcActionResult> {
+  async setDestination(dest: {
+    query: string;
+    label: string;
+    naturalId?: string;
+  }): Promise<SfcActionResult> {
     const input = this.root.querySelector<HTMLInputElement>('input[class*="AddressSelector"]');
     if (!input) return { ok: false, error: 'Destination field not found' };
-    input.focus();
-    await sleep(100);
-    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
-    if (input.value) {
-      setter?.call(input, '');
-      input.dispatchEvent(new InputEvent('input', { bubbles: true }));
-      await sleep(50);
-    }
-    // Char-by-char with the full keyboard sequence — the AddressSelector's
-    // autosuggest ignores a bare value-set (capture 2026-08-14).
-    for (const char of query) {
-      input.dispatchEvent(new KeyboardEvent('keydown', { key: char, bubbles: true, cancelable: true }));
-      input.dispatchEvent(new KeyboardEvent('keypress', { key: char, bubbles: true, cancelable: true }));
-      setter?.call(input, input.value + char);
-      input.dispatchEvent(new InputEvent('input', { data: char, inputType: 'insertText', bubbles: true }));
-      input.dispatchEvent(new KeyboardEvent('keyup', { key: char, bubbles: true, cancelable: true }));
-      await sleep(40);
-    }
-    // Wait for the wanted suggestion, reopening with ArrowDown if the list
-    // stays shut (it refuses to reopen by typing after a prior selection).
+    // Typing MUST happen in the main world: content-world synthetic events
+    // update the value but never trigger APEX's suggestion fetch (device
+    // finding 2026-08-14) — the input bridge performs the sequence there.
+    const typed = await driveType(input, dest.query);
+    if (!typed) return { ok: false, error: 'Destination typing failed (bridge unavailable?)' };
+    await sleep(800);
+    // Suggestion match: exact label, or the unique "(naturalId)" suffix —
+    // WS planet names ("Bober") don't always match APEX's rendered labels
+    // ("Antares I - Bober (ZV-307b)"), but the naturalId suffix is exact.
+    const suffix = dest.naturalId ? `(${dest.naturalId})` : null;
     const findSuggestion = () =>
-      Array.from(document.querySelectorAll<HTMLElement>('li[role="option"]')).find(
-        (li) => li.textContent?.trim() === suggestionLabel
-      ) ?? null;
+      Array.from(document.querySelectorAll<HTMLElement>('li[role="option"]')).find((li) => {
+        const text = li.textContent?.trim() ?? '';
+        return text === dest.label || (suffix !== null && text.endsWith(suffix));
+      }) ?? null;
     let suggestion = findSuggestion();
     for (let attempt = 0; !suggestion && attempt < 3; attempt++) {
-      input.dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'ArrowDown', code: 'ArrowDown', bubbles: true, cancelable: true })
-      );
+      // The dropdown refuses to reopen by typing after a prior selection —
+      // ArrowDown (via the bridge) reopens it.
+      await driveKey(input, 'ArrowDown');
       await sleep(700);
       suggestion = findSuggestion();
     }
     if (!suggestion) {
-      return { ok: false, error: `${suggestionLabel} not found in APEX's destination list` };
+      return { ok: false, error: `${dest.label} not found in APEX's destination list` };
     }
     const before = this.root.querySelector('[class*="MissionPlan__table"]')?.textContent ?? '';
-    // Mouse-select (works on Chromium mobile emulation); the Enter path is
-    // the on-device fallback if WebKit swallows the click.
-    suggestion.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
-    suggestion.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
-    suggestion.click();
+    // Selection click also goes through the bridge — autosuggest selection
+    // is the interaction most sensitive to event provenance.
+    const clicked = await driveClick(suggestion);
+    if (!clicked) return { ok: false, error: 'Destination selection failed' };
     await waitRecompute(this.root, before);
     return { ok: true };
   }
@@ -292,5 +287,13 @@ export async function openSendSession(
     releaseActionLock();
     return { ok: false, error: 'Failed to open the flight control buffer' };
   }
+  // The navigator parks #container hidden (visibility:hidden, off-screen) —
+  // but a hidden input cannot take focus, and the AddressSelector only
+  // renders suggestions while focused (the MTRA off-screen rule; refound the
+  // hard way 2026-08-14). Reveal it for the session: APXM's opaque overlay
+  // covers the page, so the buffer stays invisible to the user, and
+  // closeMobileBuffer restores the pristine styles it saved at open.
+  root.style.visibility = 'visible';
+  root.style.left = '0px';
   return { ok: true, session: new SendSession(root, shipId) };
 }

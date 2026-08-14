@@ -60,7 +60,7 @@ export function SendShipView({ shipId, registration, onClose }: SendShipViewProp
       return;
     }
     sessionRef.current = opened.session;
-    const set = await opened.session.setDestination(dest.query, dest.label);
+    const set = await opened.session.setDestination(dest);
     if (!set.ok) {
       setError(set.error);
       await opened.session.close();
