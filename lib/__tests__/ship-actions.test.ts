@@ -147,10 +147,24 @@ describe('runShipUnload', () => {
 
     const result = await runShipUnload('AVI-063I6');
 
-    expect(openMobileBuffer).toHaveBeenCalledWith('FLT');
+    expect(openMobileBuffer).toHaveBeenCalledWith('FLT', expect.any(Function));
     expect(clicks).toEqual(['AVI-063I6:unload']);
     expect(result).toEqual({ ok: true });
     expect(closeMobileBuffer).toHaveBeenCalledTimes(1);
+  });
+
+  it('passes a fleet-content sentinel (FLT is a list buffer, no form)', async () => {
+    const { container, clicks } = buildContainer('af-overlay af-success');
+    buildShipBlock(container, 'AVI-063I6', clicks);
+    // Device finding 2026-08-14: the navigator's form default times out on
+    // FLT. The sentinel must match the fleet header, not a FormComponent.
+    const header = container.querySelector('header') as HTMLElement;
+    header.className = 'Fleet__fleetHeader___qHugg0k';
+
+    await runShipUnload('AVI-063I6');
+
+    const sentinel = vi.mocked(openMobileBuffer).mock.calls[0][1] as () => HTMLElement | null;
+    expect(sentinel()).toBe(header);
   });
 
   it('reports APEX error text (the empty-hold rejection) and still restores', async () => {

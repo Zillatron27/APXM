@@ -67,11 +67,22 @@ function findBufferForm(): HTMLElement | null {
  * Open an APEX buffer for `command` by driving the mobile Stack UI.
  *
  * Mirrors lib/buffer-refresh/engine.ts steps 1-8, then waits for the buffer's
- * form to render. #container is hidden off-screen and stays hidden on success —
- * the caller drives the form via the off-screen DOM and calls closeMobileBuffer
- * when done. On failure the page is restored before returning false.
+ * content to render. #container is hidden off-screen and stays hidden on
+ * success — the caller drives the buffer via the off-screen DOM and calls
+ * closeMobileBuffer when done. On failure the page is restored before
+ * returning false.
+ *
+ * `findReady` is the content sentinel: it must return an element once the
+ * buffer has rendered. The default matches a FormComponent, which every FORM
+ * buffer (CONT, SFC, CXPO, ...) renders — but LIST buffers (FLT) contain no
+ * form, so those callers pass their own sentinel (device finding 2026-08-14:
+ * the form default times out on FLT and reports a false failure while the
+ * buffer is actually open).
  */
-export async function openMobileBuffer(command: string): Promise<boolean> {
+export async function openMobileBuffer(
+  command: string,
+  findReady: () => HTMLElement | null = findBufferForm
+): Promise<boolean> {
   const container = getContainer();
   if (!container) {
     error('openMobileBuffer: #container not found');
@@ -134,10 +145,10 @@ export async function openMobileBuffer(command: string): Promise<boolean> {
     }
     card.click();
 
-    // Step 9: wait for the buffer's form to render.
-    const form = await waitForElement(findBufferForm, FORM_TIMEOUT_MS);
-    if (!form) {
-      throw new Error(`Buffer form for "${command}" did not render`);
+    // Step 9: wait for the buffer's content to render.
+    const ready = await waitForElement(findReady, FORM_TIMEOUT_MS);
+    if (!ready) {
+      throw new Error(`Buffer content for "${command}" did not render`);
     }
 
     return true;

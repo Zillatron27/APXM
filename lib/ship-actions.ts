@@ -77,7 +77,14 @@ export async function runShipUnload(registration: string): Promise<ShipActionRes
   }
   try {
     setupActGlobals();
-    const opened = await openMobileBuffer('FLT');
+    // FLT is a LIST buffer — no FormComponent — so the navigator needs a
+    // fleet-content sentinel instead of its form default (device finding
+    // 2026-08-14: the form wait times out and reports a false open failure).
+    const opened = await openMobileBuffer('FLT', () =>
+      document
+        .getElementById('container')
+        ?.querySelector<HTMLElement>('[class*="Fleet__fleetHeader"]') ?? null
+    );
     const anchor = document.getElementById('container');
     if (!opened || !anchor) {
       return { ok: false, error: 'Failed to open the FLT buffer' };

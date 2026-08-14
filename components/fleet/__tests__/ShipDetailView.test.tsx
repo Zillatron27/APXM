@@ -76,15 +76,17 @@ describe('ShipDetailView unload gating', () => {
     expect(unloadButton()?.disabled).toBe(false);
   });
 
-  it('disables unload when the hold is empty', () => {
+  it('disables unload when the hold is empty and says why', () => {
     const id = seedShip({ cargoLoad: 0 });
-    renderSheet(id);
+    const html = renderSheet(id);
     expect(unloadButton()?.disabled).toBe(true);
+    expect(html).toContain('Hold is empty');
   });
 
-  it('disables unload while the ship is in transit', () => {
+  it('disables unload while the ship is in transit and says why', () => {
     const id = seedShip({ cargoLoad: 120, inTransit: true });
-    renderSheet(id);
+    const html = renderSheet(id);
     expect(unloadButton()?.disabled).toBe(true);
+    expect(html).toContain('In transit');
   });
 });

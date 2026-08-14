@@ -81,16 +81,24 @@ export function ShipDetailView({ shipId }: ShipDetailViewProps) {
       </div>
 
       {/* Actions — client-side gating is UX only; the game's own gate is the
-          disabled check at act time (#73 lesson: never derive actionability). */}
+          disabled check at act time (#73 lesson: never derive actionability).
+          A gated button always says WHY (silent-failure rule): a bare disabled
+          button read as tappable-but-dead on device (2026-08-14). */}
       <div className="space-y-1">
         <button
           type="button"
-          className={`${btnSecondary} w-full min-h-touch px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed`}
+          className={`${btnSecondary} w-full min-h-touch px-4 py-2 disabled:opacity-30 disabled:shadow-none disabled:cursor-not-allowed`}
           disabled={actionRunning || gameDisabled || !ship.stationary || ship.cargo.current === 0}
           onClick={handleUnload}
         >
           {gameDisabled ? 'Unload — pending' : 'Unload cargo'}
         </button>
+        {!ship.stationary && (
+          <p className="text-xs text-apxm-muted">In transit — dock to unload</p>
+        )}
+        {ship.stationary && ship.cargo.current === 0 && !actionRunning && (
+          <p className="text-xs text-apxm-muted">Hold is empty</p>
+        )}
         {actionRunning && (
           <p className="text-xs text-apxm-muted animate-pulse">Working in APEX buffer...</p>
         )}
