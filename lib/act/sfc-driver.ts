@@ -52,7 +52,10 @@ export interface SfcSnapshot {
 export type SendSessionResult = { ok: true; session: SendSession } | { ok: false; error: string };
 export type SfcActionResult = { ok: true } | { ok: false; error: string };
 
-const RECOMPUTE_WAIT_MS = 10000;
+// Real recomputes mutate the table within ~1-2s; some toggles (e.g. unload
+// on arrival) legitimately change nothing, and this first-phase wait is how
+// long the UI shows "Recomputing" before accepting that. Keep it short.
+const RECOMPUTE_WAIT_MS = 4000;
 
 function anchor(): HTMLElement | null {
   return document.getElementById('container');
