@@ -9,6 +9,7 @@ import { installWebSocketProxy, installXHRProxy, setMessageCallback } from '@pru
 import { emitMessage } from '@prun/link/message-bus/main-world';
 import { installScriptBlocker, restoreBlockedScripts } from '@prun/link/script-control';
 import type { ProcessedMessage } from '@prun/link';
+import { installFiberBridge } from '../lib/act/fiber-bridge-main';
 import { log, logMessage } from '../lib/debug/logger';
 
 /**
@@ -45,6 +46,11 @@ export default defineUnlistedScript(() => {
 
   // 5. Restore blocked scripts (they now load through proxied WebSocket)
   restoreBlockedScripts();
+
+  // 6. Fiber bridge responder — answers content-script probes for React
+  // fiber props (page-world expandos the isolated world can't see), used by
+  // the ship-refuel target selection.
+  installFiberBridge();
 
   if (competingInterceptor) {
     document.documentElement.dataset.prunLinkConflict = 'true';
