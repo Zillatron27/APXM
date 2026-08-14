@@ -12,7 +12,12 @@ vi.mock('../mobile-buffer-navigator', () => ({
 }));
 
 import { openMobileBuffer, closeMobileBuffer } from '../mobile-buffer-navigator';
-import { runShipUnload, runShipRefuel, findShipUnloadButton } from '../ship-actions';
+import {
+  runShipUnload,
+  runShipRefuel,
+  runShipLoadCargo,
+  findShipUnloadButton,
+} from '../ship-actions';
 import { runContractAction } from '../contract-actions';
 import { setupActGlobals } from '../act/globals-setup';
 import { C } from '../act/prun-css';
@@ -454,5 +459,211 @@ describe('runShipRefuel', () => {
 
     expect(result).toEqual({ ok: false, error: 'Tank is already full' });
     expect(openMobileBuffer).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Load cargo: batch of wizard transfers grouped by source buffer.
+// The navigator mock builds each source's buffer content on demand; the
+// wizard fixture records {source, material, amount} per commit and bumps the
+// hold volume (the simulated WS delta) when the last expected transfer lands.
+// ---------------------------------------------------------------------------
+
+interface TransferRecord {
+  source: string;
+  material: string;
+  amount: string;
+}
+
+function seedLoadWorld() {
+  const address = createAddress({ planetName: 'Montem' });
+  const ship = createTestShip({ id: 'ship-l1', address });
+  const site = createTestSite({ siteId: 'site-l1', address });
+  const hold = createTestStorage({
+    id: ship.idShipStore,
+    addressableId: ship.id,
+    type: 'SHIP_STORE',
+    weightLoad: 0,
+    weightCapacity: 1000,
+    volumeLoad: 0,
+    volumeCapacity: 1000,
+    items: [],
+  });
+  const baseStore = createTestStorage({
+    id: 'store-a',
+    addressableId: site.siteId,
+    type: 'STORE',
+    items: [fuelItem('RAT', 500)],
+  });
+  const otherSite = createTestSite({ siteId: 'site-l2', address });
+  const otherStore = createTestStorage({
+    id: 'store-b',
+    addressableId: otherSite.siteId,
+    type: 'STORE',
+    items: [fuelItem('DW', 800)],
+  });
+  useShipsStore.getState().setAll([ship]);
+  useSitesStore.getState().setAll([site, otherSite]);
+  useStorageStore.getState().setAll([hold, baseStore, otherStore]);
+  useMaterialsStore.getState().setAll([
+    { ticker: 'RAT', name: 'basicRations', category: 'foods', weight: 0.2, volume: 0.1 },
+    { ticker: 'DW', name: 'drinkingWater', category: 'foods', weight: 0.1, volume: 0.1 },
+  ]);
+  return { ship, hold };
+}
+
+/** Installs a navigator mock that rebuilds #container per opened source and a
+ *  wizard whose commit records the transfer. `failOn` makes one material's
+ *  wizard produce no amount step (a mid-run failure). */
+function installLoadFixture(opts: {
+  holdId: string;
+  records: TransferRecord[];
+  failOn?: string;
+  bumpHoldOnCommit?: boolean;
+}): void {
+  vi.mocked(openMobileBuffer).mockImplementation(async (command: string) => {
+    document.body.innerHTML = '';
+    const container = document.createElement('div');
+    container.id = 'container';
+    document.body.appendChild(container);
+    const source = command.replace('INV ', '');
+    const start = document.createElement('button');
+    start.textContent = 'Start transfer';
+    start.addEventListener('click', () => {
+      const modal = document.createElement('div');
+      modal.className = 'MobileTransferStoreAndItemSelectionModal___h';
+      modal.appendChild(buildDropDownBox(['--', 'Basic Rations', 'Drinking Water']));
+      modal.appendChild(
+        buildDropDownBox(['--', 'Ship  cargo hold'], [null, opts.holdId])
+      );
+      const cont = document.createElement('button');
+      cont.textContent = 'Continue';
+      cont.className = 'apex-btn';
+      modal.appendChild(cont);
+      const dismiss = document.createElement('button');
+      dismiss.className = 'Modal__btnDismiss___h';
+      dismiss.textContent = '× Dismiss';
+      dismiss.addEventListener('click', () => modal.remove());
+      modal.appendChild(dismiss);
+      container.appendChild(modal);
+
+      let chosenMaterial = '';
+      modal.querySelectorAll('[class*="DropDownBox__itemName"]').forEach((el) => {
+        el.closest('li')?.addEventListener('click', () => {
+          const t = el.textContent?.trim() ?? '';
+          if (t === 'Basic Rations' || t === 'Drinking Water') chosenMaterial = t;
+        });
+      });
+
+      cont.addEventListener('click', () => {
+        if (opts.failOn && chosenMaterial === opts.failOn) return; // amount step never opens
+        const amount = document.createElement('div');
+        amount.className = 'MobileMaterialTransferModal___h';
+        const wrap = document.createElement('div');
+        wrap.className = 'MobileMaterialTransferModal__numberInput___h';
+        const input = document.createElement('input');
+        input.type = 'number';
+        wrap.appendChild(input);
+        amount.appendChild(wrap);
+        const commit = document.createElement('button');
+        commit.textContent = 'transfer selected amount';
+        commit.className = 'apex-btn';
+        commit.addEventListener('click', () => {
+          opts.records.push({ source, material: chosenMaterial, amount: input.value });
+          modal.remove();
+          amount.remove();
+          if (opts.bumpHoldOnCommit !== false) {
+            const hold = useStorageStore.getState().getById(opts.holdId);
+            if (hold) {
+              useStorageStore.getState().setAll([
+                ...useStorageStore.getState().getAll().filter((s) => s.id !== hold.id),
+                { ...hold, volumeLoad: hold.volumeLoad + Number(input.value) * 0.1 },
+              ]);
+            }
+          }
+        });
+        amount.appendChild(commit);
+        container.appendChild(amount);
+      });
+    });
+    container.appendChild(start);
+    return true;
+  });
+}
+
+describe('runShipLoadCargo', () => {
+  it('loads a two-source batch: one buffer per source, one transfer per material', async () => {
+    const { ship } = seedLoadWorld();
+    const records: TransferRecord[] = [];
+    installLoadFixture({ holdId: ship.idShipStore, records });
+
+    const result = await runShipLoadCargo(ship.id, [
+      { ticker: 'RAT', amount: 100 },
+      { ticker: 'DW', amount: 200 },
+    ]);
+
+    expect(result).toEqual({ ok: true, loaded: ['RAT', 'DW'] });
+    expect(records).toEqual([
+      { source: 'store-a', material: 'Basic Rations', amount: '100' },
+      { source: 'store-b', material: 'Drinking Water', amount: '200' },
+    ]);
+    expect(vi.mocked(openMobileBuffer).mock.calls.map((c) => c[0])).toEqual([
+      'INV store-a',
+      'INV store-b',
+    ]);
+    expect(closeMobileBuffer).toHaveBeenCalledTimes(2);
+  });
+
+  it('stops on a mid-run failure and reports what already loaded', async () => {
+    const { ship } = seedLoadWorld();
+    const records: TransferRecord[] = [];
+    installLoadFixture({ holdId: ship.idShipStore, records, failOn: 'Drinking Water' });
+
+    const result = await runShipLoadCargo(ship.id, [
+      { ticker: 'RAT', amount: 100 },
+      { ticker: 'DW', amount: 200 },
+    ]);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.loaded).toEqual(['RAT']);
+      expect(result.error).toContain('DW');
+    }
+    // Only RAT transferred; both buffers still restored.
+    expect(records.map((r) => r.material)).toEqual(['Basic Rations']);
+    expect(closeMobileBuffer).toHaveBeenCalledTimes(2);
+  }, 15000); // the failing wizard's amount-step wait times out at 5s by design
+
+  it('refuses an over-capacity batch before opening any buffer', async () => {
+    const { ship } = seedLoadWorld();
+    // Shrink the hold so the combined batch cannot fit.
+    const hold = useStorageStore.getState().getById(ship.idShipStore)!;
+    useStorageStore.getState().setAll([
+      ...useStorageStore.getState().getAll().filter((s) => s.id !== hold.id),
+      { ...hold, volumeCapacity: 10 },
+    ]);
+    const records: TransferRecord[] = [];
+    installLoadFixture({ holdId: ship.idShipStore, records });
+
+    const result = await runShipLoadCargo(ship.id, [
+      { ticker: 'RAT', amount: 100 },
+      { ticker: 'DW', amount: 200 },
+    ]);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toContain('capacity');
+    expect(openMobileBuffer).not.toHaveBeenCalled();
+  });
+
+  it('holds the shared lock for the whole batch', async () => {
+    const { ship } = seedLoadWorld();
+    const records: TransferRecord[] = [];
+    installLoadFixture({ holdId: ship.idShipStore, records });
+
+    const batch = runShipLoadCargo(ship.id, [{ ticker: 'RAT', amount: 100 }]);
+    const concurrent = await runShipUnload('AVI-063I6');
+
+    expect(concurrent).toEqual({ ok: false, error: 'Another action is already running' });
+    expect((await batch).ok).toBe(true);
   });
 });

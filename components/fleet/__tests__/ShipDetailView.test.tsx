@@ -24,6 +24,7 @@ import type { PrunApi } from '../../../types/prun-api';
 vi.mock('../../../lib/ship-actions', () => ({
   runShipUnload: vi.fn(async () => ({ ok: true })),
   runShipRefuel: vi.fn(async () => ({ ok: true })),
+  runShipLoadCargo: vi.fn(async () => ({ ok: true, loaded: ['RAT'] })),
 }));
 
 // Client-rendered (createRoot + act), NOT renderToString: zustand v4 pins
@@ -138,7 +139,13 @@ function seedRefuelableShip(opts: { tankFull?: boolean } = {}): string {
       { ticker: 'FF', name: 'ftlFuel', category: 'fuels', weight: 0.05, volume: 0.05 },
     ]);
   useStorageStore.getState().setAll([
-    createTestStorage({ id: ship.idShipStore, addressableId: ship.id, weightLoad: 0, volumeLoad: 0 }),
+    createTestStorage({
+      id: ship.idShipStore,
+      addressableId: ship.id,
+      type: 'SHIP_STORE',
+      weightLoad: 0,
+      volumeLoad: 0,
+    }),
     createTestStorage({
       id: ship.idStlFuelStore,
       addressableId: ship.id,
@@ -186,5 +193,84 @@ describe('ShipDetailView refuel gating', () => {
     const html = renderSheet(id);
     expect(refuelButton('SF')?.disabled).toBe(true);
     expect(html).toContain('Tank is full');
+  });
+});
+
+describe('ShipDetailView load-cargo gating and picker', () => {
+  function loadableItem(ticker: string, amount: number): PrunApi.StoreItem {
+    return fuelItem(ticker, amount);
+  }
+
+  function seedShipWithLoadables(): string {
+    const id = seedRefuelableShip(); // docked at Montem-like base with SF stock
+    const site = useSitesStore.getState().getAll()[0];
+    useStorageStore.getState().setAll([
+      ...useStorageStore.getState().getAll().filter((s) => s.id !== 'store-base'),
+      // Replace the base store with one holding a general material too.
+      // (SF also remains loadable cargo — that's fine, it's real behaviour.)
+      Object.assign(
+        {},
+        useStorageStore.getState().getById('store-base') ?? {},
+        {
+          id: 'store-base',
+          addressableId: site.siteId,
+          type: 'STORE',
+          items: [loadableItem('SF', 20000), loadableItem('RAT', 300)],
+          weightLoad: 0,
+          weightCapacity: 99999,
+          volumeLoad: 0,
+          volumeCapacity: 99999,
+          name: null,
+          fixed: true,
+          tradeStore: false,
+          rank: 0,
+          locked: false,
+        }
+      ) as PrunApi.Store,
+    ]);
+    useMaterialsStore.getState().setAll([
+      { ticker: 'SF', name: 'stlFuel', category: 'fuels', weight: 0.06, volume: 0.06 },
+      { ticker: 'FF', name: 'ftlFuel', category: 'fuels', weight: 0.05, volume: 0.05 },
+      { ticker: 'RAT', name: 'basicRations', category: 'foods', weight: 0.2, volume: 0.1 },
+    ]);
+    return id;
+  }
+
+  function loadButton(): HTMLButtonElement | undefined {
+    return Array.from(container.querySelectorAll('button')).find(
+      (b) => /^load cargo$/i.test(b.textContent?.trim() ?? '') // not "Unload cargo"
+    );
+  }
+
+  it('enables LOAD CARGO when local materials exist, and opens the picker', () => {
+    const id = seedShipWithLoadables();
+    renderSheet(id);
+    const btn = loadButton();
+    expect(btn?.disabled).toBe(false);
+    act(() => btn!.click());
+    const html = container.innerHTML;
+    expect(html).toContain('Load selected');
+    expect(html).toContain('RAT');
+  });
+
+  it('MAX fills a row and the batch loads via one tap', () => {
+    const id = seedShipWithLoadables();
+    renderSheet(id);
+    act(() => loadButton()!.click());
+    const maxBtn = Array.from(container.querySelectorAll('button')).find(
+      (b) => b.textContent?.trim() === 'MAX'
+    );
+    act(() => maxBtn!.click());
+    const loadSelected = Array.from(container.querySelectorAll('button')).find((b) =>
+      /load selected/i.test(b.textContent ?? '')
+    );
+    expect(loadSelected?.disabled).toBe(false);
+  });
+
+  it('disables LOAD CARGO with a reason when nothing is loadable', () => {
+    const id = seedShip({ cargoLoad: 0 }); // no local stores seeded at all
+    const html = renderSheet(id);
+    expect(loadButton()?.disabled).toBe(true);
+    expect(html).toMatch(/Nothing loadable|Hold data unavailable/);
   });
 });
