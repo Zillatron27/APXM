@@ -7,6 +7,7 @@ import type { FuelTank } from '../../core/refuel';
 import { useRefuelPlan } from './useRefuelPlan';
 import { useLoadableMaterials } from './useLoadableMaterials';
 import { LoadCargoPicker } from './LoadCargoPicker';
+import { SendShipView } from './SendShipView';
 import { useShipDetail } from '../views/hooks';
 
 interface ShipDetailViewProps {
@@ -30,6 +31,7 @@ export function ShipDetailView({ shipId }: ShipDetailViewProps) {
   const ftlPlan = useRefuelPlan(shipId, 'ftl');
   const loadable = useLoadableMaterials(shipId);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [sendOpen, setSendOpen] = useState(false);
   const [running, setRunning] = useState<RunningAction>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   // APEX said no (ship state the WS data doesn't expose). Session-scoped on
@@ -56,10 +58,19 @@ export function ShipDetailView({ shipId }: ShipDetailViewProps) {
     return <p className="text-sm text-apxm-muted">Ship data unavailable.</p>;
   }
 
-  // Picker sub-mode: the sheet body swaps to the load-cargo picker (no new
-  // navigation mechanism — same detailView, same sheet).
+  // Sub-modes: the sheet body swaps to the load-cargo picker or the send-ship
+  // flow (no new navigation mechanism — same detailView, same sheet).
   if (pickerOpen) {
     return <LoadCargoPicker shipId={shipId} onClose={() => setPickerOpen(false)} />;
+  }
+  if (sendOpen) {
+    return (
+      <SendShipView
+        shipId={shipId}
+        registration={ship.registration}
+        onClose={() => setSendOpen(false)}
+      />
+    );
   }
 
   const route = ship.stationary
@@ -181,6 +192,15 @@ export function ShipDetailView({ shipId }: ShipDetailViewProps) {
 
         {refuelRow('stl', stlPlan)}
         {refuelRow('ftl', ftlPlan)}
+
+        <button
+          type="button"
+          className={actionBtn}
+          disabled={running !== null || !ship.stationary}
+          onClick={() => setSendOpen(true)}
+        >
+          Send ship
+        </button>
 
         {!ship.stationary && (
           <p className="text-xs text-apxm-muted">In transit — dock for ship actions</p>
