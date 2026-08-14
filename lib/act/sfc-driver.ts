@@ -316,10 +316,15 @@ export class SendSession {
     }
     try {
       await waitUntil(
-        () => {
-          const flight = useFlightsStore.getState().getAll().find((f) => f.shipId === this.shipId);
-          return !!flight && flight.id !== priorFlightId;
-        },
+        // ANY flight with a new id — SHIP_FLIGHT_STARTED adds the new flight
+        // alongside a stale cached one for the same ship, so a find-first
+        // check can stare at the old record forever (device 2026-08-14: the
+        // ship dispatched while this wait timed out).
+        () =>
+          useFlightsStore
+            .getState()
+            .getAll()
+            .some((f) => f.shipId === this.shipId && f.id !== priorFlightId),
         250,
         15000
       );

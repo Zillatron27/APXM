@@ -306,7 +306,13 @@ describe('SendSession', () => {
       const confirm = el('button', 'apex-btn', 'start');
       confirm.addEventListener('click', () => {
         overlay.remove();
-        useFlightsStore.getState().setAll([createTestFlight({ id: 'flight-new', shipId: 'ship-1' })]);
+        // The delta ADDS the new flight — the stale cached one stays. A
+        // find-first check stares at the old record and times out while the
+        // ship departs (device 2026-08-14).
+        useFlightsStore.getState().setAll([
+          createTestFlight({ id: 'flight-old', shipId: 'ship-1' }),
+          createTestFlight({ id: 'flight-new', shipId: 'ship-1' }),
+        ]);
       });
       overlay.append(confirm);
       document.body.appendChild(overlay);
