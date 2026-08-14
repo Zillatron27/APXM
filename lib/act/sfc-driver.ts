@@ -136,6 +136,25 @@ async function waitRecompute(root: HTMLElement, beforeTableText: string): Promis
   } catch {
     // No visible change — some tweaks legitimately don't alter the route.
   }
+  // A control change puts the form into Status "calculating", during which
+  // APEX UNMOUNTS the route table and sliders (device 2026-08-14) — reading
+  // a snapshot then captures a transient no-route/no-slider state that never
+  // heals (snapshots only refresh on user action). Settle: wait until the
+  // recompute finishes AND the table is back (or a terminal non-calculating
+  // status explains why it isn't).
+  try {
+    await waitUntil(
+      () => {
+        const status = fieldText(root, 'Status');
+        if (status === 'calculating') return false;
+        return tableText() !== '' || (status !== '' && status !== 'valid');
+      },
+      250,
+      20000
+    );
+  } catch {
+    // Settle timeout — the snapshot will honestly show whatever state APEX is in.
+  }
   await sleep(300); // let the re-render settle before reading
 }
 
@@ -328,7 +347,15 @@ export async function openSendSession(
     return { ok: false, error: 'Another action is already running' };
   }
   setupActGlobals();
-  const opened = await openMobileBuffer(`SFC ${registration}`);
+  // Ready = the destination AddressSelector itself, not the generic form
+  // sentinel: the SFC form renders progressively and its first FormComponents
+  // (Ship/Location) appear a tick before the destination input — the generic
+  // sentinel raced ahead and setDestination found no field (device 2026-08-14).
+  const opened = await openMobileBuffer(`SFC ${registration}`, () =>
+    document
+      .getElementById('container')
+      ?.querySelector<HTMLElement>('input[class*="AddressSelector"]') ?? null
+  );
   const root = anchor();
   if (!opened || !root) {
     releaseActionLock();

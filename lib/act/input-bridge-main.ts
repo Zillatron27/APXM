@@ -74,13 +74,18 @@ export function installInputBridge(): void {
           el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
           el.click();
         } else if (request.kind === 'clickAt') {
+          // rc-slider's drag model: value is set on mousedown at the position;
+          // the drag ends with a mouseup on the DOCUMENT (where the slider
+          // registers its move/up listeners). A same-element mouseup + click
+          // breaks the lifecycle and the value reverts on the next re-render
+          // (device finding 2026-08-14).
           const rect = el.getBoundingClientRect();
           const x = rect.left + rect.width * Math.min(Math.max(request.xFrac, 0), 1);
           const y = rect.top + rect.height / 2;
           const opts = { bubbles: true, cancelable: true, clientX: x, clientY: y };
           el.dispatchEvent(new MouseEvent('mousedown', opts));
-          el.dispatchEvent(new MouseEvent('mouseup', opts));
-          el.dispatchEvent(new MouseEvent('click', opts));
+          await sleep(100);
+          document.dispatchEvent(new MouseEvent('mouseup', opts));
         }
         el.setAttribute(INPUT_DONE_ATTR, 'ok');
       } catch {

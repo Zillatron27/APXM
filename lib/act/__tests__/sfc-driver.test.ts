@@ -103,7 +103,9 @@ function buildSfcFixture(): Fixture {
     handle.setAttribute('aria-valuemax', '1');
     handle.setAttribute('aria-valuenow', String(now));
     s.appendChild(handle);
-    s.addEventListener('click', (e) => {
+    // rc-slider sets the value on mousedown at the position (the drag model
+    // the bridge speaks: mousedown on the slider, mouseup on the document).
+    s.addEventListener('mousedown', (e) => {
       const frac = (e as MouseEvent).clientX / 100;
       handle.setAttribute('aria-valuenow', String(0.01 + frac * 0.99));
       bump();
@@ -163,7 +165,7 @@ describe('SendSession', () => {
     buildSfcFixture();
     const opened = await openSendSession('AVI-063I6', 'ship-1');
     expect(opened.ok).toBe(true);
-    expect(openMobileBuffer).toHaveBeenCalledWith('SFC AVI-063I6');
+    expect(openMobileBuffer).toHaveBeenCalledWith('SFC AVI-063I6', expect.any(Function));
     expect(isActionInFlight()).toBe(true);
     if (opened.ok) await opened.session.close();
     expect(isActionInFlight()).toBe(false);
