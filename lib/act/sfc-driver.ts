@@ -20,7 +20,7 @@ import { sleep, waitUntil } from './_compat';
 import { driveType, driveKey, driveClick, driveClickAt } from './input-bridge';
 import { acquireActionLock, releaseActionLock } from './action-lock';
 import { isApexButtonDisabled } from './apex-button';
-import { useFlightsStore } from '../../stores/entities';
+import { useFlightsStore, useShipsStore } from '../../stores/entities';
 
 export interface SfcRouteRow {
   index: string;
@@ -284,9 +284,16 @@ export class SendSession {
     );
     if (!start || isApexButtonDisabled(start)) return { ok: false, error: 'START not enabled in APEX' };
     // A stale record from a completed flight may linger — success is a
-    // flight with a NEW id, not merely any flight existing.
-    const priorFlightId =
-      useFlightsStore.getState().getAll().find((f) => f.shipId === this.shipId)?.id ?? null;
+    // flight with a NEW id, not merely any flight existing. The ship's own
+    // flightId (SHIP_DATA delta) is a second, independent departure signal.
+    const priorFlightIds = new Set(
+      useFlightsStore
+        .getState()
+        .getAll()
+        .filter((f) => f.shipId === this.shipId)
+        .map((f) => f.id)
+    );
+    const priorShipFlightId = useShipsStore.getState().getById(this.shipId)?.flightId ?? null;
     start.click();
     // START pops APEX's ActionConfirmationOverlay ("Confirmation required:
     // The flight from X to Y...") — live-confirmed 2026-08-14, the first
@@ -317,14 +324,18 @@ export class SendSession {
     try {
       await waitUntil(
         // ANY flight with a new id — SHIP_FLIGHT_STARTED adds the new flight
-        // alongside a stale cached one for the same ship, so a find-first
-        // check can stare at the old record forever (device 2026-08-14: the
-        // ship dispatched while this wait timed out).
-        () =>
-          useFlightsStore
+        // alongside stale cached ones for the same ship, so a find-first
+        // check can stare at an old record forever (device 2026-08-14: the
+        // ship dispatched while this wait timed out). The ship's flightId
+        // changing is accepted as an independent departure signal too.
+        () => {
+          const newFlight = useFlightsStore
             .getState()
             .getAll()
-            .some((f) => f.shipId === this.shipId && f.id !== priorFlightId),
+            .some((f) => f.shipId === this.shipId && !priorFlightIds.has(f.id));
+          const shipFlightId = useShipsStore.getState().getById(this.shipId)?.flightId ?? null;
+          return newFlight || (shipFlightId !== null && shipFlightId !== priorShipFlightId);
+        },
         250,
         15000
       );
