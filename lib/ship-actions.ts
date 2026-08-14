@@ -8,11 +8,16 @@
 import { openMobileBuffer, closeMobileBuffer } from './mobile-buffer-navigator';
 import { waitActionFeedback } from './act/action-feedback';
 import { setupActGlobals } from './act/globals-setup';
-import { clickElement } from './act/_compat';
+import { clickElement, waitUntil } from './act/_compat';
 import { acquireActionLock, releaseActionLock } from './act/action-lock';
 import { isApexButtonDisabled } from './act/apex-button';
+import { toDisplayName } from './act/action-steps/cont-utils';
+import { runTransfer } from './act/transfer-modal';
+import { planRefuel, FUEL_TICKER, type FuelTank } from '../core/refuel';
 import { useSettingsStore } from '../stores/settings';
 import { useGameState } from '../stores/gameState';
+import { useShipsStore, useStorageStore } from '../stores/entities';
+import { useMaterialsStore } from '../stores/reference';
 
 export type ShipActionResult =
   | { ok: true }
@@ -67,6 +72,78 @@ export function findShipUnloadButton(
     }
   }
   return undefined;
+}
+
+const REFUEL_REASON_TEXT: Record<string, string> = {
+  'tank-full': 'Tank is already full',
+  'no-fuel-here': 'No fuel at this location',
+  'no-reference-data': 'Material data not loaded yet',
+  'no-tank': 'Tank data unavailable',
+};
+
+/**
+ * One-tap tank fill: opens the SOURCE store's own INV buffer off-screen and
+ * drives APEX's transfer wizard — material by display name, target tank by
+ * store GUID (the fiber-addressed path; labels are nameless), amount from the
+ * refuel plan — then commits. The commit is silent (no ActionFeedback), so
+ * success is confirmed by the tank store's volume delta arriving over the
+ * WebSocket. The user's APXM tap IS the commit, same model as unload.
+ */
+export async function runShipRefuel(shipId: string, tank: FuelTank): Promise<ShipActionResult> {
+  if (!acquireActionLock()) {
+    return { ok: false, error: 'Another action is already running' };
+  }
+  try {
+    setupActGlobals();
+    const ship = useShipsStore.getState().getById(shipId);
+    if (!ship) return { ok: false, error: 'Ship data unavailable' };
+    const material = useMaterialsStore.getState().getById(FUEL_TICKER[tank]);
+    // Act-time recheck — the UI gates on the same plan, but data may have
+    // moved between render and tap.
+    const plan = planRefuel(ship, useStorageStore.getState().getAll(), material, tank);
+    if (!plan.available) {
+      return { ok: false, error: REFUEL_REASON_TEXT[plan.reason] ?? plan.reason };
+    }
+
+    // INV is a list buffer (no FormComponent) — StoreView is its content.
+    const opened = await openMobileBuffer(`INV ${plan.sourceStore.id}`, () =>
+      document
+        .getElementById('container')
+        ?.querySelector<HTMLElement>('[class*="StoreView__container"]') ?? null
+    );
+    const anchor = document.getElementById('container');
+    if (!opened || !anchor) {
+      return { ok: false, error: 'Failed to open the source store buffer' };
+    }
+    try {
+      const tankStoreId = tank === 'stl' ? ship.idStlFuelStore : ship.idFtlFuelStore;
+      const before = useStorageStore.getState().getById(tankStoreId)?.volumeLoad ?? 0;
+      const result = await runTransfer(anchor, {
+        materialName: toDisplayName(material!.name),
+        targetStoreId: tankStoreId,
+        amount: plan.units,
+      });
+      if (!result.ok) return result;
+      // Silent commit — the WS STORAGE_CHANGE delta is the ground truth.
+      try {
+        await waitUntil(
+          () => (useStorageStore.getState().getById(tankStoreId)?.volumeLoad ?? 0) > before,
+          250,
+          15000
+        );
+      } catch {
+        return {
+          ok: false,
+          error: 'Transfer sent but not confirmed by the game — check the tank in APEX',
+        };
+      }
+      return { ok: true };
+    } finally {
+      await closeMobileBuffer();
+    }
+  } finally {
+    releaseActionLock();
+  }
 }
 
 export async function runShipUnload(registration: string): Promise<ShipActionResult> {

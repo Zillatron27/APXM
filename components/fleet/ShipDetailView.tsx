@@ -2,36 +2,45 @@ import { useState } from 'react';
 import { ProgressBar } from '../shared';
 import { btnSecondary } from '../shared/button';
 import { formatEta, formatCondition } from '../../lib/fleet-utils';
-import { runShipUnload } from '../../lib/ship-actions';
+import { runShipUnload, runShipRefuel, type ShipActionResult } from '../../lib/ship-actions';
+import type { FuelTank } from '../../core/refuel';
+import { useRefuelPlan } from './useRefuelPlan';
 import { useShipDetail } from '../views/hooks';
 
 interface ShipDetailViewProps {
   shipId: string;
 }
 
+type RunningAction = 'unload' | FuelTank | null;
+
+const actionBtn = `${btnSecondary} w-full min-h-touch px-4 py-2 disabled:opacity-30 disabled:shadow-none disabled:cursor-not-allowed`;
+
 /**
  * Ship drill-down: route + flight phase, ETA, cargo (weight + volume), fuel
- * (STL + FTL), condition, and the first ship action — UNLOAD (one tap drives
- * the FLT buffer's unload for this ship; the tap IS the commit, APEX shows no
- * confirmation). Fly / cargo / fuel passthrough still to come (#9/#25).
+ * (STL + FTL), condition, and the ship actions — UNLOAD and REFUEL SF/FF.
+ * One tap drives the APEX buffer off-screen; the tap IS the commit (neither
+ * action shows an APEX confirmation). Load cargo / send ship still to come
+ * (#9/#25, the v1.2.0 ship-actions wave).
  */
 export function ShipDetailView({ shipId }: ShipDetailViewProps) {
   const ship = useShipDetail(shipId);
-  const [actionRunning, setActionRunning] = useState(false);
+  const stlPlan = useRefuelPlan(shipId, 'stl');
+  const ftlPlan = useRefuelPlan(shipId, 'ftl');
+  const [running, setRunning] = useState<RunningAction>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   // APEX said no (ship state the WS data doesn't expose). Session-scoped on
   // purpose: reopening the sheet retries, matching the contract sheet.
-  const [gameDisabled, setGameDisabled] = useState(false);
+  const [unloadGameDisabled, setUnloadGameDisabled] = useState(false);
 
-  const handleUnload = async () => {
-    if (actionRunning || !ship) return;
-    setActionRunning(true);
+  const runAction = async (action: Exclude<RunningAction, null>, go: () => Promise<ShipActionResult>) => {
+    if (running || !ship) return;
+    setRunning(action);
     setActionError(null);
-    const result = await runShipUnload(ship.registration);
-    setActionRunning(false);
-    if (result.ok) return; // STORAGE_CHANGE deltas update the cargo bars
-    if (result.disabledInApex) {
-      setGameDisabled(true);
+    const result = await go();
+    setRunning(null);
+    if (result.ok) return; // STORAGE_CHANGE deltas update the bars
+    if (result.disabledInApex && action === 'unload') {
+      setUnloadGameDisabled(true);
     } else {
       setActionError(result.error);
     }
@@ -46,6 +55,46 @@ export function ShipDetailView({ shipId }: ShipDetailViewProps) {
   const route = ship.stationary
     ? ship.location
     : `${ship.location} → ${ship.destination}`;
+
+  const refuelReasonText: Record<string, string> = {
+    'tank-full': 'Tank is full',
+    'no-fuel-here': 'None at this location',
+    'no-reference-data': 'Material data loading',
+    'no-tank': 'Tank data unavailable',
+  };
+
+  // Client-side gating is UX only; the game's own gate is the act-time check
+  // (#73 lesson: never derive actionability). A gated button always says WHY
+  // (silent-failure rule): a bare disabled button read as tappable-but-dead
+  // on device (2026-08-14).
+  const refuelRow = (tank: FuelTank, view: ReturnType<typeof useRefuelPlan>) => {
+    const enabled = ship.stationary && view.plan.available && running === null;
+    return (
+      <div key={tank} className="space-y-1">
+        <button
+          type="button"
+          className={actionBtn}
+          disabled={!enabled}
+          onClick={() =>
+            runAction(tank, () => runShipRefuel(shipId, tank))
+          }
+        >
+          Refuel {view.ticker}
+        </button>
+        {ship.stationary && view.plan.available && (
+          <p className="text-xs text-apxm-muted">
+            <span className="font-mono tabular-nums">{view.plan.units}</span> {view.ticker} from{' '}
+            {view.sourceLabel}
+          </p>
+        )}
+        {ship.stationary && !view.plan.available && (
+          <p className="text-xs text-apxm-muted">
+            {refuelReasonText[view.plan.reason] ?? view.plan.reason}
+          </p>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-3">
@@ -80,26 +129,31 @@ export function ShipDetailView({ shipId }: ShipDetailViewProps) {
         <ProgressBar label="FF" current={Math.floor(ship.ftlFuel.current)} max={Math.floor(ship.ftlFuel.max)} color="blue" />
       </div>
 
-      {/* Actions — client-side gating is UX only; the game's own gate is the
-          disabled check at act time (#73 lesson: never derive actionability).
-          A gated button always says WHY (silent-failure rule): a bare disabled
-          button read as tappable-but-dead on device (2026-08-14). */}
-      <div className="space-y-1">
-        <button
-          type="button"
-          className={`${btnSecondary} w-full min-h-touch px-4 py-2 disabled:opacity-30 disabled:shadow-none disabled:cursor-not-allowed`}
-          disabled={actionRunning || gameDisabled || !ship.stationary || ship.cargo.current === 0}
-          onClick={handleUnload}
-        >
-          {gameDisabled ? 'Unload — pending' : 'Unload cargo'}
-        </button>
+      {/* Actions */}
+      <div className="space-y-2">
+        <div className="space-y-1">
+          <button
+            type="button"
+            className={actionBtn}
+            disabled={
+              running !== null || unloadGameDisabled || !ship.stationary || ship.cargo.current === 0
+            }
+            onClick={() => runAction('unload', () => runShipUnload(ship.registration))}
+          >
+            {unloadGameDisabled ? 'Unload — pending' : 'Unload cargo'}
+          </button>
+          {ship.stationary && ship.cargo.current === 0 && running === null && (
+            <p className="text-xs text-apxm-muted">Hold is empty</p>
+          )}
+        </div>
+
+        {refuelRow('stl', stlPlan)}
+        {refuelRow('ftl', ftlPlan)}
+
         {!ship.stationary && (
-          <p className="text-xs text-apxm-muted">In transit — dock to unload</p>
+          <p className="text-xs text-apxm-muted">In transit — dock for ship actions</p>
         )}
-        {ship.stationary && ship.cargo.current === 0 && !actionRunning && (
-          <p className="text-xs text-apxm-muted">Hold is empty</p>
-        )}
-        {actionRunning && (
+        {running !== null && (
           <p className="text-xs text-apxm-muted animate-pulse">Working in APEX buffer...</p>
         )}
         {actionError && <p className="text-xs text-status-critical">{actionError}</p>}
