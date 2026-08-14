@@ -94,7 +94,7 @@ export async function runTransfer(
   if (!targetBox || !(await openDropDown(targetBox))) {
     return fail('Target store list did not open');
   }
-  if (!selectDropDownValue(targetBox, request.targetStoreId)) {
+  if (!(await selectDropDownValue(targetBox, request.targetStoreId))) {
     // The GUID-addressed path refused — never fall back to labels/ordinals
     // here: every ship store renders with the same nameless label.
     return fail('Target store could not be identified in APEX');

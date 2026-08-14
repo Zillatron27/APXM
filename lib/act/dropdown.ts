@@ -7,7 +7,7 @@
 // lib/act/react-fiber.ts.
 
 import { waitForElement } from '../buffer-refresh/dom-helpers';
-import { getFiberProps, immutableToArray } from './react-fiber';
+import { readFiberValuesAnyWorld } from './react-fiber';
 
 /** Options render as li elements once the box is open. */
 function optionItems(box: HTMLElement): HTMLElement[] {
@@ -25,14 +25,14 @@ export async function openDropDown(box: HTMLElement, timeoutMs = 4000): Promise<
 
 /**
  * The box's `values` prop: one entry per option, index-aligned, unwrapped to
- * a plain array. Undefined when the fiber or the prop can't be found — the
- * caller must refuse to select rather than guess.
+ * a plain array. Read through the fiber bridge (the fiber expando is
+ * invisible from the content-script world — device finding 2026-08-14).
+ * Undefined when the fiber or the prop can't be found — the caller must
+ * refuse to select rather than guess.
  */
-export function getDropDownValues(box: HTMLElement): unknown[] | undefined {
+export function getDropDownValues(box: HTMLElement): Promise<unknown[] | undefined> {
   const item = optionItems(box)[0] ?? box;
-  const props = getFiberProps(item, (p) => 'values' in p && p.values != null);
-  if (!props) return undefined;
-  return immutableToArray((props as { values: unknown }).values);
+  return readFiberValuesAnyWorld(item);
 }
 
 /**
@@ -41,8 +41,8 @@ export function getDropDownValues(box: HTMLElement): unknown[] | undefined {
  * the values prop is unavailable, the value is absent, or the option list
  * doesn't line up with it.
  */
-export function selectDropDownValue(box: HTMLElement, value: unknown): boolean {
-  const values = getDropDownValues(box);
+export async function selectDropDownValue(box: HTMLElement, value: unknown): Promise<boolean> {
+  const values = await getDropDownValues(box);
   if (!values) return false;
   const index = values.indexOf(value);
   if (index < 0) return false;

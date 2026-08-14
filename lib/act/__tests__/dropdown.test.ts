@@ -2,9 +2,17 @@
 // React fiber (a __reactFiber$ key whose chain carries memoizedProps.values,
 // Immutable-style {toJS}) exactly as APEX renders it (captured 2026-08-14).
 
-import { describe, it, expect } from 'vitest';
-import { getFiberProps, immutableToArray } from '../react-fiber';
+import { describe, it, expect, beforeAll } from 'vitest';
+import { getFiberProps, immutableToArray, readFiberValuesAnyWorld } from '../react-fiber';
+import { installFiberBridge } from '../fiber-bridge-main';
 import { getDropDownValues, selectDropDownValue, selectDropDownLabel, openDropDown } from '../dropdown';
+
+// jsdom is single-world: the direct fiber read succeeds when a fake fiber is
+// present. The bridge responder is installed anyway so the no-fiber path gets
+// a fast definitive 'null' answer instead of the probe timeout.
+beforeAll(() => {
+  installFiberBridge();
+});
 
 function buildBox(opts: {
   labels: string[];
@@ -69,34 +77,58 @@ describe('dropdown driver', () => {
     expect(await openDropDown(box, 500)).toBe(true);
   });
 
-  it('reads GUID values via the fiber (Immutable list)', () => {
+  it('reads GUID values via the fiber (Immutable list)', async () => {
     const guids = [null, 'guid-a', 'guid-b'];
     const { box } = buildBox({ labels: ['--', 'A', 'B'], values: { toJS: () => guids } });
-    expect(getDropDownValues(box)).toEqual(guids);
+    expect(await getDropDownValues(box)).toEqual(guids);
   });
 
-  it('selects the option index-aligned with the requested GUID', () => {
+  it('selects the option index-aligned with the requested GUID', async () => {
     const { box, clicks } = buildBox({
       labels: ['--', 'Ship  STL fuel store', 'Ship  STL fuel store'],
       values: { toJS: () => [null, 'guid-a', 'guid-b'] },
     });
-    expect(selectDropDownValue(box, 'guid-b')).toBe(true);
+    expect(await selectDropDownValue(box, 'guid-b')).toBe(true);
     expect(clicks).toEqual([2]);
   });
 
-  it('refuses when the GUID is absent (never falls back to labels)', () => {
+  it('refuses when the GUID is absent (never falls back to labels)', async () => {
     const { box, clicks } = buildBox({
       labels: ['--', 'Ship  STL fuel store'],
       values: { toJS: () => [null, 'guid-a'] },
     });
-    expect(selectDropDownValue(box, 'guid-missing')).toBe(false);
+    expect(await selectDropDownValue(box, 'guid-missing')).toBe(false);
     expect(clicks).toEqual([]);
   });
 
-  it('refuses when the fiber values are unavailable', () => {
+  it('refuses when the fiber values are unavailable (bridge answers null)', async () => {
     const { box, clicks } = buildBox({ labels: ['--', 'A'] });
-    expect(selectDropDownValue(box, 'anything')).toBe(false);
+    expect(await selectDropDownValue(box, 'anything')).toBe(false);
     expect(clicks).toEqual([]);
+  });
+
+  it('bridge responder answers a probe by writing the values attribute', () => {
+    // jsdom can't hide expandos across worlds, so the responder's success
+    // branch is exercised directly: dispatch the probe, assert the shared
+    // attribute (what the content side would poll for on-device).
+    const li = document.createElement('li');
+    (li as unknown as Record<string, unknown>)['__reactFiber$w'] = {
+      memoizedProps: { values: { toJS: () => ['a', 'b'] } },
+      return: null,
+    };
+    document.body.appendChild(li);
+    li.dispatchEvent(new Event('apxm-fiber-probe', { bubbles: true }));
+    expect(li.getAttribute('data-apxm-fiber-values')).toBe('["a","b"]');
+  });
+
+  it('readFiberValuesAnyWorld resolves via the direct read when same-world', async () => {
+    const li = document.createElement('li');
+    (li as unknown as Record<string, unknown>)['__reactFiber$w'] = {
+      memoizedProps: { values: { toJS: () => ['a', 'b'] } },
+      return: null,
+    };
+    document.body.appendChild(li);
+    expect(await readFiberValuesAnyWorld(li, 1000)).toEqual(['a', 'b']);
   });
 
   it('selects by label case-insensitively, refusing ambiguity', () => {
