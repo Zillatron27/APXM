@@ -10,7 +10,11 @@ import {
 
 async function drive(
   el: HTMLElement,
-  request: { kind: 'type'; text: string } | { kind: 'key'; key: string } | { kind: 'click' },
+  request:
+    | { kind: 'type'; text: string }
+    | { kind: 'key'; key: string }
+    | { kind: 'click' }
+    | { kind: 'clickAt'; xFrac: number },
   timeoutMs: number
 ): Promise<boolean> {
   el.removeAttribute(INPUT_DONE_ATTR);
@@ -41,4 +45,9 @@ export function driveKey(el: HTMLElement, key: string, timeoutMs = 3000): Promis
 /** mousedown+mouseup+click in the main world. */
 export function driveClick(el: HTMLElement, timeoutMs = 3000): Promise<boolean> {
   return drive(el, { kind: 'click' }, timeoutMs);
+}
+
+/** Positioned click at a horizontal fraction of the element (rc-slider rail). */
+export function driveClickAt(el: HTMLElement, xFrac: number, timeoutMs = 3000): Promise<boolean> {
+  return drive(el, { kind: 'clickAt', xFrac }, timeoutMs);
 }

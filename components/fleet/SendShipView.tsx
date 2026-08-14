@@ -17,6 +17,36 @@ interface SendShipViewProps {
 const chip = `${btnSecondary} min-h-touch px-2 text-xs`;
 const chipActive = `${chip} text-prun-yellow border-prun-yellow`;
 
+/** MIN / 25% / 50% / 75% / MAX usage chips. MIN maps to 1% (the slider
+ *  floor), MAX to 100%; the active chip is the nearest to the live value. */
+const USAGE_CHIPS: { label: string; pct: number }[] = [
+  { label: 'MIN', pct: 1 },
+  { label: '25%', pct: 25 },
+  { label: '50%', pct: 50 },
+  { label: '75%', pct: 75 },
+  { label: 'MAX', pct: 100 },
+];
+
+function usageChips(currentPct: number | null, busy: boolean, onPick: (pct: number) => void) {
+  const nearest =
+    currentPct === null
+      ? null
+      : USAGE_CHIPS.reduce((best, c) =>
+          Math.abs(c.pct - currentPct) < Math.abs(best.pct - currentPct) ? c : best
+        ).label;
+  return USAGE_CHIPS.map((c) => (
+    <button
+      key={c.label}
+      type="button"
+      className={nearest === c.label ? chipActive : chip}
+      disabled={busy}
+      onClick={() => onPick(c.pct)}
+    >
+      {c.label}
+    </button>
+  ));
+}
+
 /**
  * Send-ship: destination list → a held hidden SFC session — APEX's computed
  * route surfaced natively (duration, distance, fees, fuel, damage) with the
@@ -179,35 +209,24 @@ export function SendShipView({ shipId, registration, onClose }: SendShipViewProp
         <p className="text-xs text-apxm-muted">No route computed</p>
       )}
 
-      {/* Flight controls — each drives the hidden form; APEX recomputes. */}
+      {/* Flight controls — each drives the hidden form; APEX recomputes.
+          Chips set the usage sliders to fixed percentages via rail-position
+          clicks (MIN = the slider's floor, ~1%). The active chip is the one
+          nearest APEX's current value. Reactor is absent on some ships. */}
       <div className="space-y-2">
-        <div className="flex items-center gap-1">
-          <span className="text-[10px] uppercase tracking-wide text-apxm-text/40 w-14">Reactor</span>
-          {['MIN', '29%', '53%', '76%', '100%'].map((mark) => (
-            <button
-              key={mark}
-              type="button"
-              className={snapshot?.reactorMark === mark ? chipActive : chip}
-              disabled={busy}
-              onClick={() => drive(() => sessionRef.current!.setReactorMark(mark))}
-            >
-              {mark}
-            </button>
-          ))}
-        </div>
+        {snapshot?.reactorPct !== null && (
+          <div className="flex items-center gap-1">
+            <span className="text-[10px] uppercase tracking-wide text-apxm-text/40 w-14">Reactor</span>
+            {usageChips(snapshot?.reactorPct ?? null, busy, (pct) =>
+              drive(() => sessionRef.current!.setSliderPercent('reactor', pct))
+            )}
+          </div>
+        )}
         <div className="flex items-center gap-1">
           <span className="text-[10px] uppercase tracking-wide text-apxm-text/40 w-14">Fuel</span>
-          {['MIN', 'MAX'].map((mark) => (
-            <button
-              key={mark}
-              type="button"
-              className={snapshot?.fuelMark === mark ? chipActive : chip}
-              disabled={busy}
-              onClick={() => drive(() => sessionRef.current!.setFuelMark(mark))}
-            >
-              {mark}
-            </button>
-          ))}
+          {usageChips(snapshot?.fuelPct ?? null, busy, (pct) =>
+            drive(() => sessionRef.current!.setSliderPercent('fuel', pct))
+          )}
           <select
             className="ml-auto bg-transparent border border-apxm-accent text-xs font-mono min-h-touch px-1 text-apxm-text"
             value={snapshot?.routePref ?? 'LEAST_JUMPS'}

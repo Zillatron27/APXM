@@ -89,23 +89,30 @@ function buildSfcFixture(): Fixture {
     if (td) td.textContent += '.';
   };
 
-  // Sliders: fuel (2 marks) + reactor (5 marks).
-  const mkSlider = (marks: string[], activeUpTo: number) => {
+  // Usage sliders: labelled FormComponent + rc-slider whose handle carries
+  // the aria value scale (0.01–1, as device-captured). Rail clicks set the
+  // value from clientX; jsdom rects are zero, so the rect is stubbed.
+  const mkUsageSlider = (label: string, now: number) => {
+    const field = el('div', 'FormComponent__container___h');
+    field.appendChild(el('span', '', label));
     const s = el('div', 'rc-slider');
-    marks.forEach((m, i) => {
-      const mark = el('span', `rc-slider-mark-text${i <= activeUpTo ? ' rc-slider-mark-text-active' : ''}`, m);
-      mark.addEventListener('click', () => {
-        Array.from(s.querySelectorAll('.rc-slider-mark-text')).forEach((x, j) => {
-          x.className = `rc-slider-mark-text${j <= i ? ' rc-slider-mark-text-active' : ''}`;
-        });
-        bump();
-      });
-      s.appendChild(mark);
+    (s as unknown as { getBoundingClientRect: () => DOMRect }).getBoundingClientRect = () =>
+      ({ left: 0, top: 0, width: 100, height: 10, right: 100, bottom: 10, x: 0, y: 0 }) as DOMRect;
+    const handle = el('span', 'rc-slider-handle');
+    handle.setAttribute('aria-valuemin', '0.01');
+    handle.setAttribute('aria-valuemax', '1');
+    handle.setAttribute('aria-valuenow', String(now));
+    s.appendChild(handle);
+    s.addEventListener('click', (e) => {
+      const frac = (e as MouseEvent).clientX / 100;
+      handle.setAttribute('aria-valuenow', String(0.01 + frac * 0.99));
+      bump();
     });
-    return s;
+    field.appendChild(s);
+    return field;
   };
-  container.appendChild(mkSlider(['MIN', 'MAX'], 0));
-  container.appendChild(mkSlider(['MIN', '29%', '53%', '76%', '100%'], 2));
+  container.appendChild(mkUsageSlider('Fuel usage', 0.05));
+  container.appendChild(mkUsageSlider('Reactor usage', 0.53));
 
   // Toggles.
   const mkRadio = (label: string, active: boolean) => {
@@ -187,8 +194,8 @@ describe('SendSession', () => {
     expect(snap.status).toBe('valid');
     expect(snap.totals?.duration).toBe('1 day 2h 48m');
     expect(snap.segments).toHaveLength(1);
-    expect(snap.reactorMark).toBe('53%');
-    expect(snap.fuelMark).toBe('MIN');
+    expect(snap.reactorPct).toBe(53);
+    expect(snap.fuelPct).toBe(5);
     expect(snap.surfaceLanding).toBe(true);
     expect(snap.unloadOnArrival).toBe(false);
     expect(snap.routePref).toBe('LEAST_JUMPS');
@@ -238,8 +245,8 @@ describe('SendSession', () => {
     const opened = await openSendSession('AVI-063I6', 'ship-1');
     if (!opened.ok) throw new Error('open failed');
     const { session } = opened;
-    await session.setReactorMark('76%');
-    expect(session.readSnapshot().reactorMark).toBe('76%');
+    await session.setSliderPercent('reactor', 75);
+    expect(session.readSnapshot().reactorPct).toBe(75);
     await session.toggle('Unload on arrival');
     expect(session.readSnapshot().unloadOnArrival).toBe(true);
     await session.setRoutePref('SHORTEST_FTL');
@@ -258,14 +265,48 @@ describe('SendSession', () => {
     await opened.session.close();
   });
 
-  it('commitStart clicks START and confirms via the flight delta', async () => {
+  it('commitStart clicks START, completes the confirmation overlay, and confirms via the flight delta', async () => {
     const fx = buildSfcFixture();
     fx.status.textContent = 'valid';
     fx.setRoute('1 day');
+    // Device-confirmed 2026-08-14: START pops ActionConfirmationOverlay with
+    // Cancel + a second "start"; the flight begins only after the confirm.
     fx.startBtn.addEventListener('click', () => {
-      setTimeout(() => {
-        useFlightsStore.getState().setAll([createTestFlight({ shipId: 'ship-1' })]);
-      }, 50);
+      const overlay = el('div', 'ActionConfirmationOverlay__container___h');
+      const cancel = el('button', 'apex-btn', 'Cancel');
+      const confirm = el('button', 'apex-btn', 'start');
+      confirm.addEventListener('click', () => {
+        overlay.remove();
+        setTimeout(() => {
+          useFlightsStore.getState().setAll([createTestFlight({ shipId: 'ship-1' })]);
+        }, 50);
+      });
+      overlay.append(cancel, confirm);
+      document.body.appendChild(overlay);
+    });
+    const opened = await openSendSession('AVI-063I6', 'ship-1');
+    if (!opened.ok) throw new Error('open failed');
+    const result = await opened.session.commitStart();
+    expect(result).toEqual({ ok: true });
+    // The confirmation must have been completed (overlay removed by confirm).
+    expect(document.querySelector('[class*="ActionConfirmationOverlay"]')).toBeNull();
+    await opened.session.close();
+  });
+
+  it('commitStart succeeds even for a repeat flight (stale flight record present)', async () => {
+    const fx = buildSfcFixture();
+    fx.status.textContent = 'valid';
+    fx.setRoute('1 day');
+    useFlightsStore.getState().setAll([createTestFlight({ id: 'flight-old', shipId: 'ship-1' })]);
+    fx.startBtn.addEventListener('click', () => {
+      const overlay = el('div', 'ActionConfirmationOverlay__container___h');
+      const confirm = el('button', 'apex-btn', 'start');
+      confirm.addEventListener('click', () => {
+        overlay.remove();
+        useFlightsStore.getState().setAll([createTestFlight({ id: 'flight-new', shipId: 'ship-1' })]);
+      });
+      overlay.append(confirm);
+      document.body.appendChild(overlay);
     });
     const opened = await openSendSession('AVI-063I6', 'ship-1');
     if (!opened.ok) throw new Error('open failed');

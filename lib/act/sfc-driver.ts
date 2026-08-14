@@ -17,7 +17,7 @@
 import { openMobileBuffer, closeMobileBuffer } from '../mobile-buffer-navigator';
 import { setupActGlobals } from './globals-setup';
 import { sleep, waitUntil } from './_compat';
-import { driveType, driveKey, driveClick } from './input-bridge';
+import { driveType, driveKey, driveClick, driveClickAt } from './input-bridge';
 import { acquireActionLock, releaseActionLock } from './action-lock';
 import { isApexButtonDisabled } from './apex-button';
 import { useFlightsStore } from '../../stores/entities';
@@ -39,8 +39,9 @@ export interface SfcSnapshot {
   /** The totals row (empty when no route yet). */
   totals: SfcRouteRow | null;
   segments: SfcRouteRow[];
-  reactorMark: string | null;
-  fuelMark: string | null;
+  /** Percent 1–100, null when the ship renders no such slider. */
+  reactorPct: number | null;
+  fuelPct: number | null;
   routePref: string | null;
   surfaceLanding: boolean;
   useGateways: boolean;
@@ -81,19 +82,29 @@ function radioState(root: HTMLElement, label: string): { el: HTMLElement; active
   return null;
 }
 
-function sliderMarks(root: HTMLElement): { fuel: HTMLElement[]; reactor: HTMLElement[] } {
-  // Two rc-sliders: fuel (marks MIN/MAX) and reactor (MIN/29%/53%/76%/100%).
-  const sliders = Array.from(root.querySelectorAll<HTMLElement>('.rc-slider'));
-  const byMarks = (s: HTMLElement) =>
-    Array.from(s.querySelectorAll<HTMLElement>('.rc-slider-mark-text'));
-  const fuel = sliders.find((s) => byMarks(s).length === 2);
-  const reactor = sliders.find((s) => byMarks(s).length > 2);
-  return { fuel: fuel ? byMarks(fuel) : [], reactor: reactor ? byMarks(reactor) : [] };
+export type SliderKind = 'fuel' | 'reactor';
+
+const SLIDER_LABELS: Record<SliderKind, string> = {
+  fuel: 'Fuel usage',
+  reactor: 'Reactor usage',
+};
+
+/** The slider for a labelled field. Absent legitimately — e.g. STL-only
+ *  ships render no Reactor usage slider (device finding 2026-08-14). */
+function findSlider(root: HTMLElement, kind: SliderKind): HTMLElement | null {
+  const containers = Array.from(
+    root.querySelectorAll<HTMLElement>('[class*="FormComponent__container"]')
+  );
+  const field = containers.find((el) => el.textContent?.trim().startsWith(SLIDER_LABELS[kind]));
+  return field?.querySelector<HTMLElement>('.rc-slider') ?? null;
 }
 
-function highestActiveMark(marks: HTMLElement[]): string | null {
-  const active = marks.filter((m) => m.className.includes('rc-slider-mark-text-active'));
-  return active.length ? (active[active.length - 1].textContent?.trim() ?? null) : null;
+/** Current value as a percent (1–100), read from the handle's aria (the
+ *  slider scale is 0.01–1). Null when the slider is absent. */
+function sliderPercent(root: HTMLElement, kind: SliderKind): number | null {
+  const handle = findSlider(root, kind)?.querySelector('.rc-slider-handle');
+  const now = Number(handle?.getAttribute('aria-valuenow'));
+  return Number.isFinite(now) ? Math.round(now * 100) : null;
 }
 
 function parseRouteTable(root: HTMLElement): { totals: SfcRouteRow | null; segments: SfcRouteRow[] } {
@@ -135,7 +146,6 @@ export class SendSession {
   readSnapshot(): SfcSnapshot {
     const root = this.root;
     const { totals, segments } = parseRouteTable(root);
-    const marks = sliderMarks(root);
     const start = Array.from(root.getElementsByTagName('button')).find(
       (b) => b.textContent?.trim().toLowerCase() === 'start'
     );
@@ -144,8 +154,8 @@ export class SendSession {
       status: fieldText(root, 'Status'),
       totals,
       segments,
-      reactorMark: highestActiveMark(marks.reactor),
-      fuelMark: highestActiveMark(marks.fuel),
+      reactorPct: sliderPercent(root, 'reactor'),
+      fuelPct: sliderPercent(root, 'fuel'),
       routePref: select?.value ?? null,
       surfaceLanding: radioState(root, 'Surface landing')?.active ?? false,
       useGateways: radioState(root, 'Use gateways')?.active ?? false,
@@ -196,19 +206,24 @@ export class SendSession {
     return { ok: true };
   }
 
-  async setReactorMark(markLabel: string): Promise<SfcActionResult> {
-    return this.clickMark(sliderMarks(this.root).reactor, markLabel);
-  }
-
-  async setFuelMark(markLabel: string): Promise<SfcActionResult> {
-    return this.clickMark(sliderMarks(this.root).fuel, markLabel);
-  }
-
-  private async clickMark(marks: HTMLElement[], markLabel: string): Promise<SfcActionResult> {
-    const mark = marks.find((m) => m.textContent?.trim() === markLabel);
-    if (!mark) return { ok: false, error: `${markLabel} not available` };
+  /** Sets a usage slider to `percent` (1–100) by clicking the rc-slider rail
+   *  at the matching position (via the input bridge — the slider computes the
+   *  value from the click's clientX, so arbitrary percentages work, not just
+   *  APEX's rendered marks). Clamped to the slider's own aria min/max. */
+  async setSliderPercent(kind: SliderKind, percent: number): Promise<SfcActionResult> {
+    const slider = findSlider(this.root, kind);
+    if (!slider) return { ok: false, error: `No ${SLIDER_LABELS[kind]} control on this ship` };
+    const handle = slider.querySelector('.rc-slider-handle');
+    const min = Number(handle?.getAttribute('aria-valuemin'));
+    const max = Number(handle?.getAttribute('aria-valuemax'));
+    if (!Number.isFinite(min) || !Number.isFinite(max) || max <= min) {
+      return { ok: false, error: 'Slider range unreadable' };
+    }
+    const value = Math.min(Math.max(percent / 100, min), max);
+    const frac = (value - min) / (max - min);
     const before = this.root.querySelector('[class*="MissionPlan__table"]')?.textContent ?? '';
-    mark.click();
+    const clicked = await driveClickAt(slider, frac);
+    if (!clicked) return { ok: false, error: 'Slider did not respond' };
     await waitRecompute(this.root, before);
     return { ok: true };
   }
@@ -244,11 +259,43 @@ export class SendSession {
       (b) => b.textContent?.trim().toLowerCase() === 'start'
     );
     if (!start || isApexButtonDisabled(start)) return { ok: false, error: 'START not enabled in APEX' };
-    const hadFlight = !!useFlightsStore.getState().getAll().find((f) => f.shipId === this.shipId);
+    // A stale record from a completed flight may linger — success is a
+    // flight with a NEW id, not merely any flight existing.
+    const priorFlightId =
+      useFlightsStore.getState().getAll().find((f) => f.shipId === this.shipId)?.id ?? null;
     start.click();
+    // START pops APEX's ActionConfirmationOverlay ("Confirmation required:
+    // The flight from X to Y...") — live-confirmed 2026-08-14, the first
+    // action that does. The user's SEND tap is the informed commit (the full
+    // route was reviewed in APXM), so the confirmation is completed here —
+    // handing the dialog over would mean switching to APEX, which this
+    // feature exists to avoid. The confirm button is the overlay's second
+    // "start"; the other is Cancel.
     try {
       await waitUntil(
-        () => !!useFlightsStore.getState().getAll().find((f) => f.shipId === this.shipId) && !hadFlight,
+        () => !!document.querySelector('[class*="ActionConfirmationOverlay__container"]'),
+        200,
+        5000
+      );
+      const overlay = document.querySelector<HTMLElement>(
+        '[class*="ActionConfirmationOverlay__container"]'
+      );
+      const confirm = overlay
+        ? Array.from(overlay.getElementsByTagName('button')).find(
+            (b) => !/cancel/i.test(b.textContent ?? '')
+          )
+        : undefined;
+      if (confirm) confirm.click();
+    } catch {
+      // No overlay appeared — some sends may commit directly; the flight
+      // delta below is the ground truth either way.
+    }
+    try {
+      await waitUntil(
+        () => {
+          const flight = useFlightsStore.getState().getAll().find((f) => f.shipId === this.shipId);
+          return !!flight && flight.id !== priorFlightId;
+        },
         250,
         15000
       );

@@ -14,7 +14,11 @@ export const INPUT_DONE_ATTR = 'data-apxm-input-done';
 type InputRequest =
   | { kind: 'type'; text: string }
   | { kind: 'key'; key: string }
-  | { kind: 'click' };
+  | { kind: 'click' }
+  /** mousedown/up at a horizontal fraction of the element's rect — how a
+   *  value is set on an rc-slider rail (arbitrary positions, not just the
+   *  rendered marks). */
+  | { kind: 'clickAt'; xFrac: number };
 
 async function performType(input: HTMLInputElement, text: string): Promise<void> {
   input.focus();
@@ -69,6 +73,14 @@ export function installInputBridge(): void {
           el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
           el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
           el.click();
+        } else if (request.kind === 'clickAt') {
+          const rect = el.getBoundingClientRect();
+          const x = rect.left + rect.width * Math.min(Math.max(request.xFrac, 0), 1);
+          const y = rect.top + rect.height / 2;
+          const opts = { bubbles: true, cancelable: true, clientX: x, clientY: y };
+          el.dispatchEvent(new MouseEvent('mousedown', opts));
+          el.dispatchEvent(new MouseEvent('mouseup', opts));
+          el.dispatchEvent(new MouseEvent('click', opts));
         }
         el.setAttribute(INPUT_DONE_ATTR, 'ok');
       } catch {
