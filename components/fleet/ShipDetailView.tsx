@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { ProgressBar } from '../shared';
+import { btnSecondary } from '../shared/button';
 import { formatEta, formatCondition } from '../../lib/fleet-utils';
+import { runShipUnload } from '../../lib/ship-actions';
 import { useShipDetail } from '../views/hooks';
 
 interface ShipDetailViewProps {
@@ -7,13 +10,32 @@ interface ShipDetailViewProps {
 }
 
 /**
- * Read-only ship drill-down: route + flight phase, ETA, cargo (weight + volume),
- * fuel (STL + FTL), and condition. The action passthrough (fly / cargo / fuel /
- * unload, mirroring the FLT buffer's command column) is deferred to part 2,
- * same as the base REPAIR/PROD buffer actions.
+ * Ship drill-down: route + flight phase, ETA, cargo (weight + volume), fuel
+ * (STL + FTL), condition, and the first ship action — UNLOAD (one tap drives
+ * the FLT buffer's unload for this ship; the tap IS the commit, APEX shows no
+ * confirmation). Fly / cargo / fuel passthrough still to come (#9/#25).
  */
 export function ShipDetailView({ shipId }: ShipDetailViewProps) {
   const ship = useShipDetail(shipId);
+  const [actionRunning, setActionRunning] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  // APEX said no (ship state the WS data doesn't expose). Session-scoped on
+  // purpose: reopening the sheet retries, matching the contract sheet.
+  const [gameDisabled, setGameDisabled] = useState(false);
+
+  const handleUnload = async () => {
+    if (actionRunning || !ship) return;
+    setActionRunning(true);
+    setActionError(null);
+    const result = await runShipUnload(ship.registration);
+    setActionRunning(false);
+    if (result.ok) return; // STORAGE_CHANGE deltas update the cargo bars
+    if (result.disabledInApex) {
+      setGameDisabled(true);
+    } else {
+      setActionError(result.error);
+    }
+  };
 
   // The ship vanished (store cleared on reconnect). The sheet still has its
   // title from the payload; just say the live detail is gone.
@@ -56,6 +78,23 @@ export function ShipDetailView({ shipId }: ShipDetailViewProps) {
         <p className="text-[10px] uppercase tracking-wide text-apxm-text/40">Fuel</p>
         <ProgressBar label="SF" current={Math.floor(ship.stlFuel.current)} max={Math.floor(ship.stlFuel.max)} color="yellow" />
         <ProgressBar label="FF" current={Math.floor(ship.ftlFuel.current)} max={Math.floor(ship.ftlFuel.max)} color="blue" />
+      </div>
+
+      {/* Actions — client-side gating is UX only; the game's own gate is the
+          disabled check at act time (#73 lesson: never derive actionability). */}
+      <div className="space-y-1">
+        <button
+          type="button"
+          className={`${btnSecondary} w-full min-h-touch px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed`}
+          disabled={actionRunning || gameDisabled || !ship.stationary || ship.cargo.current === 0}
+          onClick={handleUnload}
+        >
+          {gameDisabled ? 'Unload — pending' : 'Unload cargo'}
+        </button>
+        {actionRunning && (
+          <p className="text-xs text-apxm-muted animate-pulse">Working in APEX buffer...</p>
+        )}
+        {actionError && <p className="text-xs text-status-critical">{actionError}</p>}
       </div>
 
       {/* Condition */}
