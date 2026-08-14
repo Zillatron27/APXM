@@ -9,9 +9,12 @@ import { openMobileBuffer, closeMobileBuffer } from './mobile-buffer-navigator';
 import { waitActionFeedback } from './act/action-feedback';
 import { setupActGlobals } from './act/globals-setup';
 import { clickElement } from './act/_compat';
-import { C } from './act/prun-css';
+import { acquireActionLock, releaseActionLock } from './act/action-lock';
 import { useSettingsStore } from '../stores/settings';
 import { useGameState } from '../stores/gameState';
+
+export { isApexButtonDisabled } from './act/apex-button';
+import { isApexButtonDisabled } from './act/apex-button';
 
 export type ContractActionTarget =
   | { kind: 'accept' }
@@ -34,20 +37,6 @@ export type ContractActionResult =
        *  The view mirrors the disabled state instead of showing the error. */
       disabledInApex?: true;
     };
-
-/**
- * APEX marks a gated command button with a Button__disabled class, NOT the
- * disabled attribute (device-captured 2026-08-13; the attribute is checked
- * anyway in case other buffers differ). Clicking one is a silent no-op — no
- * feedback overlay ever appears — so it must be detected before clicking.
- */
-export function isApexButtonDisabled(button: HTMLElement): boolean {
-  if (button instanceof HTMLButtonElement && button.disabled) return true;
-  const parsed = (C.Button as Record<string, string> | undefined)?.disabled;
-  if (parsed && button.classList.contains(parsed)) return true;
-  // Stylesheet parsing unavailable: the BEM prefix is stable, the hash isn't.
-  return Array.from(button.classList).some((cls) => cls.startsWith('Button__disabled'));
-}
 
 // APEX renders CSS text-transform: uppercase, so visible label case is
 // meaningless — match textContent case-insensitively (CLAUDE.md gotcha).
@@ -101,22 +90,15 @@ export function findContractActionButton(
   return matches.length === 1 ? matches[0] : undefined;
 }
 
-// One driven action at a time — a second tap while a buffer is being driven
-// would fight over #container. Module-level like the MTRA buffer cache.
-let inFlight = false;
-
-export function isContractActionInFlight(): boolean {
-  return inFlight;
-}
-
 export async function runContractAction(
   localId: string,
   target: ContractActionTarget
 ): Promise<ContractActionResult> {
-  if (inFlight) {
+  // One driven action at a time across all action modules (ship actions too) —
+  // a second tap while a buffer is being driven would fight over #container.
+  if (!acquireActionLock()) {
     return { ok: false, error: 'Another action is already running' };
   }
-  inFlight = true;
   try {
     setupActGlobals();
     const opened = await openMobileBuffer(`CONT ${localId}`);
@@ -152,6 +134,6 @@ export async function runContractAction(
       await closeMobileBuffer();
     }
   } finally {
-    inFlight = false;
+    releaseActionLock();
   }
 }
