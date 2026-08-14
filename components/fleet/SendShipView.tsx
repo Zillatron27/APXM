@@ -17,22 +17,28 @@ interface SendShipViewProps {
 const chip = `${btnSecondary} min-h-touch px-2 text-xs`;
 const chipActive = `${chip} text-prun-yellow border-prun-yellow`;
 
-/** MIN / 25% / 50% / 75% / MAX usage chips. MIN maps to 1% (the slider
- *  floor), MAX to 100%; the active chip is the nearest to the live value. */
-const USAGE_CHIPS: { label: string; pct: number }[] = [
-  { label: 'MIN', pct: 1 },
-  { label: '25%', pct: 25 },
-  { label: '50%', pct: 50 },
-  { label: '75%', pct: 75 },
-  { label: 'MAX', pct: 100 },
+/** MIN / 25% / 50% / 75% / MAX chips address POSITIONS across the slider's
+ *  own range — ranges are per-ship/per-route (a reactor can span only
+ *  97.5–100%), so absolute percents are often unsatisfiable. The row label
+ *  shows the actual resulting value. */
+const USAGE_CHIPS: { label: string; frac: number }[] = [
+  { label: 'MIN', frac: 0 },
+  { label: '25%', frac: 0.25 },
+  { label: '50%', frac: 0.5 },
+  { label: '75%', frac: 0.75 },
+  { label: 'MAX', frac: 1 },
 ];
 
-function usageChips(currentPct: number | null, busy: boolean, onPick: (pct: number) => void) {
+function usageChips(
+  state: { posFrac: number } | null,
+  busy: boolean,
+  onPick: (frac: number) => void
+) {
   const nearest =
-    currentPct === null
+    state === null
       ? null
       : USAGE_CHIPS.reduce((best, c) =>
-          Math.abs(c.pct - currentPct) < Math.abs(best.pct - currentPct) ? c : best
+          Math.abs(c.frac - state.posFrac) < Math.abs(best.frac - state.posFrac) ? c : best
         ).label;
   return USAGE_CHIPS.map((c) => (
     <button
@@ -40,7 +46,7 @@ function usageChips(currentPct: number | null, busy: boolean, onPick: (pct: numb
       type="button"
       className={nearest === c.label ? chipActive : chip}
       disabled={busy}
-      onClick={() => onPick(c.pct)}
+      onClick={() => onPick(c.frac)}
     >
       {c.label}
     </button>
@@ -214,18 +220,30 @@ export function SendShipView({ shipId, registration, onClose }: SendShipViewProp
           clicks (MIN = the slider's floor, ~1%). The active chip is the one
           nearest APEX's current value. Reactor is absent on some ships. */}
       <div className="space-y-2">
-        {snapshot?.reactorPct !== null && (
+        {snapshot?.reactor != null && (
           <div className="flex items-center gap-1">
-            <span className="text-[10px] uppercase tracking-wide text-apxm-text/40 w-14">Reactor</span>
-            {usageChips(snapshot?.reactorPct ?? null, busy, (pct) =>
-              drive(() => sessionRef.current!.setSliderPercent('reactor', pct))
+            <span className="text-[10px] uppercase tracking-wide text-apxm-text/40 w-14">
+              Reactor
+              <span className="block font-mono tabular-nums text-apxm-text/70 normal-case">
+                {snapshot.reactor.valuePct}%
+              </span>
+            </span>
+            {usageChips(snapshot.reactor, busy, (frac) =>
+              drive(() => sessionRef.current!.setSliderFraction('reactor', frac))
             )}
           </div>
         )}
         <div className="flex items-center gap-1">
-          <span className="text-[10px] uppercase tracking-wide text-apxm-text/40 w-14">Fuel</span>
-          {usageChips(snapshot?.fuelPct ?? null, busy, (pct) =>
-            drive(() => sessionRef.current!.setSliderPercent('fuel', pct))
+          <span className="text-[10px] uppercase tracking-wide text-apxm-text/40 w-14">
+            Fuel
+            {snapshot?.fuel && (
+              <span className="block font-mono tabular-nums text-apxm-text/70 normal-case">
+                {snapshot.fuel.valuePct}%
+              </span>
+            )}
+          </span>
+          {usageChips(snapshot?.fuel ?? null, busy, (frac) =>
+            drive(() => sessionRef.current!.setSliderFraction('fuel', frac))
           )}
           <select
             className="ml-auto bg-transparent border border-apxm-accent text-xs font-mono min-h-touch px-1 text-apxm-text"

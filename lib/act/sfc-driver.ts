@@ -39,9 +39,9 @@ export interface SfcSnapshot {
   /** The totals row (empty when no route yet). */
   totals: SfcRouteRow | null;
   segments: SfcRouteRow[];
-  /** Percent 1–100, null when the ship renders no such slider. */
-  reactorPct: number | null;
-  fuelPct: number | null;
+  /** Null when the ship renders no such slider. */
+  reactor: SliderState | null;
+  fuel: SliderState | null;
   routePref: string | null;
   surfaceLanding: boolean;
   useGateways: boolean;
@@ -99,12 +99,24 @@ function findSlider(root: HTMLElement, kind: SliderKind): HTMLElement | null {
   return field?.querySelector<HTMLElement>('.rc-slider') ?? null;
 }
 
-/** Current value as a percent (1–100), read from the handle's aria (the
- *  slider scale is 0.01–1). Null when the slider is absent. */
-function sliderPercent(root: HTMLElement, kind: SliderKind): number | null {
+export interface SliderState {
+  /** The actual value as a percent (aria-valuenow × 100). */
+  valuePct: number;
+  /** Position across the slider's OWN range, 0–1. Ranges vary wildly —
+   *  Picard's reactor spans 97.5%–100% while a Sprinter's starts near 5%
+   *  (device 2026-08-14) — so controls address positions, not absolutes. */
+  posFrac: number;
+}
+
+function sliderState(root: HTMLElement, kind: SliderKind): SliderState | null {
   const handle = findSlider(root, kind)?.querySelector('.rc-slider-handle');
   const now = Number(handle?.getAttribute('aria-valuenow'));
-  return Number.isFinite(now) ? Math.round(now * 100) : null;
+  const min = Number(handle?.getAttribute('aria-valuemin'));
+  const max = Number(handle?.getAttribute('aria-valuemax'));
+  if (!Number.isFinite(now) || !Number.isFinite(min) || !Number.isFinite(max) || max <= min) {
+    return null;
+  }
+  return { valuePct: Math.round(now * 1000) / 10, posFrac: (now - min) / (max - min) };
 }
 
 function parseRouteTable(root: HTMLElement): { totals: SfcRouteRow | null; segments: SfcRouteRow[] } {
@@ -173,8 +185,8 @@ export class SendSession {
       status: fieldText(root, 'Status'),
       totals,
       segments,
-      reactorPct: sliderPercent(root, 'reactor'),
-      fuelPct: sliderPercent(root, 'fuel'),
+      reactor: sliderState(root, 'reactor'),
+      fuel: sliderState(root, 'fuel'),
       routePref: select?.value ?? null,
       surfaceLanding: radioState(root, 'Surface landing')?.active ?? false,
       useGateways: radioState(root, 'Use gateways')?.active ?? false,
@@ -225,23 +237,16 @@ export class SendSession {
     return { ok: true };
   }
 
-  /** Sets a usage slider to `percent` (1–100) by clicking the rc-slider rail
-   *  at the matching position (via the input bridge — the slider computes the
-   *  value from the click's clientX, so arbitrary percentages work, not just
-   *  APEX's rendered marks). Clamped to the slider's own aria min/max. */
-  async setSliderPercent(kind: SliderKind, percent: number): Promise<SfcActionResult> {
+  /** Sets a usage slider to a POSITION across its own range (0 = MIN,
+   *  1 = MAX) by clicking the rc-slider rail there via the input bridge.
+   *  Position, not absolute percent: slider ranges are per-ship/per-route
+   *  (Picard's reactor spans only 97.5–100%), so absolute targets are often
+   *  unsatisfiable and would clamp confusingly. */
+  async setSliderFraction(kind: SliderKind, frac: number): Promise<SfcActionResult> {
     const slider = findSlider(this.root, kind);
     if (!slider) return { ok: false, error: `No ${SLIDER_LABELS[kind]} control on this ship` };
-    const handle = slider.querySelector('.rc-slider-handle');
-    const min = Number(handle?.getAttribute('aria-valuemin'));
-    const max = Number(handle?.getAttribute('aria-valuemax'));
-    if (!Number.isFinite(min) || !Number.isFinite(max) || max <= min) {
-      return { ok: false, error: 'Slider range unreadable' };
-    }
-    const value = Math.min(Math.max(percent / 100, min), max);
-    const frac = (value - min) / (max - min);
     const before = this.root.querySelector('[class*="MissionPlan__table"]')?.textContent ?? '';
-    const clicked = await driveClickAt(slider, frac);
+    const clicked = await driveClickAt(slider, Math.min(Math.max(frac, 0), 1));
     if (!clicked) return { ok: false, error: 'Slider did not respond' };
     await waitRecompute(this.root, before);
     return { ok: true };

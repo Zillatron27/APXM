@@ -196,8 +196,8 @@ describe('SendSession', () => {
     expect(snap.status).toBe('valid');
     expect(snap.totals?.duration).toBe('1 day 2h 48m');
     expect(snap.segments).toHaveLength(1);
-    expect(snap.reactorPct).toBe(53);
-    expect(snap.fuelPct).toBe(5);
+    expect(snap.reactor).toEqual({ valuePct: 53, posFrac: (0.53 - 0.01) / 0.99 });
+    expect(snap.fuel?.valuePct).toBe(5);
     expect(snap.surfaceLanding).toBe(true);
     expect(snap.unloadOnArrival).toBe(false);
     expect(snap.routePref).toBe('LEAST_JUMPS');
@@ -247,8 +247,9 @@ describe('SendSession', () => {
     const opened = await openSendSession('AVI-063I6', 'ship-1');
     if (!opened.ok) throw new Error('open failed');
     const { session } = opened;
-    await session.setSliderPercent('reactor', 75);
-    expect(session.readSnapshot().reactorPct).toBe(75);
+    await session.setSliderFraction('reactor', 0.75);
+    // Fixture scale 0.01–1: position 0.75 → value 0.01 + 0.75×0.99 = 0.7525.
+    expect(session.readSnapshot().reactor?.posFrac).toBeCloseTo(0.75, 5);
     await session.toggle('Unload on arrival');
     expect(session.readSnapshot().unloadOnArrival).toBe(true);
     await session.setRoutePref('SHORTEST_FTL');
