@@ -25,9 +25,15 @@ export type RefuelPlan =
     }
   | { available: false; reason: 'tank-full' | 'no-fuel-here' | 'no-reference-data' | 'no-tank' };
 
-function stockOf(store: PrunApi.Store, ticker: string): number {
+/** Units of a ticker held as loadable INVENTORY (SHIPMENT items are contract
+ *  goods, not free stock). Shared with core/load-cargo.ts. */
+export function stockOf(store: PrunApi.Store, ticker: string): number {
   return store.items.reduce(
-    (sum, item) => sum + (item.quantity?.material.ticker === ticker ? item.quantity.amount : 0),
+    (sum, item) =>
+      sum +
+      (item.type === 'INVENTORY' && item.quantity?.material.ticker === ticker
+        ? item.quantity.amount
+        : 0),
     0
   );
 }

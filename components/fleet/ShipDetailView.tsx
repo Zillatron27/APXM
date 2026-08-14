@@ -5,6 +5,8 @@ import { formatEta, formatCondition } from '../../lib/fleet-utils';
 import { runShipUnload, runShipRefuel, type ShipActionResult } from '../../lib/ship-actions';
 import type { FuelTank } from '../../core/refuel';
 import { useRefuelPlan } from './useRefuelPlan';
+import { useLoadableMaterials } from './useLoadableMaterials';
+import { LoadCargoPicker } from './LoadCargoPicker';
 import { useShipDetail } from '../views/hooks';
 
 interface ShipDetailViewProps {
@@ -26,6 +28,8 @@ export function ShipDetailView({ shipId }: ShipDetailViewProps) {
   const ship = useShipDetail(shipId);
   const stlPlan = useRefuelPlan(shipId, 'stl');
   const ftlPlan = useRefuelPlan(shipId, 'ftl');
+  const loadable = useLoadableMaterials(shipId);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [running, setRunning] = useState<RunningAction>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   // APEX said no (ship state the WS data doesn't expose). Session-scoped on
@@ -50,6 +54,12 @@ export function ShipDetailView({ shipId }: ShipDetailViewProps) {
   // title from the payload; just say the live detail is gone.
   if (!ship) {
     return <p className="text-sm text-apxm-muted">Ship data unavailable.</p>;
+  }
+
+  // Picker sub-mode: the sheet body swaps to the load-cargo picker (no new
+  // navigation mechanism — same detailView, same sheet).
+  if (pickerOpen) {
+    return <LoadCargoPicker shipId={shipId} onClose={() => setPickerOpen(false)} />;
   }
 
   const route = ship.stationary
@@ -144,6 +154,28 @@ export function ShipDetailView({ shipId }: ShipDetailViewProps) {
           </button>
           {ship.stationary && ship.cargo.current === 0 && running === null && (
             <p className="text-xs text-apxm-muted">Hold is empty</p>
+          )}
+        </div>
+
+        <div className="space-y-1">
+          <button
+            type="button"
+            className={actionBtn}
+            disabled={running !== null || !ship.stationary || !loadable.available}
+            onClick={() => setPickerOpen(true)}
+          >
+            Load cargo
+          </button>
+          {ship.stationary && !loadable.available && (
+            <p className="text-xs text-apxm-muted">
+              {loadable.reason === 'hold-full'
+                ? 'Hold is full'
+                : loadable.reason === 'nothing-loadable'
+                  ? 'Nothing loadable at this location'
+                  : loadable.reason === 'no-reference-data'
+                    ? 'Material data loading'
+                    : 'Hold data unavailable'}
+            </p>
           )}
         </div>
 

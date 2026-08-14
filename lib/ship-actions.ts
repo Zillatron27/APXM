@@ -14,6 +14,7 @@ import { isApexButtonDisabled } from './act/apex-button';
 import { toDisplayName } from './act/action-steps/cont-utils';
 import { runTransfer } from './act/transfer-modal';
 import { planRefuel, FUEL_TICKER, type FuelTank } from '../core/refuel';
+import { validateLoadPicks, type LoadPick } from '../core/load-cargo';
 import { useSettingsStore } from '../stores/settings';
 import { useGameState } from '../stores/gameState';
 import { useShipsStore, useStorageStore } from '../stores/entities';
@@ -141,6 +142,100 @@ export async function runShipRefuel(shipId: string, tank: FuelTank): Promise<Shi
     } finally {
       await closeMobileBuffer();
     }
+  } finally {
+    releaseActionLock();
+  }
+}
+
+export type LoadCargoResult =
+  | { ok: true; loaded: string[] }
+  | {
+      ok: false;
+      error: string;
+      /** Tickers that DID transfer before the batch stopped — a mid-run
+       *  failure never rolls back, so the user must see what landed. */
+      loaded: string[];
+    };
+
+/**
+ * Batch cargo load: for each source store (per-material largest-stock pick,
+ * validated at act time), open its INV buffer once and run one transfer
+ * wizard per material into the ship's cargo hold. Stops on the first failure
+ * — no ploughing on — and reports what already transferred. One lock for the
+ * whole batch; the user's LOAD tap is the commit for all of it.
+ */
+export async function runShipLoadCargo(
+  shipId: string,
+  picks: LoadPick[]
+): Promise<LoadCargoResult> {
+  if (!acquireActionLock()) {
+    return { ok: false, error: 'Another action is already running', loaded: [] };
+  }
+  const loaded: string[] = [];
+  try {
+    setupActGlobals();
+    const ship = useShipsStore.getState().getById(shipId);
+    if (!ship) return { ok: false, error: 'Ship data unavailable', loaded };
+    const getMaterial = (ticker: string) => useMaterialsStore.getState().getById(ticker);
+    const validated = validateLoadPicks(
+      picks,
+      ship,
+      useStorageStore.getState().getAll(),
+      getMaterial
+    );
+    if (!validated.ok) return { ok: false, error: validated.reason, loaded };
+
+    const bySource = new Map<string, typeof validated.picks>();
+    for (const pick of validated.picks) {
+      const group = bySource.get(pick.sourceStoreId) ?? [];
+      group.push(pick);
+      bySource.set(pick.sourceStoreId, group);
+    }
+
+    const before = useStorageStore.getState().getById(ship.idShipStore)?.volumeLoad ?? 0;
+
+    for (const [sourceStoreId, group] of bySource) {
+      const opened = await openMobileBuffer(`INV ${sourceStoreId}`, () =>
+        document
+          .getElementById('container')
+          ?.querySelector<HTMLElement>('[class*="StoreView__container"]') ?? null
+      );
+      const anchor = document.getElementById('container');
+      if (!opened || !anchor) {
+        return { ok: false, error: 'Failed to open the source store buffer', loaded };
+      }
+      try {
+        for (const pick of group) {
+          const result = await runTransfer(anchor, {
+            materialName: toDisplayName(pick.name),
+            targetStoreId: ship.idShipStore,
+            amount: pick.amount,
+          });
+          if (!result.ok) {
+            return { ok: false, error: `${pick.ticker}: ${result.error}`, loaded };
+          }
+          loaded.push(pick.ticker);
+        }
+      } finally {
+        await closeMobileBuffer();
+      }
+    }
+
+    // Silent commits — the hold's WS volume delta is the ground truth.
+    try {
+      await waitUntil(
+        () => (useStorageStore.getState().getById(ship.idShipStore)?.volumeLoad ?? 0) > before,
+        250,
+        15000
+      );
+    } catch {
+      return {
+        ok: false,
+        error: 'Transfers sent but not confirmed by the game — check the hold in APEX',
+        loaded,
+      };
+    }
+    return { ok: true, loaded };
   } finally {
     releaseActionLock();
   }
