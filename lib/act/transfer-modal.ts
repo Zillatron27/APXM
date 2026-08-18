@@ -10,13 +10,13 @@
 
 import { setInputValue, waitForElement } from '../buffer-refresh/dom-helpers';
 import { isApexButtonDisabled } from './apex-button';
-import { openDropDown, selectDropDownLabel, selectDropDownValue } from './dropdown';
+import { openDropDown, selectDropDownTicker, selectDropDownValue } from './dropdown';
 
 export interface TransferRequest {
-  /** Display name of the material (e.g. "STL Fuel") — the material dropdown
-   *  is label-addressed (its fiber values are material GUIDs APXM doesn't
-   *  track; labels are unique display names). */
-  materialName: string;
+  /** Ticker of the material (e.g. "SF") — the material dropdown is
+   *  ticker-addressed via each option's icon label. Display names drift
+   *  between FIO and APEX ("beryl" vs "Beryl Crystals"); tickers don't. */
+  ticker: string;
   /** GUID of the target store — the target dropdown is GUID-addressed via its
    *  fiber `values` (labels are nameless: "Ship  STL fuel store"). */
   targetStoreId: string;
@@ -86,8 +86,8 @@ export async function runTransfer(
   if (!materialBox || !(await openDropDown(materialBox))) {
     return fail('Material list did not open');
   }
-  if (!selectDropDownLabel(materialBox, request.materialName)) {
-    return fail(`${request.materialName} not found in the source store`);
+  if (!selectDropDownTicker(materialBox, request.ticker)) {
+    return fail(`${request.ticker} not found in the source store's material list`);
   }
 
   const targetBox = await waitForElement(() => boxes()[1] ?? null, STEP_TIMEOUT_MS);

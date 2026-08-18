@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { getFiberProps, immutableToArray, readFiberValuesAnyWorld } from '../react-fiber';
 import { installFiberBridge } from '../fiber-bridge-main';
-import { getDropDownValues, selectDropDownValue, selectDropDownLabel, openDropDown } from '../dropdown';
+import { getDropDownValues, selectDropDownValue, selectDropDownTicker, openDropDown } from '../dropdown';
 
 // jsdom is single-world: the direct fiber read succeeds when a fake fiber is
 // present. The bridge responder is installed anyway so the no-fiber path gets
@@ -16,6 +16,9 @@ beforeAll(() => {
 
 function buildBox(opts: {
   labels: string[];
+  /** Ticker per option, rendered in the icon's ColoredIcon__label element
+   *  the way APEX does (captured 2026-08-18). Index-aligned with labels. */
+  tickers?: (string | null)[];
   values?: unknown[] | { toJS: () => unknown[] };
   open?: boolean;
 }): { box: HTMLElement; clicks: number[] } {
@@ -33,6 +36,13 @@ function buildBox(opts: {
       name.className = 'DropDownBox__itemName___hash';
       name.textContent = label;
       li.appendChild(name);
+      const ticker = opts.tickers?.[i];
+      if (ticker) {
+        const iconLabel = document.createElement('span');
+        iconLabel.className = 'ColoredIcon__label___hash';
+        iconLabel.textContent = ticker;
+        li.appendChild(iconLabel);
+      }
       li.addEventListener('click', () => clicks.push(i));
       if (opts.values) {
         // The fiber chain: li -> parent component whose props carry `values`.
@@ -131,11 +141,26 @@ describe('dropdown driver', () => {
     expect(await readFiberValuesAnyWorld(li, 1000)).toEqual(['a', 'b']);
   });
 
-  it('selects by label case-insensitively, refusing ambiguity', () => {
-    const { box, clicks } = buildBox({ labels: ['--', 'STL Fuel', 'FTL Fuel'] });
-    expect(selectDropDownLabel(box, 'Stl Fuel')).toBe(true);
+  it('selects by ticker even when APEX display names drift from FIO', () => {
+    // The regression that broke BER/BCO loads (device 2026-08-18): FIO names
+    // the material "beryl", APEX labels it "Beryl Crystals" — name matching
+    // finds nothing, but the ticker element is drift-proof.
+    const { box, clicks } = buildBox({
+      labels: ['--', 'Beryl Crystals', 'Budget Connectors'],
+      tickers: [null, 'BER', 'BCO'],
+    });
+    expect(selectDropDownTicker(box, 'BER')).toBe(true);
     expect(clicks).toEqual([1]);
-    const dup = buildBox({ labels: ['STL Fuel', 'STL Fuel'] });
-    expect(selectDropDownLabel(dup.box, 'STL Fuel')).toBe(false);
+  });
+
+  it('ticker select refuses on zero or ambiguous matches', () => {
+    const { box, clicks } = buildBox({
+      labels: ['--', 'STL Fuel'],
+      tickers: [null, 'SF'],
+    });
+    expect(selectDropDownTicker(box, 'FF')).toBe(false);
+    expect(clicks).toEqual([]);
+    const dup = buildBox({ labels: ['STL Fuel', 'STL Fuel'], tickers: ['SF', 'SF'] });
+    expect(selectDropDownTicker(dup.box, 'SF')).toBe(false);
   });
 });

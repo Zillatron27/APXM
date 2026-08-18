@@ -11,7 +11,6 @@ import { setupActGlobals } from './act/globals-setup';
 import { clickElement, waitUntil } from './act/_compat';
 import { acquireActionLock, releaseActionLock } from './act/action-lock';
 import { isApexButtonDisabled } from './act/apex-button';
-import { toDisplayName } from './act/action-steps/cont-utils';
 import { runTransfer } from './act/transfer-modal';
 import { planRefuel, FUEL_TICKER, type FuelTank } from '../core/refuel';
 import { validateLoadPicks, type LoadPick } from '../core/load-cargo';
@@ -120,7 +119,7 @@ export async function runShipRefuel(shipId: string, tank: FuelTank): Promise<Shi
       const tankStoreId = tank === 'stl' ? ship.idStlFuelStore : ship.idFtlFuelStore;
       const before = useStorageStore.getState().getById(tankStoreId)?.volumeLoad ?? 0;
       const result = await runTransfer(anchor, {
-        materialName: toDisplayName(material!.name),
+        ticker: FUEL_TICKER[tank],
         targetStoreId: tankStoreId,
         amount: plan.units,
       });
@@ -207,7 +206,7 @@ export async function runShipLoadCargo(
       try {
         for (const pick of group) {
           const result = await runTransfer(anchor, {
-            materialName: toDisplayName(pick.name),
+            ticker: pick.ticker,
             targetStoreId: ship.idShipStore,
             amount: pick.amount,
           });
