@@ -138,10 +138,27 @@ export function SendShipView({ shipId, registration, onClose }: SendShipViewProp
     setPhase('sent');
   };
 
-  if (phase === 'pick' || phase === 'opening') {
+  // The list is spent the moment a destination is tapped — swap it for a
+  // dedicated progress state instead of appending a status the user would
+  // have to scroll a long list to see.
+  if (phase === 'opening') {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-apxm-text truncate">
+          → <span className="font-mono">{destination?.label}</span>
+        </p>
+        <p className="text-xs text-apxm-muted animate-pulse">Computing route...</p>
+      </div>
+    );
+  }
+
+  if (phase === 'pick') {
     return (
       <div className="space-y-2">
         <p className="text-[10px] uppercase tracking-wide text-apxm-text/40">Destination</p>
+        {/* Errors sit above the list — a failed pick lands the user back here
+            with the reason in view, not below the fold. */}
+        {error && <p className="text-xs text-status-critical">{error}</p>}
         {destinations.length === 0 && (
           <p className="text-xs text-apxm-muted">No known destinations</p>
         )}
@@ -150,8 +167,7 @@ export function SendShipView({ shipId, registration, onClose }: SendShipViewProp
             <button
               key={d.label}
               type="button"
-              className={`${btnSecondary} w-full min-h-touch px-3 py-2 text-left disabled:opacity-30`}
-              disabled={phase === 'opening'}
+              className={`${btnSecondary} w-full min-h-touch px-3 py-2 text-left`}
               onClick={() => pickDestination(d)}
             >
               <span className="font-mono">{d.label}</span>
@@ -159,12 +175,6 @@ export function SendShipView({ shipId, registration, onClose }: SendShipViewProp
             </button>
           ))}
         </div>
-        {phase === 'opening' && (
-          <p className="text-xs text-apxm-muted animate-pulse">
-            Computing route to {destination?.label}...
-          </p>
-        )}
-        {error && <p className="text-xs text-status-critical">{error}</p>}
         <button type="button" className={`${btnSecondary} w-full min-h-touch px-4 py-2`} onClick={closeAndExit}>
           Back
         </button>
@@ -194,22 +204,39 @@ export function SendShipView({ shipId, registration, onClose }: SendShipViewProp
         → <span className="font-mono">{destination?.label}</span>
       </p>
 
-      {/* The route APEX computed — the review surface. */}
+      {/* The route APEX computed — the review surface. Ledger layout: values
+          sit next to their labels, not stretched to the far edge. */}
       {t ? (
-        <div className="space-y-1 text-xs">
-          {[
-            ['Duration', t.duration],
-            ['Distance', t.distance],
-            ['Fees', t.fees],
-            ['Fuel', t.consumption],
-            ['Damage', t.damage],
-          ].map(([label, value]) => (
-            <div key={label} className="flex items-center justify-between gap-2">
-              <span className="text-apxm-text/70">{label}</span>
-              <span className="font-mono tabular-nums text-apxm-text text-right">{value || '—'}</span>
-            </div>
-          ))}
-          <p className="text-[10px] text-apxm-text/40">{snapshot?.segments.length} segments</p>
+        <div className="text-xs">
+          <div className="space-y-1">
+            {[
+              ['Duration', t.duration],
+              // APEX mashes the km and parsec figures together ("…km4 parsecs");
+              // keep only the km part — parsecs add nothing next to it.
+              ['Distance', t.distance.replace(/(?<=km)\s*[\d.,]+\s*parsecs?.*$/, '')],
+              ['Fees', t.fees],
+              ['Fuel', t.consumption],
+              ['Damage', t.damage],
+            ].map(([label, value]) => (
+              <div key={label} className="grid grid-cols-[4rem_auto] gap-x-2">
+                <span className="text-apxm-text/70">{label}</span>
+                <span className="font-mono tabular-nums text-apxm-text">
+                  {/* APEX renders STL and FTL consumption as sibling elements;
+                      textContent mashes them ("...(2%)12 units..."). Break at
+                      a ")" followed by a digit so each fuel reads on its own
+                      line. No-op for single-part values. */}
+                  {value
+                    ? value.split(/(?<=\))\s*(?=\d)/).map((part, i) => (
+                        <span key={i} className="block">
+                          {part}
+                        </span>
+                      ))
+                    : '—'}
+                </span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-1 text-[10px] text-apxm-text/40">{snapshot?.segments.length} segments</p>
         </div>
       ) : (
         <p className="text-xs text-apxm-muted">No route computed</p>
@@ -221,20 +248,22 @@ export function SendShipView({ shipId, registration, onClose }: SendShipViewProp
           nearest APEX's current value. Reactor is absent on some ships. */}
       <div className="space-y-2">
         {snapshot?.reactor != null && (
-          <div className="flex items-center gap-1">
-            <span className="text-[10px] uppercase tracking-wide text-apxm-text/40 w-14">
+          <div className="flex items-center gap-2">
+            <span className="w-14 shrink-0 text-[10px] uppercase tracking-wide text-apxm-text/40">
               Reactor
               <span className="block font-mono tabular-nums text-apxm-text/70 normal-case">
                 {snapshot.reactor.valuePct}%
               </span>
             </span>
-            {usageChips(snapshot.reactor, busy, (frac) =>
-              drive(() => sessionRef.current!.setSliderFraction('reactor', frac))
-            )}
+            <div className="grid flex-1 grid-cols-5 gap-1">
+              {usageChips(snapshot.reactor, busy, (frac) =>
+                drive(() => sessionRef.current!.setSliderFraction('reactor', frac))
+              )}
+            </div>
           </div>
         )}
-        <div className="flex items-center gap-1">
-          <span className="text-[10px] uppercase tracking-wide text-apxm-text/40 w-14">
+        <div className="flex items-center gap-2">
+          <span className="w-14 shrink-0 text-[10px] uppercase tracking-wide text-apxm-text/40">
             Fuel
             {snapshot?.fuel && (
               <span className="block font-mono tabular-nums text-apxm-text/70 normal-case">
@@ -242,38 +271,58 @@ export function SendShipView({ shipId, registration, onClose }: SendShipViewProp
               </span>
             )}
           </span>
-          {usageChips(snapshot?.fuel ?? null, busy, (frac) =>
-            drive(() => sessionRef.current!.setSliderFraction('fuel', frac))
-          )}
-          <select
-            className="ml-auto bg-transparent border border-apxm-accent text-xs font-mono min-h-touch px-1 text-apxm-text"
-            value={snapshot?.routePref ?? 'LEAST_JUMPS'}
-            disabled={busy}
-            onChange={(e) => drive(() => sessionRef.current!.setRoutePref(e.target.value))}
-            aria-label="Route preference"
-          >
-            <option value="LEAST_JUMPS">least jumps</option>
-            <option value="SHORTEST_FTL">shortest FTL</option>
-          </select>
+          <div className="grid flex-1 grid-cols-5 gap-1">
+            {usageChips(snapshot?.fuel ?? null, busy, (frac) =>
+              drive(() => sessionRef.current!.setSliderFraction('fuel', frac))
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-1 flex-wrap">
-          {(
-            [
-              ['Use gateways', snapshot?.useGateways],
-              ['Surface landing', snapshot?.surfaceLanding],
-              ['Unload on arrival', snapshot?.unloadOnArrival],
-            ] as const
-          ).map(([label, active]) => (
-            <button
-              key={label}
-              type="button"
-              className={active ? chipActive : chip}
-              disabled={busy}
-              onClick={() => drive(() => sessionRef.current!.toggle(label))}
-            >
-              {label}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <span className="w-14 shrink-0 text-[10px] uppercase tracking-wide text-apxm-text/40">
+            Route
+          </span>
+          <div className="grid flex-1 grid-cols-2 gap-1">
+            {(
+              [
+                ['LEAST_JUMPS', 'Least jumps'],
+                ['SHORTEST_FTL', 'Shortest FTL'],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                className={(snapshot?.routePref ?? 'LEAST_JUMPS') === value ? chipActive : chip}
+                disabled={busy}
+                onClick={() => drive(() => sessionRef.current!.setRoutePref(value))}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-start gap-2">
+          <span className="w-14 shrink-0 text-[10px] uppercase tracking-wide text-apxm-text/40 pt-2">
+            Options
+          </span>
+          <div className="grid flex-1 grid-cols-2 gap-1">
+            {(
+              [
+                ['Use gateways', snapshot?.useGateways],
+                ['Surface landing', snapshot?.surfaceLanding],
+                ['Unload on arrival', snapshot?.unloadOnArrival],
+              ] as const
+            ).map(([label, active]) => (
+              <button
+                key={label}
+                type="button"
+                className={active ? chipActive : chip}
+                disabled={busy}
+                onClick={() => drive(() => sessionRef.current!.toggle(label))}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
