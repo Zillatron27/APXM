@@ -9,6 +9,8 @@ import { useLoadableMaterials } from './useLoadableMaterials';
 import { LoadCargoPicker } from './LoadCargoPicker';
 import { SendShipView } from './SendShipView';
 import { useShipDetail } from '../views/hooks';
+import { MaterialTile } from '../shared/MaterialTile';
+import { useHoldContents } from './useHoldContents';
 
 interface ShipDetailViewProps {
   shipId: string;
@@ -30,6 +32,7 @@ export function ShipDetailView({ shipId }: ShipDetailViewProps) {
   const stlPlan = useRefuelPlan(shipId, 'stl');
   const ftlPlan = useRefuelPlan(shipId, 'ftl');
   const loadable = useLoadableMaterials(shipId);
+  const holdContents = useHoldContents(shipId);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
   const [running, setRunning] = useState<RunningAction>(null);
@@ -136,83 +139,8 @@ export function ShipDetailView({ shipId }: ShipDetailViewProps) {
         </div>
       )}
 
-      {/* Cargo: weight + volume */}
-      <div className="space-y-1">
-        <p className="text-[10px] uppercase tracking-wide text-apxm-text/40">Cargo</p>
-        <ProgressBar label="Weight" current={ship.cargo.current} max={ship.cargo.max} color="orange" unit="t" />
-        <ProgressBar label="Vol" current={ship.cargoVolume.current} max={ship.cargoVolume.max} color="orange" unit="m³" />
-      </div>
-
-      {/* Fuel: STL + FTL, whole units (fractional fuel adds noise here) */}
-      <div className="space-y-1">
-        <p className="text-[10px] uppercase tracking-wide text-apxm-text/40">Fuel</p>
-        <ProgressBar label="SF" current={Math.floor(ship.stlFuel.current)} max={Math.floor(ship.stlFuel.max)} color="yellow" />
-        <ProgressBar label="FF" current={Math.floor(ship.ftlFuel.current)} max={Math.floor(ship.ftlFuel.max)} color="blue" />
-      </div>
-
-      {/* Actions */}
-      <div className="space-y-2">
-        <div className="space-y-1">
-          <button
-            type="button"
-            className={actionBtn}
-            disabled={
-              running !== null || unloadGameDisabled || !ship.stationary || ship.cargo.current === 0
-            }
-            onClick={() => runAction('unload', () => runShipUnload(ship.registration))}
-          >
-            {unloadGameDisabled ? 'Unload — pending' : 'Unload cargo'}
-          </button>
-          {ship.stationary && ship.cargo.current === 0 && running === null && (
-            <p className="text-xs text-apxm-muted">Hold is empty</p>
-          )}
-        </div>
-
-        <div className="space-y-1">
-          <button
-            type="button"
-            className={actionBtn}
-            disabled={running !== null || !ship.stationary || !loadable.available}
-            onClick={() => setPickerOpen(true)}
-          >
-            Load cargo
-          </button>
-          {ship.stationary && !loadable.available && (
-            <p className="text-xs text-apxm-muted">
-              {loadable.reason === 'hold-full'
-                ? 'Hold is full'
-                : loadable.reason === 'nothing-loadable'
-                  ? 'Nothing loadable at this location'
-                  : loadable.reason === 'no-reference-data'
-                    ? 'Material data loading'
-                    : 'Hold data unavailable'}
-            </p>
-          )}
-        </div>
-
-        {refuelRow('stl', stlPlan)}
-        {refuelRow('ftl', ftlPlan)}
-
-        <button
-          type="button"
-          className={actionBtn}
-          disabled={running !== null || !ship.stationary}
-          onClick={() => setSendOpen(true)}
-        >
-          Send ship
-        </button>
-
-        {!ship.stationary && (
-          <p className="text-xs text-apxm-muted">In transit — dock for ship actions</p>
-        )}
-        {running !== null && (
-          <p className="text-xs text-apxm-muted animate-pulse">Working in APEX buffer...</p>
-        )}
-        {actionError && <p className="text-xs text-status-critical">{actionError}</p>}
-      </div>
-
-      {/* Condition */}
-      <div className="flex items-center justify-between text-xs">
+      {/* Condition: value adjacent to the label (ledger style, not justify-between) */}
+      <div className="flex items-center gap-2 text-xs">
         <span className="text-apxm-text/70">Condition</span>
         <span
           className={`font-mono tabular-nums ${
@@ -225,6 +153,97 @@ export function ShipDetailView({ shipId }: ShipDetailViewProps) {
         >
           {formatCondition(ship.condition)}
         </span>
+      </div>
+
+      {/* Cargo: weight + volume */}
+      <div className="space-y-1">
+        <p className="text-[10px] uppercase tracking-wide text-apxm-text/40">Cargo</p>
+        <ProgressBar label="Weight" current={ship.cargo.current} max={ship.cargo.max} color="orange" unit="t" />
+        <ProgressBar label="Vol" current={ship.cargoVolume.current} max={ship.cargoVolume.max} color="orange" unit="m³" />
+        {holdContents.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {holdContents.map((item) => (
+              <div key={item.ticker} className="flex flex-col items-center">
+                <MaterialTile ticker={item.ticker} size="sm" />
+                <span className="text-[10px] font-mono text-apxm-text/70 tabular-nums">
+                  {item.amount.toLocaleString()}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Fuel: STL + FTL, whole units (fractional fuel adds noise here) */}
+      <div className="space-y-1">
+        <p className="text-[10px] uppercase tracking-wide text-apxm-text/40">Fuel</p>
+        <ProgressBar label="SF" current={Math.floor(ship.stlFuel.current)} max={Math.floor(ship.stlFuel.max)} color="yellow" unit="m³" />
+        <ProgressBar label="FF" current={Math.floor(ship.ftlFuel.current)} max={Math.floor(ship.ftlFuel.max)} color="blue" unit="m³" />
+      </div>
+
+      {/* Actions — cargo pair and refuel pair share a row (half each) */}
+      <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1">
+            <button
+              type="button"
+              className={actionBtn}
+              disabled={
+                running !== null || unloadGameDisabled || !ship.stationary || ship.cargo.current === 0
+              }
+              onClick={() => runAction('unload', () => runShipUnload(ship.registration))}
+            >
+              {unloadGameDisabled ? 'Unload — pending' : 'Unload cargo'}
+            </button>
+            {ship.stationary && ship.cargo.current === 0 && running === null && (
+              <p className="text-xs text-apxm-muted">Hold is empty</p>
+            )}
+          </div>
+
+          <div className="space-y-1">
+            <button
+              type="button"
+              className={actionBtn}
+              disabled={running !== null || !ship.stationary || !loadable.available}
+              onClick={() => setPickerOpen(true)}
+            >
+              Load cargo
+            </button>
+            {ship.stationary && !loadable.available && (
+              <p className="text-xs text-apxm-muted">
+                {loadable.reason === 'hold-full'
+                  ? 'Hold is full'
+                  : loadable.reason === 'nothing-loadable'
+                    ? 'Nothing loadable at this location'
+                    : loadable.reason === 'no-reference-data'
+                      ? 'Material data loading'
+                      : 'Hold data unavailable'}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          {refuelRow('stl', stlPlan)}
+          {refuelRow('ftl', ftlPlan)}
+        </div>
+
+        <button
+          type="button"
+          className={actionBtn}
+          disabled={running !== null || !ship.stationary}
+          onClick={() => setSendOpen(true)}
+        >
+          Flight control
+        </button>
+
+        {!ship.stationary && (
+          <p className="text-xs text-apxm-muted">In transit — dock for ship actions</p>
+        )}
+        {running !== null && (
+          <p className="text-xs text-apxm-muted animate-pulse">Working in APEX buffer...</p>
+        )}
+        {actionError && <p className="text-xs text-status-critical">{actionError}</p>}
       </div>
     </div>
   );
