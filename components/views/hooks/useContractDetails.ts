@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useContractsStore } from '../../../stores/entities/contracts';
 import { getEntityDisplayName } from '../../../lib/address';
+import { formatSignedDeadline } from '../../contracts/format';
 import type { PrunApi } from '../../../types/prun-api';
 
 import type { ContractFilter } from '../../../stores/gameState';
@@ -208,30 +209,6 @@ function buildConditionDescription(condition: PrunApi.ContractCondition): Condit
 }
 
 /**
- * Formats relative time for deadline/creation.
- */
-function formatRelativeTime(ms: number): string {
-  const now = Date.now();
-  const diffMs = ms - now;
-  const absMs = Math.abs(diffMs);
-
-  const hours = Math.floor(absMs / (1000 * 60 * 60));
-  const days = Math.floor(hours / 24);
-  const remainingHours = hours % 24;
-
-  let text: string;
-  if (days === 0) {
-    text = hours < 1 ? '<1h' : `${hours}h`;
-  } else if (days < 7 && remainingHours > 0) {
-    text = `${days}d ${remainingHours}h`;
-  } else {
-    text = `${days}d`;
-  }
-
-  return diffMs < 0 ? `${text} ago` : text;
-}
-
-/**
  * Statuses where the contract has been accepted and is being worked — its
  * conditions are fulfillable. Distinct from ACTIVE_STATUSES (which also
  * includes OPEN, i.e. awaiting acceptance) and from the "shown in the ACTIVE
@@ -323,7 +300,7 @@ export function buildContractDetail(contract: PrunApi.Contract): ContractDetail 
       dependencyIndexes: cond.dependencies
         .map((depId) => byId.get(depId)?.index)
         .filter((idx): idx is number => idx !== undefined),
-      deadline: cond.deadline ? formatRelativeTime(cond.deadline.timestamp) : null,
+      deadline: cond.deadline ? formatSignedDeadline(cond.deadline.timestamp) : null,
     };
   });
 

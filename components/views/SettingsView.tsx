@@ -8,6 +8,7 @@ import {
 } from '../../stores/settings';
 import { testConnection, populateStoresFromFio, type FioProgressStep } from '../../lib/fio';
 import { clearAllCache } from '../../stores/cache';
+import { formatRelativeTimeVerbose } from '../../lib/format-time';
 import { themePresets } from '../../lib/theme';
 import {
   setRefreshMode as applyRefreshMode,
@@ -248,14 +249,6 @@ const STEP_LABELS: Record<FioProgressStep, string> = {
   storage: 'Storage',
   production: 'Production',
 };
-
-function formatRelativeTime(timestamp: number): string {
-  const seconds = Math.floor((Date.now() - timestamp) / 1000);
-  if (seconds < 60) return 'just now';
-  if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
-  return `${Math.floor(seconds / 86400)} days ago`;
-}
 
 export function validateThresholds(
   critical: number,
@@ -632,7 +625,7 @@ export function SettingsView() {
           <div className="flex items-center justify-between text-sm">
             <span className="text-apxm-muted">Last refresh:</span>
             <span className="text-apxm-text">
-              {fio.lastFetch ? formatRelativeTime(fio.lastFetch) : 'Never'}
+              {fio.lastFetch ? formatRelativeTimeVerbose(fio.lastFetch) : 'Never'}
             </span>
           </div>
 
