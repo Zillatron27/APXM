@@ -58,11 +58,70 @@ export function usageChipLabels(minPct: number, maxPct: number): string[] {
 
 const FALLBACK_LABELS = ['MIN', '25%', '50%', '75%', 'MAX'];
 
+/** Absolute fuel targets: the useful fuel decisions live in the low band —
+ *  consumption grows steeply and >50% is the no-return zone — so chips bias
+ *  low instead of spreading across the slider (user ruling 2026-08-19).
+ *  Reactor keeps position chips: narrow bands (97.5–100%) live there. */
+const FUEL_TARGETS = [2, 5, 10, 25];
+
+export interface FuelChipSpec {
+  label: string;
+  frac: number;
+  pct: number;
+}
+
+/**
+ * Fuel chips for a ship's band: MIN plus each absolute target that falls
+ * inside (minPct, maxPct] — a target at or below the floor duplicates MIN
+ * and a target above the ceiling is unreachable, so both drop out.
+ */
+export function fuelChipSpecs(minPct: number, maxPct: number): FuelChipSpec[] {
+  const chips: FuelChipSpec[] = [{ label: 'MIN', frac: 0, pct: minPct }];
+  for (const target of FUEL_TARGETS) {
+    if (target <= minPct || target > maxPct) continue;
+    chips.push({
+      label: `${target}%`,
+      frac: (target - minPct) / (maxPct - minPct),
+      pct: target,
+    });
+  }
+  return chips;
+}
+
+function fuelUsageChips(
+  state: { valuePct: number; minPct: number; maxPct: number } | null,
+  busy: boolean,
+  onPick: (frac: number) => void,
+  critical: boolean
+) {
+  if (state === null) {
+    return ['MIN', ...FUEL_TARGETS.map((t) => `${t}%`)].map((label) => (
+      <button key={label} type="button" className={chip} disabled>
+        {label}
+      </button>
+    ));
+  }
+  const specs = fuelChipSpecs(state.minPct, state.maxPct);
+  const nearest = specs.reduce((best, s) =>
+    Math.abs(s.pct - state.valuePct) < Math.abs(best.pct - state.valuePct) ? s : best
+  );
+  return specs.map((s) => (
+    <button
+      key={s.label}
+      type="button"
+      className={nearest === s ? (critical ? chipActiveCritical : chipActive) : chip}
+      disabled={busy}
+      onClick={() => onPick(s.frac)}
+    >
+      {s.label}
+    </button>
+  ));
+}
+
 function usageChips(
   state: { posFrac: number; minPct: number; maxPct: number } | null,
   busy: boolean,
-  onPick: (frac: number) => void,
-  critical = false
+  onPick: (frac: number) => void
 ) {
   const labels = state === null ? FALLBACK_LABELS : usageChipLabels(state.minPct, state.maxPct);
   const nearest =
@@ -75,7 +134,7 @@ function usageChips(
     <button
       key={f}
       type="button"
-      className={nearest === f ? (critical ? chipActiveCritical : chipActive) : chip}
+      className={nearest === f ? chipActive : chip}
       disabled={busy}
       onClick={() => onPick(f)}
     >
@@ -320,7 +379,7 @@ export function SendShipView({ shipId, registration, onClose }: SendShipViewProp
             )}
           </span>
           <div className="grid flex-1 grid-cols-5 gap-1">
-            {usageChips(
+            {fuelUsageChips(
               snapshot?.fuel ?? null,
               busy,
               (frac) => drive(() => sessionRef.current!.setSliderFraction('fuel', frac)),

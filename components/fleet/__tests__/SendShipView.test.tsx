@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { SendShipView, usageChipLabels, stlConsumptionPct } from '../SendShipView';
+import { SendShipView, usageChipLabels, stlConsumptionPct, fuelChipSpecs } from '../SendShipView';
 import { useShipsStore, useSitesStore } from '../../../stores/entities';
 import { createTestShip, createTestSite, createAddress } from '../../../__tests__/fixtures/factories';
 import type { SfcSnapshot } from '../../../lib/act/sfc-driver';
@@ -190,5 +190,32 @@ describe('no-return fuel highlight', () => {
       /STL fuel/.test(s.textContent ?? '')
     );
     expect(stl?.className).not.toContain('text-status-critical');
+  });
+});
+
+describe('fuelChipSpecs', () => {
+  it('offers MIN plus the low-band absolute targets on a wide band', () => {
+    expect(fuelChipSpecs(1, 100).map((c) => c.label)).toEqual([
+      'MIN',
+      '2%',
+      '5%',
+      '10%',
+      '25%',
+    ]);
+  });
+
+  it('drops targets at or below the floor (they duplicate MIN)', () => {
+    expect(fuelChipSpecs(5, 100).map((c) => c.label)).toEqual(['MIN', '10%', '25%']);
+  });
+
+  it('drops targets above the ceiling (unreachable)', () => {
+    expect(fuelChipSpecs(1, 20).map((c) => c.label)).toEqual(['MIN', '2%', '5%', '10%']);
+  });
+
+  it('maps each target to its rail position within the band', () => {
+    const ten = fuelChipSpecs(0, 100).find((c) => c.label === '10%');
+    expect(ten?.frac).toBeCloseTo(0.1, 5);
+    const min = fuelChipSpecs(5, 100)[0];
+    expect(min).toEqual({ label: 'MIN', frac: 0, pct: 5 });
   });
 });
