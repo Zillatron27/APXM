@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { FilterBar, MaterialTile, ProgressBar } from '../shared';
 import { btnPrimary, btnSecondary } from '../shared/button';
 import { runShipLoadCargo } from '../../lib/ship-actions';
-import { useLoadableMaterials } from './useLoadableMaterials';
+import { useLoadableMaterials, LOADABLE_REASON_TEXT } from './useLoadableMaterials';
 import { useMaterialsStore } from '../../stores/reference';
 import { getMaterialCategory } from '../../lib/material-lookup';
 
@@ -58,15 +58,9 @@ export function LoadCargoPicker({ shipId, onClose }: LoadCargoPickerProps) {
   }, [list, amounts]);
 
   if (!list.available) {
-    const reasonText: Record<string, string> = {
-      'no-hold': 'Hold data unavailable',
-      'hold-full': 'Hold is full',
-      'nothing-loadable': 'Nothing loadable at this location',
-      'no-reference-data': 'Material data loading',
-    };
     return (
       <div className="space-y-3">
-        <p className="text-sm text-apxm-muted">{reasonText[list.reason] ?? list.reason}</p>
+        <p className="text-sm text-apxm-muted">{LOADABLE_REASON_TEXT[list.reason] ?? list.reason}</p>
         <button type="button" className={`${btnSecondary} w-full min-h-touch px-4 py-2`} onClick={onClose}>
           Back
         </button>

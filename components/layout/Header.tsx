@@ -15,6 +15,8 @@ export function Header() {
           aria-label="Go to Status"
           className="flex items-center justify-center min-h-touch px-2 -ml-2"
         >
+          {/* Fixed brand mark — deliberately keeps the AMO/CWS icon's gold on
+              black in every theme preset rather than following --apxm-highlight. */}
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="28" height="28">
             <rect x="6" y="6" width="116" height="116" rx="8" fill="#0a0a0a"/>
             <rect x="6" y="6" width="116" height="116" rx="8" fill="none" stroke="#f7a600" strokeWidth="5"/>

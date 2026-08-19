@@ -1,3 +1,5 @@
+import { btnSecondary } from './shared';
+
 interface UnavailableOverlayProps {
   /** Why APXM has no data to show. */
   reason: 'maintenance' | 'starved';
@@ -34,7 +36,7 @@ export function UnavailableOverlay({ reason, conflictConfirmed }: UnavailableOve
       <p className="text-apxm-muted text-center mb-8 max-w-sm">{body}</p>
       <button
         onClick={() => window.location.reload()}
-        className="px-6 py-3 bg-apxm-accent text-apxm-text rounded min-h-touch active:opacity-80"
+        className={`${btnSecondary} px-6 py-3 min-h-touch`}
       >
         Retry
       </button>

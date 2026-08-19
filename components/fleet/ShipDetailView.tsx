@@ -5,7 +5,7 @@ import { formatEta, formatCondition } from '../../lib/fleet-utils';
 import { runShipUnload, runShipRefuel, type ShipActionResult } from '../../lib/ship-actions';
 import type { FuelTank } from '../../core/refuel';
 import { useRefuelPlan } from './useRefuelPlan';
-import { useLoadableMaterials } from './useLoadableMaterials';
+import { useLoadableMaterials, LOADABLE_REASON_TEXT } from './useLoadableMaterials';
 import { LoadCargoPicker } from './LoadCargoPicker';
 import { SendShipView } from './SendShipView';
 import { useShipDetail } from '../views/hooks';
@@ -22,10 +22,11 @@ const actionBtn = `${btnSecondary} w-full min-h-touch px-4 py-2 disabled:opacity
 
 /**
  * Ship drill-down: route + flight phase, ETA, cargo (weight + volume), fuel
- * (STL + FTL), condition, and the ship actions — UNLOAD and REFUEL SF/FF.
- * One tap drives the APEX buffer off-screen; the tap IS the commit (neither
- * action shows an APEX confirmation). Load cargo / send ship still to come
- * (#9/#25, the v1.2.0 ship-actions wave).
+ * (STL + FTL), condition, and the four ship actions — UNLOAD, REFUEL SF/FF,
+ * LOAD CARGO (slide-over picker), and FLIGHT CONTROL (send-ship sub-mode).
+ * One tap drives the APEX buffer off-screen; the tap IS the commit for the
+ * transfer-class actions (no APEX confirmation), while send-ship completes
+ * APEX's confirmation overlay as part of the driven flow.
  */
 export function ShipDetailView({ shipId }: ShipDetailViewProps) {
   const ship = useShipDetail(shipId);
@@ -211,13 +212,7 @@ export function ShipDetailView({ shipId }: ShipDetailViewProps) {
             </button>
             {ship.stationary && !loadable.available && (
               <p className="text-xs text-apxm-muted">
-                {loadable.reason === 'hold-full'
-                  ? 'Hold is full'
-                  : loadable.reason === 'nothing-loadable'
-                    ? 'Nothing loadable at this location'
-                    : loadable.reason === 'no-reference-data'
-                      ? 'Material data loading'
-                      : 'Hold data unavailable'}
+                {LOADABLE_REASON_TEXT[loadable.reason] ?? 'Hold data unavailable'}
               </p>
             )}
           </div>
