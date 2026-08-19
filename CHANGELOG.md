@@ -1,5 +1,31 @@
 # APXM Changelog
 
+## 1.2.0 (2026-08-19)
+
+The ship actions release: fly your fleet from your phone — all four ship actions, a polished flight-control panel, and a Buffer stack that cleans up after itself. All device-tested live.
+
+### Added
+
+- **One-tap ship unload** (#25) — unload a docked ship's hold from the ship sheet; the cargo bars update live from the game's own data. Gated buttons say why ("Hold is empty" / "In transit — dock to unload")
+- **One-tap refuel** — SF and FF refuel straight from the ship sheet, sourced from the largest local stock; amounts computed from the tank deficit and capped by stock
+- **Load cargo** (#87) — a picker with ALL/CONS/OTHER filters, additive quick-amount chips, and live per-row capacity that shrinks as you select, so over-capacity is unreachable rather than warned about
+- **Send ship (flight control)** — pick a destination, review APEX's own computed route (duration, distance, fees, fuel, damage), set reactor/fuel usage, route preference and options, then SEND. The ship's real SFC form is driven off-screen; your SEND tap is the commit
+  - Duration shows the local arrival time in brackets ("2h 54m (17:38)"), matching the fleet list
+  - Reactor chips are labelled with the real percentages of that ship's slider band; fuel chips offer MIN/2/5/10/25% targets, rescaled into the band when a ship can't reach them
+  - STL fuel use over 50% of the tank paints the consumption figure, fuel readout, and active chip red — in theory, no fuel to fly back
+- **Buffer stack stays clean** (#84) — every card APXM creates while driving an action or a base refresh is deleted on the way out; a card you created yourself with the same command survives. Dev builds add a Buffer Cards sweep tool in Settings for cleaning up an existing pile
+
+### Fixed
+
+- **Contract filter taps reverting to ALL** (#81, reported by @aemuthi) — tapping the second of the two contract filters collapsed the selection to ALL, reading as "my tap didn't take". The collapse rule is removed; the tapped filter always lights up. The fleet filter bar had the same latent behaviour
+- **Loan contracts showed no amounts** (#89) — loan instalments now display the amount paid (repayment + interest) in the contract's own currency, for every condition state, so a repayment schedule reads as a schedule. Reputation conditions likewise show their signed change
+
+### Notes
+
+- Tests: 764
+- Ship actions respect the action-authorisation rule: every commit is a deliberate user tap; APXM never sends messages to the game server
+
+
 ## 1.1.0 (2026-08-13)
 
 The contract actions release: APXM's first game actions, plus a wave of quality-of-life features — all device-tested live.
