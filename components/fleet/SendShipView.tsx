@@ -353,10 +353,20 @@ export function SendShipView({ shipId, registration, onClose }: SendShipViewProp
               </div>
             ))}
           </div>
-          <p className="mt-1 text-[10px] text-apxm-text/40">{snapshot?.segments.length} segments</p>
+          {/* The recompute indicator lives on this always-present line so its
+              appearance never reflows the controls below (device feedback
+              2026-08-19: the old bottom-of-panel line pushed every button up
+              and back on each recompute). */}
+          <p className="mt-1 flex items-baseline justify-between text-[10px] text-apxm-text/40">
+            <span>{snapshot?.segments.length} segments</span>
+            {busy && <span className="text-apxm-muted animate-pulse">Recomputing route...</span>}
+          </p>
         </div>
       ) : (
-        <p className="text-xs text-apxm-muted">No route computed</p>
+        <p className="flex items-baseline justify-between text-xs text-apxm-muted">
+          <span>No route computed</span>
+          {busy && <span className="animate-pulse">Recomputing route...</span>}
+        </p>
       )}
 
       {/* Flight controls — each drives the hidden form; APEX recomputes.
@@ -457,7 +467,6 @@ export function SendShipView({ shipId, registration, onClose }: SendShipViewProp
         </div>
       </div>
 
-      {busy && <p className="text-xs text-apxm-muted animate-pulse">Recomputing route...</p>}
       {!valid && snapshot?.status && snapshot.status !== 'valid' && (
         <p className="text-xs text-status-warning">{snapshot.status}</p>
       )}
