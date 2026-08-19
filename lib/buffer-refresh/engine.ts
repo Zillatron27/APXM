@@ -32,6 +32,7 @@ import {
   setInputValue,
   waitForElement,
 } from './dom-helpers';
+import { openCardList, deleteLastCardMatching, exitEditMode } from '../buffer-cards';
 
 export class BufferRefreshError extends Error {
   constructor(
@@ -88,6 +89,9 @@ export async function executeBufferRefresh(options: BufferRefreshOptions): Promi
 
   // Save styles before any manipulation
   const saved = saveContainerStyles(container);
+  // Set once the card exists — the finally sweep deletes it (#84: refresh
+  // cards are server-synced litter just like the ACT navigator's).
+  let cardCreated = false;
 
   try {
     // Step 1: Ensure we're at the stacks top level.
@@ -148,6 +152,7 @@ export async function executeBufferRefresh(options: BufferRefreshOptions): Promi
     if (!card) {
       throw new BufferRefreshError('wait-card', `Card for "${command}" did not appear`);
     }
+    cardCreated = true;
 
     // Step 11: Click the card to trigger the server data request
     card.click();
@@ -172,6 +177,24 @@ export async function executeBufferRefresh(options: BufferRefreshOptions): Promi
     // Iterative — handles multi-level depth (e.g., PROD buffer → buffer list → stacks).
     if (!isAtStacksTopLevel()) {
       await navigateToStacksTopLevel(stepTimeoutMs);
+    }
+
+    // Delete the card this run created (#84). Best-effort — a failed sweep
+    // never blocks restoring APEX.
+    if (cardCreated) {
+      try {
+        if (await openCardList()) {
+          if (!(await deleteLastCardMatching(command))) {
+            console.warn(`[APXM BufferRefresh] could not delete created card "${command}"`);
+          }
+          await exitEditMode();
+          if (!isAtStacksTopLevel()) {
+            await navigateToStacksTopLevel(stepTimeoutMs);
+          }
+        }
+      } catch (cleanupError) {
+        console.warn('[APXM BufferRefresh] card cleanup failed:', cleanupError);
+      }
     }
 
     // Always restore container styles — no visual leak
