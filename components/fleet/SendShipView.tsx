@@ -308,6 +308,17 @@ export function SendShipView({ shipId, registration, onClose }: SendShipViewProp
   const stlPct = stlConsumptionPct(t?.consumption);
   const noReturnFuel = stlPct !== null && stlPct > 50;
 
+  // Every transient message shares ONE slot on the always-present segments
+  // line, so none of them reflow the controls when they come and go
+  // (device feedback 2026-08-19). Priority: error > APEX status > busy.
+  const statusSlot = error ? (
+    <span className="text-right text-status-critical">{error}</span>
+  ) : !valid && snapshot?.status && snapshot.status !== 'valid' ? (
+    <span className="text-right text-status-warning">{snapshot.status}</span>
+  ) : busy ? (
+    <span className="text-apxm-muted animate-pulse">Recomputing route...</span>
+  ) : null;
+
   return (
     <div className="space-y-3">
       <p className="text-sm text-apxm-text truncate">
@@ -357,15 +368,15 @@ export function SendShipView({ shipId, registration, onClose }: SendShipViewProp
               appearance never reflows the controls below (device feedback
               2026-08-19: the old bottom-of-panel line pushed every button up
               and back on each recompute). */}
-          <p className="mt-1 flex items-baseline justify-between text-[10px] text-apxm-text/40">
-            <span>{snapshot?.segments.length} segments</span>
-            {busy && <span className="text-apxm-muted animate-pulse">Recomputing route...</span>}
+          <p className="mt-1 flex items-baseline justify-between gap-2 text-[10px] text-apxm-text/40">
+            <span className="shrink-0">{snapshot?.segments.length} segments</span>
+            {statusSlot}
           </p>
         </div>
       ) : (
-        <p className="flex items-baseline justify-between text-xs text-apxm-muted">
-          <span>No route computed</span>
-          {busy && <span className="animate-pulse">Recomputing route...</span>}
+        <p className="flex items-baseline justify-between gap-2 text-xs text-apxm-muted">
+          <span className="shrink-0">No route computed</span>
+          {statusSlot}
         </p>
       )}
 
@@ -467,10 +478,6 @@ export function SendShipView({ shipId, registration, onClose }: SendShipViewProp
         </div>
       </div>
 
-      {!valid && snapshot?.status && snapshot.status !== 'valid' && (
-        <p className="text-xs text-status-warning">{snapshot.status}</p>
-      )}
-      {error && <p className="text-xs text-status-critical">{error}</p>}
 
       <div className="flex gap-2">
         <button
