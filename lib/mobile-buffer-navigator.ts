@@ -31,6 +31,7 @@ import {
   type SavedStyles,
 } from './buffer-refresh/dom-helpers';
 import { warn, error } from './debug/logger';
+import { openCardList, deleteLastCardMatching, exitEditMode } from './buffer-cards';
 
 /** Timeout for each Stack-navigation DOM step. */
 const STEP_TIMEOUT_MS = 2000;
@@ -48,6 +49,13 @@ const FORM_TIMEOUT_MS = 10000;
  * that would record the already-hidden styles and leak them on restore.
  */
 let savedStyles: SavedStyles | null = null;
+
+/**
+ * Commands of cards created by openMobileBuffer since the last close. Cards
+ * are SERVER-SYNCED — leaving them behind litters the user's Buffer stack
+ * (#84) — so closeMobileBuffer deletes them on the way out.
+ */
+let createdCardCommands: string[] = [];
 
 /**
  * The buffer form sentinel. APEX renders a FormComponent container element
@@ -138,11 +146,13 @@ export async function openMobileBuffer(
     }
     createBtn.click();
 
-    // Step 8: open the freshly created card.
+    // Step 8: open the freshly created card. It exists from here on, so it
+    // is queued for deletion at close whatever happens next.
     const card = await waitForElement(() => findCardByCommand(command), STEP_TIMEOUT_MS);
     if (!card) {
       throw new Error(`Card for "${command}" did not appear`);
     }
+    createdCardCommands.push(command);
     card.click();
 
     // Step 9: wait for the buffer's content to render.
@@ -178,6 +188,32 @@ export async function closeMobileBuffer(): Promise<void> {
     const reached = await navigateToStacksTopLevel(STEP_TIMEOUT_MS);
     if (!reached) {
       warn('closeMobileBuffer: could not navigate back to Stacks top level');
+    }
+  }
+
+  // Delete the cards this run created (#84). Best-effort: a failed sweep
+  // must never block restoring APEX — leftover cards are litter, not harm.
+  if (createdCardCommands.length > 0) {
+    const pending = createdCardCommands;
+    createdCardCommands = [];
+    try {
+      if (await openCardList()) {
+        for (const command of pending) {
+          if (!(await deleteLastCardMatching(command))) {
+            warn(`closeMobileBuffer: could not delete created card "${command}"`);
+          }
+        }
+        // BtnRemove clicks drop APEX into edit mode; leaving it on blocks
+        // all later Stack navigation (device 2026-08-19).
+        await exitEditMode();
+        if (!isAtStacksTopLevel()) {
+          await navigateToStacksTopLevel(STEP_TIMEOUT_MS);
+        }
+      } else {
+        warn('closeMobileBuffer: card cleanup could not open the Buffer stack');
+      }
+    } catch (err) {
+      warn('closeMobileBuffer: card cleanup failed:', err instanceof Error ? err.message : String(err));
     }
   }
 

@@ -10,6 +10,7 @@ import { emitMessage } from '@prun/link/message-bus/main-world';
 import { installScriptBlocker, restoreBlockedScripts } from '@prun/link/script-control';
 import type { ProcessedMessage } from '@prun/link';
 import { installFiberBridge } from '../lib/act/fiber-bridge-main';
+import { installInputBridge } from '../lib/act/input-bridge-main';
 import { log, logMessage } from '../lib/debug/logger';
 
 /**
@@ -51,6 +52,11 @@ export default defineUnlistedScript(() => {
   // fiber props (page-world expandos the isolated world can't see), used by
   // the ship-refuel target selection.
   installFiberBridge();
+
+  // 7. Input bridge responder — performs typing/key/click sequences in the
+  // main world; content-world synthetic events update input values but do
+  // not drive APEX's React (send-ship destination selection).
+  installInputBridge();
 
   if (competingInterceptor) {
     document.documentElement.dataset.prunLinkConflict = 'true';

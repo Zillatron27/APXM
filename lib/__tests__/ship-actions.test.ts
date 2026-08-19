@@ -313,7 +313,11 @@ function seedRefuelWorld() {
   return { ship, tank, source };
 }
 
-function buildDropDownBox(labels: string[], values?: unknown[]): HTMLElement {
+function buildDropDownBox(
+  labels: string[],
+  values?: unknown[],
+  tickers?: (string | null)[]
+): HTMLElement {
   const box = document.createElement('div');
   box.className = 'DropDownBox__container___h';
   const toggle = document.createElement('div');
@@ -326,6 +330,14 @@ function buildDropDownBox(labels: string[], values?: unknown[]): HTMLElement {
     name.className = 'DropDownBox__itemName___h';
     name.textContent = label;
     li.appendChild(name);
+    // Material options carry the ticker in the icon label (as APEX renders).
+    const ticker = tickers?.[i];
+    if (ticker) {
+      const iconLabel = document.createElement('span');
+      iconLabel.className = 'ColoredIcon__label___h';
+      iconLabel.textContent = ticker;
+      li.appendChild(iconLabel);
+    }
     if (values) {
       (li as unknown as Record<string, unknown>)['__reactFiber$t'] = {
         memoizedProps: { className: 'x' },
@@ -357,7 +369,7 @@ function buildRefuelBuffer(opts: {
 
   const modal = document.createElement('div');
   modal.className = 'MobileTransferStoreAndItemSelectionModal___h';
-  modal.appendChild(buildDropDownBox(['--', 'STL Fuel', 'Flux']));
+  modal.appendChild(buildDropDownBox(['--', 'STL Fuel', 'Flux'], undefined, [null, 'SF', 'FLX']));
   modal.appendChild(
     buildDropDownBox(['--', 'Ship  STL fuel store', 'Ship  cargo hold'], opts.targetValues)
   );
@@ -532,7 +544,9 @@ function installLoadFixture(opts: {
     start.addEventListener('click', () => {
       const modal = document.createElement('div');
       modal.className = 'MobileTransferStoreAndItemSelectionModal___h';
-      modal.appendChild(buildDropDownBox(['--', 'Basic Rations', 'Drinking Water']));
+      modal.appendChild(
+        buildDropDownBox(['--', 'Basic Rations', 'Drinking Water'], undefined, [null, 'RAT', 'DW'])
+      );
       modal.appendChild(
         buildDropDownBox(['--', 'Ship  cargo hold'], [null, opts.holdId])
       );

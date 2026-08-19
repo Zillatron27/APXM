@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { validateThresholds, validateRepairThresholds } from '../SettingsView';
+import { validateThresholds, validateRepairThresholds, groupCards } from '../SettingsView';
 import {
   useSettingsStore,
   DEFAULT_THRESHOLDS,
@@ -124,5 +124,24 @@ describe('SettingsView burn threshold validation', () => {
       useSettingsStore.getState().reset();
       expect(useSettingsStore.getState().burnThresholds).toEqual(DEFAULT_THRESHOLDS);
     });
+  });
+});
+
+describe('groupCards', () => {
+  it('groups by command prefix, largest first, ties alphabetical', () => {
+    expect(
+      groupCards([
+        { command: 'CONT 1', title: '' },
+        { command: 'cont 2', title: '' },
+        { command: 'INV a', title: '' },
+        { command: 'FLT', title: '' },
+        { command: '', title: '' },
+      ])
+    ).toEqual([
+      { prefix: 'CONT', count: 2 },
+      { prefix: '(blank)', count: 1 },
+      { prefix: 'FLT', count: 1 },
+      { prefix: 'INV', count: 1 },
+    ]);
   });
 });

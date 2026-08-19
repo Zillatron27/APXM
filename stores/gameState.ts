@@ -35,19 +35,18 @@ export type DetailView =
   | { type: 'contract'; contractId: string; contractName: string };
 
 // Non-ALL filter values per view, used by the toggle collapse/revert rules
-const individualBurnFilters: readonly BurnFilter[] = ['critical', 'warning', 'ok'];
-const individualFleetFilters: readonly FleetFilter[] = ['idle', 'in-transit'];
-const individualContractFilters: readonly ContractFilter[] = ['active', 'fulfilled'];
 
 /**
  * Shared filter-toggle rules for all view filter bars:
- * selecting ALL resets; deselecting the last filter reverts to ALL;
- * selecting every individual filter collapses to ALL.
+ * selecting ALL resets; deselecting the last filter reverts to ALL.
+ * Selecting every individual filter does NOT collapse to ALL — on a
+ * two-filter bar (contracts, fleet) that collapse made the second tap
+ * light up ALL instead of the tapped filter, reading as "my tap didn't
+ * take" (#81, tester report). Both chips lit is the honest state.
  */
 function toggleFilterSelection<T extends string>(
   current: ReadonlySet<T | 'all'>,
-  filter: T | 'all',
-  individualFilters: readonly T[]
+  filter: T | 'all'
 ): ReadonlySet<T | 'all'> {
   if (filter === 'all') return new Set<T | 'all'>(['all']);
 
@@ -61,7 +60,6 @@ function toggleFilterSelection<T extends string>(
   }
 
   if (next.size === 0) return new Set<T | 'all'>(['all']);
-  if (individualFilters.every((f) => next.has(f))) return new Set<T | 'all'>(['all']);
 
   return next;
 }
@@ -115,14 +113,14 @@ export const useGameState = create<GameState>((set) => ({
   setActConfirmPending: (actConfirmPending) => set({ actConfirmPending }),
   toggleBurnFilter: (filter) =>
     set((state) => ({
-      burnFilters: toggleFilterSelection(state.burnFilters, filter, individualBurnFilters),
+      burnFilters: toggleFilterSelection(state.burnFilters, filter),
     })),
   toggleFleetFilter: (filter) =>
     set((state) => ({
-      fleetFilters: toggleFilterSelection(state.fleetFilters, filter, individualFleetFilters),
+      fleetFilters: toggleFilterSelection(state.fleetFilters, filter),
     })),
   toggleContractFilter: (filter) =>
     set((state) => ({
-      contractFilters: toggleFilterSelection(state.contractFilters, filter, individualContractFilters),
+      contractFilters: toggleFilterSelection(state.contractFilters, filter),
     })),
 }));

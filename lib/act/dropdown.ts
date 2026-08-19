@@ -53,21 +53,21 @@ export async function selectDropDownValue(box: HTMLElement, value: unknown): Pro
 }
 
 /**
- * Selects the option whose visible label matches (trimmed, case-insensitive —
- * FIO-derived names casualise acronyms, "Stl Fuel" vs APEX's "STL Fuel", and
- * CSS text-transform makes visible case meaningless anyway). Used for the
- * material dropdown, whose labels ARE unique display names (the fiber values
- * there are material GUIDs APXM doesn't track). Refuses on zero or multiple
+ * Selects the material option by TICKER — each option's icon carries the
+ * ticker in a `ColoredIcon__label` element (device-captured 2026-08-18).
+ * Tickers are unique game constants, immune to the FIO/APEX display-name
+ * drift that broke name matching (FIO "beryl" vs APEX "Beryl Crystals",
+ * "copperConnectors" vs "Budget Connectors"). Refuses on zero or multiple
  * matches.
  */
-export function selectDropDownLabel(box: HTMLElement, label: string): boolean {
-  const wanted = label.trim().toLowerCase();
+export function selectDropDownTicker(box: HTMLElement, ticker: string): boolean {
+  const wanted = ticker.trim().toUpperCase();
   const matches = optionItems(box).filter(
     (li) =>
       li
-        .querySelector<HTMLElement>('[class*="DropDownBox__itemName"]')
+        .querySelector<HTMLElement>('[class*="ColoredIcon__label"]')
         ?.textContent?.trim()
-        .toLowerCase() === wanted
+        .toUpperCase() === wanted
   );
   if (matches.length !== 1) return false;
   matches[0].click();

@@ -123,6 +123,8 @@ function formatConditionType(type: PrunApi.ContractConditionType): string {
     PICKUP_SHIPMENT: 'Pickup',
     PRODUCTION_RUN: 'Production',
     LOAN_INSTALLMENT: 'Loan',
+    LOAN_PAYOUT: 'Loan payout',
+    REPUTATION: 'Reputation',
     FINISH_FLIGHT: 'Flight',
   };
   return labels[type] ?? type.toLowerCase().replace(/_/g, ' ');
@@ -161,11 +163,32 @@ function buildConditionDescription(condition: PrunApi.ContractCondition): Condit
     return { description, parts };
   }
 
-  // Payment condition
-  if (condition.amount) {
+  // Cash condition (payment, loan payout/instalment). Loan instalments carry
+  // no `amount` — the sum actually paid is `total` (repayment + interest, per
+  // rPrun's balance code), so a loan schedule reads as a schedule (#89).
+  // Amounts are denominated: always the condition's own currency, never the
+  // preferredCurrency override.
+  const cash =
+    condition.amount ??
+    condition.total ??
+    (condition.repayment
+      ? {
+          currency: condition.repayment.currency,
+          amount: condition.repayment.amount + (condition.interest?.amount ?? 0),
+        }
+      : undefined);
+  if (cash) {
     parts.push({ type: 'text', value: type });
-    parts.push({ type: 'amount', value: `${condition.amount.amount.toLocaleString()} ${condition.amount.currency}` });
-    return withLocation(`${type} ${condition.amount.amount.toLocaleString()} ${condition.amount.currency}`);
+    parts.push({ type: 'amount', value: `${cash.amount.toLocaleString()} ${cash.currency}` });
+    return withLocation(`${type} ${cash.amount.toLocaleString()} ${cash.currency}`);
+  }
+
+  // Reputation condition: the change is its defining datum (same #89 audit).
+  if (condition.reputationChange != null) {
+    const rep = `${condition.reputationChange > 0 ? '+' : ''}${condition.reputationChange} reputation`;
+    parts.push({ type: 'text', value: type });
+    parts.push({ type: 'amount', value: rep });
+    return withLocation(`${type} ${rep}`);
   }
 
   // Material condition (delivery, provision, pickup, shipment)

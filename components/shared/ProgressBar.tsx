@@ -17,26 +17,26 @@ const colorStyles: Record<BarColor, string> = {
 };
 
 /**
- * Dense ledger bar row: fixed label on the left, the bar fills the middle, and
- * the value sits right-aligned in a fixed column (so every row shares one right
- * edge). Used for ship cargo + fuel in the detail sheet.
+ * Dense ledger bar row: fixed label, then the value in a fixed right-aligned
+ * column (labels and values adjacent, all rows share one edge), then the bar
+ * fills the rest of the row. Used for ship cargo + fuel in the detail sheet.
  */
 export function ProgressBar({ current, max, color, label, unit }: ProgressBarProps) {
   const percentage = max > 0 ? Math.min(100, (current / max) * 100) : 0;
 
   return (
     <div className="flex items-center gap-2">
-      <span className="w-14 shrink-0 text-xs text-apxm-text/70">{label}</span>
+      <span className="w-12 shrink-0 text-xs text-apxm-text/70">{label}</span>
+      <span className="w-24 shrink-0 text-right text-xs font-mono text-apxm-text/70 tabular-nums whitespace-nowrap">
+        {formatQty(current)} / {formatQty(max)}
+        {unit && <span className="text-apxm-text/40"> {unit}</span>}
+      </span>
       <div className="flex-1 h-2 bg-apxm-bg rounded-sm overflow-hidden">
         <div
           className={`h-full ${colorStyles[color]} transition-all motion-reduce:transition-none`}
           style={{ width: `${percentage}%` }}
         />
       </div>
-      <span className="w-28 shrink-0 text-right text-xs font-mono text-apxm-text/70 tabular-nums whitespace-nowrap">
-        {formatQty(current)} / {formatQty(max)}
-        {unit && <span className="text-apxm-text/40"> {unit}</span>}
-      </span>
     </div>
   );
 }

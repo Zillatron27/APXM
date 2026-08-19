@@ -395,3 +395,73 @@ describe('assembleContractDetails (list sort/count/filter)', () => {
     expect(counts.all).toBe(6);
   });
 });
+
+describe('buildContractDetail — loan and reputation amounts (#89)', () => {
+  it('a loan instalment shows its total (repayment + interest) in the denominated currency', () => {
+    const contract = acceptedContract([
+      selfCondition({
+        id: 'c1',
+        index: 0,
+        type: 'LOAN_INSTALLMENT',
+        dependencies: [],
+        quantity: null,
+        repayment: { amount: 10000, currency: 'NCC' },
+        interest: { amount: 2500, currency: 'NCC' },
+        total: { amount: 12500, currency: 'NCC' },
+      }),
+    ]);
+
+    const [cond] = buildContractDetail(contract).conditions;
+    expect(cond.description).toContain('12,500 NCC');
+    expect(cond.descriptionParts).toContainEqual({ type: 'amount', value: '12,500 NCC' });
+  });
+
+  it('falls back to repayment + interest when total is absent', () => {
+    const contract = acceptedContract([
+      selfCondition({
+        id: 'c1',
+        index: 0,
+        type: 'LOAN_INSTALLMENT',
+        dependencies: [],
+        quantity: null,
+        repayment: { amount: 10000, currency: 'NCC' },
+        interest: { amount: 2500, currency: 'NCC' },
+      }),
+    ]);
+
+    const [cond] = buildContractDetail(contract).conditions;
+    expect(cond.descriptionParts).toContainEqual({ type: 'amount', value: '12,500 NCC' });
+  });
+
+  it('a loan payout shows its plain amount', () => {
+    const contract = acceptedContract([
+      selfCondition({
+        id: 'c1',
+        index: 0,
+        type: 'LOAN_PAYOUT',
+        dependencies: [],
+        quantity: null,
+        amount: { amount: 50000, currency: 'NCC' },
+      }),
+    ]);
+
+    const [cond] = buildContractDetail(contract).conditions;
+    expect(cond.descriptionParts).toContainEqual({ type: 'amount', value: '50,000 NCC' });
+  });
+
+  it('a reputation condition shows its signed change', () => {
+    const contract = acceptedContract([
+      selfCondition({
+        id: 'c1',
+        index: 0,
+        type: 'REPUTATION',
+        dependencies: [],
+        quantity: null,
+        reputationChange: 2,
+      }),
+    ]);
+
+    const [cond] = buildContractDetail(contract).conditions;
+    expect(cond.descriptionParts).toContainEqual({ type: 'amount', value: '+2 reputation' });
+  });
+});
