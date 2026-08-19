@@ -25,6 +25,16 @@ interface SendShipViewProps {
 
 const chip = `${btnSecondary} min-h-touch px-2 text-xs`;
 const chipActive = `${chip} text-prun-yellow border-prun-yellow`;
+const chipActiveCritical = `${chip} text-status-critical border-status-critical`;
+
+/**
+ * STL consumption as a percent of the tank, from APEX's totals text
+ * ("1241 units STL fuel (54%)..."). Null when no STL figure is present.
+ */
+export function stlConsumptionPct(consumption: string | undefined): number | null {
+  const match = consumption?.match(/STL[^(]*\((\d+(?:\.\d+)?)%\)/i);
+  return match ? Number(match[1]) : null;
+}
 
 /** Chips address POSITIONS across the slider's own range — ranges are
  *  per-ship/per-route (a reactor can span only 97.5–100%), so absolute
@@ -51,7 +61,8 @@ const FALLBACK_LABELS = ['MIN', '25%', '50%', '75%', 'MAX'];
 function usageChips(
   state: { posFrac: number; minPct: number; maxPct: number } | null,
   busy: boolean,
-  onPick: (frac: number) => void
+  onPick: (frac: number) => void,
+  critical = false
 ) {
   const labels = state === null ? FALLBACK_LABELS : usageChipLabels(state.minPct, state.maxPct);
   const nearest =
@@ -64,7 +75,7 @@ function usageChips(
     <button
       key={f}
       type="button"
-      className={nearest === f ? chipActive : chip}
+      className={nearest === f ? (critical ? chipActiveCritical : chipActive) : chip}
       disabled={busy}
       onClick={() => onPick(f)}
     >
@@ -217,6 +228,12 @@ export function SendShipView({ shipId, registration, onClose }: SendShipViewProp
 
   const t = snapshot?.totals;
   const valid = snapshot?.status === 'valid' && snapshot.startEnabled;
+  // Base-game behaviour: STL burn over half the tank means (in theory) no
+  // fuel to fly back — APEX shows the figure red, so do we, plus the fuel
+  // slider surfaces that set it. The percent itself stays visible either
+  // way, so the colour is emphasis, not the sole signal (CVD rule).
+  const stlPct = stlConsumptionPct(t?.consumption);
+  const noReturnFuel = stlPct !== null && stlPct > 50;
 
   return (
     <div className="space-y-3">
@@ -247,7 +264,14 @@ export function SendShipView({ shipId, registration, onClose }: SendShipViewProp
                       line. No-op for single-part values. */}
                   {value
                     ? value.split(/(?<=\))\s*(?=\d)/).map((part, i) => (
-                        <span key={i} className="block">
+                        <span
+                          key={i}
+                          className={
+                            noReturnFuel && label === 'Fuel' && /STL/i.test(part)
+                              ? 'block text-status-critical'
+                              : 'block'
+                          }
+                        >
                           {part}
                         </span>
                       ))
@@ -286,14 +310,21 @@ export function SendShipView({ shipId, registration, onClose }: SendShipViewProp
           <span className="w-14 shrink-0 text-[10px] uppercase tracking-wide text-apxm-text/40">
             Fuel
             {snapshot?.fuel && (
-              <span className="block font-mono tabular-nums text-apxm-text/70 normal-case">
+              <span
+                className={`block font-mono tabular-nums normal-case ${
+                  noReturnFuel ? 'text-status-critical' : 'text-apxm-text/70'
+                }`}
+              >
                 {snapshot.fuel.valuePct}%
               </span>
             )}
           </span>
           <div className="grid flex-1 grid-cols-5 gap-1">
-            {usageChips(snapshot?.fuel ?? null, busy, (frac) =>
-              drive(() => sessionRef.current!.setSliderFraction('fuel', frac))
+            {usageChips(
+              snapshot?.fuel ?? null,
+              busy,
+              (frac) => drive(() => sessionRef.current!.setSliderFraction('fuel', frac)),
+              noReturnFuel
             )}
           </div>
         </div>

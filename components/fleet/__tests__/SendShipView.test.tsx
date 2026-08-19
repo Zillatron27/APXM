@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { SendShipView, usageChipLabels } from '../SendShipView';
+import { SendShipView, usageChipLabels, stlConsumptionPct } from '../SendShipView';
 import { useShipsStore, useSitesStore } from '../../../stores/entities';
 import { createTestShip, createTestSite, createAddress } from '../../../__tests__/fixtures/factories';
 import type { SfcSnapshot } from '../../../lib/act/sfc-driver';
@@ -145,5 +145,50 @@ describe('usageChipLabels', () => {
   it('falls back to one decimal when whole percents collide on a narrow band', () => {
     // Picard's reactor: 97.5–100% — whole percents would repeat.
     expect(usageChipLabels(97.5, 100)).toEqual(['97.5%', '98.1%', '98.8%', '99.4%', '100%']);
+  });
+});
+
+describe('stlConsumptionPct', () => {
+  it('reads the STL percent from APEX consumption text', () => {
+    expect(stlConsumptionPct('1241 units STL fuel (54%)38 units FTL fuel (2%)')).toBe(54);
+    expect(stlConsumptionPct('193 units STL fuel (6%)16 units FTL fuel (1%)')).toBe(6);
+  });
+
+  it('returns null without an STL figure', () => {
+    expect(stlConsumptionPct('165 units')).toBeNull();
+    expect(stlConsumptionPct(undefined)).toBeNull();
+  });
+});
+
+describe('no-return fuel highlight', () => {
+  it('paints the STL line red when STL burn exceeds 50%', async () => {
+    snapshot = baseSnapshot({
+      totals: {
+        ...baseSnapshot().totals!,
+        consumption: '1241 units STL fuel (54%)38 units FTL fuel (2%)',
+      },
+    });
+    await render();
+    await pickFirstDestination();
+    const parts = Array.from(container.querySelectorAll('span.block'));
+    const stl = parts.find((s) => /STL fuel/.test(s.textContent ?? ''));
+    expect(stl?.className).toContain('text-status-critical');
+    const ftl = parts.find((s) => /FTL fuel/.test(s.textContent ?? ''));
+    expect(ftl?.className).not.toContain('text-status-critical');
+  });
+
+  it('stays unhighlighted at 50% or below', async () => {
+    snapshot = baseSnapshot({
+      totals: {
+        ...baseSnapshot().totals!,
+        consumption: '500 units STL fuel (50%)',
+      },
+    });
+    await render();
+    await pickFirstDestination();
+    const stl = Array.from(container.querySelectorAll('span.block')).find((s) =>
+      /STL fuel/.test(s.textContent ?? '')
+    );
+    expect(stl?.className).not.toContain('text-status-critical');
   });
 });
