@@ -2,7 +2,7 @@
 
 ## 1.2.0 (2026-08-19)
 
-Ship actions (unload, refuel, load cargo, send ship), flight-control panel refinements, buffer-card cleanup, and two bug fixes. Device-tested live.
+Ship actions
 
 ### Added
 
