@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { SendShipView } from '../SendShipView';
+import { SendShipView, usageChipLabels } from '../SendShipView';
 import { useShipsStore, useSitesStore } from '../../../stores/entities';
 import { createTestShip, createTestSite, createAddress } from '../../../__tests__/fixtures/factories';
 import type { SfcSnapshot } from '../../../lib/act/sfc-driver';
@@ -40,8 +40,8 @@ function baseSnapshot(overrides: Partial<SfcSnapshot> = {}): SfcSnapshot {
       consumption: '165 units',
     },
     segments: [],
-    reactor: { valuePct: 53, posFrac: 0.53 },
-    fuel: { valuePct: 5, posFrac: 0.04 },
+    reactor: { valuePct: 53, posFrac: 0.53, minPct: 1, maxPct: 100 },
+    fuel: { valuePct: 5, posFrac: 0.04, minPct: 1, maxPct: 100 },
     routePref: 'LEAST_JUMPS',
     surfaceLanding: true,
     useGateways: true,
@@ -133,5 +133,17 @@ describe('SendShipView', () => {
     act(() => root.unmount());
     expect(closeSpy).toHaveBeenCalled();
     root = createRoot(container); // for afterEach symmetry
+  });
+});
+
+describe('usageChipLabels', () => {
+  it('labels chips with the actual percent each position resolves to', () => {
+    // A Sprinter-style band: 5–100%.
+    expect(usageChipLabels(5, 100)).toEqual(['5%', '29%', '53%', '76%', '100%']);
+  });
+
+  it('falls back to one decimal when whole percents collide on a narrow band', () => {
+    // Picard's reactor: 97.5–100% — whole percents would repeat.
+    expect(usageChipLabels(97.5, 100)).toEqual(['97.5%', '98.1%', '98.8%', '99.4%', '100%']);
   });
 });

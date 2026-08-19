@@ -26,38 +26,49 @@ interface SendShipViewProps {
 const chip = `${btnSecondary} min-h-touch px-2 text-xs`;
 const chipActive = `${chip} text-prun-yellow border-prun-yellow`;
 
-/** MIN / 25% / 50% / 75% / MAX chips address POSITIONS across the slider's
- *  own range — ranges are per-ship/per-route (a reactor can span only
- *  97.5–100%), so absolute percents are often unsatisfiable. The row label
- *  shows the actual resulting value. */
-const USAGE_CHIPS: { label: string; frac: number }[] = [
-  { label: 'MIN', frac: 0 },
-  { label: '25%', frac: 0.25 },
-  { label: '50%', frac: 0.5 },
-  { label: '75%', frac: 0.75 },
-  { label: 'MAX', frac: 1 },
-];
+/** Chips address POSITIONS across the slider's own range — ranges are
+ *  per-ship/per-route (a reactor can span only 97.5–100%), so absolute
+ *  percents are often unsatisfiable. Labels show the real value each
+ *  position resolves to (from the band endpoints), so the button says
+ *  what it sets. */
+const CHIP_FRACS = [0, 0.25, 0.5, 0.75, 1];
+
+/**
+ * Labels for the five position chips: the actual percent each position
+ * resolves to within [minPct, maxPct]. Whole percents normally; one decimal
+ * when the band is so narrow that whole-percent labels would collide
+ * (e.g. 97.5–100% → 97.5 / 98.1 / 98.8 / 99.4 / 100).
+ */
+export function usageChipLabels(minPct: number, maxPct: number): string[] {
+  const pcts = CHIP_FRACS.map((f) => minPct + f * (maxPct - minPct));
+  const whole = pcts.map((p) => `${Math.round(p)}%`);
+  if (new Set(whole).size === whole.length) return whole;
+  return pcts.map((p) => `${Math.round(p * 10) / 10}%`);
+}
+
+const FALLBACK_LABELS = ['MIN', '25%', '50%', '75%', 'MAX'];
 
 function usageChips(
-  state: { posFrac: number } | null,
+  state: { posFrac: number; minPct: number; maxPct: number } | null,
   busy: boolean,
   onPick: (frac: number) => void
 ) {
+  const labels = state === null ? FALLBACK_LABELS : usageChipLabels(state.minPct, state.maxPct);
   const nearest =
     state === null
       ? null
-      : USAGE_CHIPS.reduce((best, c) =>
-          Math.abs(c.frac - state.posFrac) < Math.abs(best.frac - state.posFrac) ? c : best
-        ).label;
-  return USAGE_CHIPS.map((c) => (
+      : CHIP_FRACS.reduce((best, f) =>
+          Math.abs(f - state.posFrac) < Math.abs(best - state.posFrac) ? f : best
+        );
+  return CHIP_FRACS.map((f, i) => (
     <button
-      key={c.label}
+      key={f}
       type="button"
-      className={nearest === c.label ? chipActive : chip}
+      className={nearest === f ? chipActive : chip}
       disabled={busy}
-      onClick={() => onPick(c.frac)}
+      onClick={() => onPick(f)}
     >
-      {c.label}
+      {labels[i]}
     </button>
   ));
 }

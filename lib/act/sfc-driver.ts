@@ -109,6 +109,10 @@ export interface SliderState {
    *  Picard's reactor spans 97.5%–100% while a Sprinter's starts near 5%
    *  (device 2026-08-14) — so controls address positions, not absolutes. */
   posFrac: number;
+  /** The band endpoints as percents, so chip labels can show the real value
+   *  a position resolves to instead of a fictional absolute percent. */
+  minPct: number;
+  maxPct: number;
 }
 
 function sliderState(root: HTMLElement, kind: SliderKind): SliderState | null {
@@ -119,7 +123,12 @@ function sliderState(root: HTMLElement, kind: SliderKind): SliderState | null {
   if (!Number.isFinite(now) || !Number.isFinite(min) || !Number.isFinite(max) || max <= min) {
     return null;
   }
-  return { valuePct: Math.round(now * 1000) / 10, posFrac: (now - min) / (max - min) };
+  return {
+    valuePct: Math.round(now * 1000) / 10,
+    posFrac: (now - min) / (max - min),
+    minPct: Math.round(min * 1000) / 10,
+    maxPct: Math.round(max * 1000) / 10,
+  };
 }
 
 function parseRouteTable(root: HTMLElement): { totals: SfcRouteRow | null; segments: SfcRouteRow[] } {

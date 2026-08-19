@@ -196,7 +196,12 @@ describe('SendSession', () => {
     expect(snap.status).toBe('valid');
     expect(snap.totals?.duration).toBe('1 day 2h 48m');
     expect(snap.segments).toHaveLength(1);
-    expect(snap.reactor).toEqual({ valuePct: 53, posFrac: (0.53 - 0.01) / 0.99 });
+    expect(snap.reactor).toEqual({
+      valuePct: 53,
+      posFrac: (0.53 - 0.01) / 0.99,
+      minPct: 1,
+      maxPct: 100,
+    });
     expect(snap.fuel?.valuePct).toBe(5);
     expect(snap.surfaceLanding).toBe(true);
     expect(snap.unloadOnArrival).toBe(false);
