@@ -71,21 +71,35 @@ export interface FuelChipSpec {
 }
 
 /**
- * Fuel chips for a ship's band: MIN plus each absolute target that falls
- * inside (minPct, maxPct] — a target at or below the floor duplicates MIN
- * and a target above the ceiling is unreachable, so both drop out.
+ * Fuel chips for a ship's band: always five — MIN plus the four ladder
+ * steps. On the common wide band (floor ~1%, ceiling ≥25%) the steps are
+ * exactly 2/5/10/25%. When the band can't fit them, the ladder's low-biased
+ * spacing is rescaled into the achievable window [floor, min(25%, ceiling)]
+ * so every button stays a distinct, reachable value (user ruling
+ * 2026-08-19: five buttons baseline, labels reflect what IS possible).
  */
 export function fuelChipSpecs(minPct: number, maxPct: number): FuelChipSpec[] {
-  const chips: FuelChipSpec[] = [{ label: 'MIN', frac: 0, pct: minPct }];
-  for (const target of FUEL_TARGETS) {
-    if (target <= minPct || target > maxPct) continue;
-    chips.push({
-      label: `${target}%`,
-      frac: (target - minPct) / (maxPct - minPct),
-      pct: target,
-    });
+  const baselineFloor = 1;
+  const baselineTop = FUEL_TARGETS[FUEL_TARGETS.length - 1];
+  const top = Math.min(baselineTop, maxPct);
+  const pcts = [
+    minPct,
+    ...FUEL_TARGETS.map((t) => {
+      const ladderPos = (t - baselineFloor) / (baselineTop - baselineFloor);
+      return minPct + ladderPos * (top - minPct);
+    }),
+  ];
+  // Whole-percent labels; one decimal if a narrow window makes them collide.
+  let rounded = pcts.map((p) => Math.round(p));
+  if (new Set(rounded).size !== rounded.length) {
+    rounded = pcts.map((p) => Math.round(p * 10) / 10);
   }
-  return chips;
+  return rounded.map((pct, i) => ({
+    label: i === 0 ? 'MIN' : `${pct}%`,
+    // frac from the labelled value, so the button does what it says.
+    frac: Math.min(1, Math.max(0, (pct - minPct) / (maxPct - minPct))),
+    pct,
+  }));
 }
 
 function fuelUsageChips(
@@ -105,9 +119,9 @@ function fuelUsageChips(
   const nearest = specs.reduce((best, s) =>
     Math.abs(s.pct - state.valuePct) < Math.abs(best.pct - state.valuePct) ? s : best
   );
-  return specs.map((s) => (
+  return specs.map((s, i) => (
     <button
-      key={s.label}
+      key={i}
       type="button"
       className={nearest === s ? (critical ? chipActiveCritical : chipActive) : chip}
       disabled={busy}

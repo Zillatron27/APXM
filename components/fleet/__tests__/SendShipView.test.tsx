@@ -194,7 +194,7 @@ describe('no-return fuel highlight', () => {
 });
 
 describe('fuelChipSpecs', () => {
-  it('offers MIN plus the low-band absolute targets on a wide band', () => {
+  it('gives the exact baseline MIN/2/5/10/25 on the common wide band', () => {
     expect(fuelChipSpecs(1, 100).map((c) => c.label)).toEqual([
       'MIN',
       '2%',
@@ -204,17 +204,30 @@ describe('fuelChipSpecs', () => {
     ]);
   });
 
-  it('drops targets at or below the floor (they duplicate MIN)', () => {
-    expect(fuelChipSpecs(5, 100).map((c) => c.label)).toEqual(['MIN', '10%', '25%']);
+  it('always returns five chips, rescaled when the floor eats baseline targets', () => {
+    // Floor 5%: window [5, 25], ladder spacing preserved.
+    expect(fuelChipSpecs(5, 100).map((c) => c.label)).toEqual([
+      'MIN',
+      '6%',
+      '8%',
+      '13%',
+      '25%',
+    ]);
   });
 
-  it('drops targets above the ceiling (unreachable)', () => {
-    expect(fuelChipSpecs(1, 20).map((c) => c.label)).toEqual(['MIN', '2%', '5%', '10%']);
+  it('tops out at the ceiling when it sits below 25%', () => {
+    expect(fuelChipSpecs(1, 20).map((c) => c.label)).toEqual([
+      'MIN',
+      '2%',
+      '4%',
+      '8%',
+      '20%',
+    ]);
   });
 
-  it('maps each target to its rail position within the band', () => {
-    const ten = fuelChipSpecs(0, 100).find((c) => c.label === '10%');
-    expect(ten?.frac).toBeCloseTo(0.1, 5);
+  it('maps each labelled value to its rail position within the full band', () => {
+    const ten = fuelChipSpecs(1, 100).find((c) => c.label === '10%');
+    expect(ten?.frac).toBeCloseTo((10 - 1) / 99, 5);
     const min = fuelChipSpecs(5, 100)[0];
     expect(min).toEqual({ label: 'MIN', frac: 0, pct: 5 });
   });
