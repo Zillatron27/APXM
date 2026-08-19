@@ -140,11 +140,11 @@ describe('gameState store', () => {
       expect(filters()).toEqual(['all']);
     });
 
-    it('selecting all three tiers collapses to ALL', () => {
+    it('selecting all three tiers keeps them individually lit (no collapse — #81)', () => {
       toggle('critical');
       toggle('warning');
       toggle('ok');
-      expect(filters()).toEqual(['all']);
+      expect(filters()).toEqual(['critical', 'ok', 'warning']);
     });
 
     it('selecting ALL resets any tier selection', () => {
@@ -162,13 +162,13 @@ describe('gameState store', () => {
       expect(filters()).toEqual(['all']);
     });
 
-    it('applies the shared toggle rules', () => {
+    it('the second filter tap lights the tapped filter, never ALL (#81)', () => {
       useGameState.getState().toggleFleetFilter('idle');
       expect(filters()).toEqual(['idle']);
 
-      // Selecting both individual filters collapses to ALL
+      // The old collapse-to-ALL here read as "my tap didn't take".
       useGameState.getState().toggleFleetFilter('in-transit');
-      expect(filters()).toEqual(['all']);
+      expect(filters()).toEqual(['idle', 'in-transit']);
     });
   });
 
@@ -186,6 +186,13 @@ describe('gameState store', () => {
 
       useGameState.getState().toggleContractFilter('fulfilled');
       expect(filters()).toEqual(['fulfilled']);
+    });
+
+    it('tapping FULFILLED while ACTIVE is lit selects both — the #81 repro', () => {
+      // Default is ACTIVE; the tester's tap on FULFILLED used to collapse
+      // {active, fulfilled} to ALL, reading as "my tap didn't take".
+      useGameState.getState().toggleContractFilter('fulfilled');
+      expect(filters()).toEqual(['active', 'fulfilled']);
     });
   });
 });
