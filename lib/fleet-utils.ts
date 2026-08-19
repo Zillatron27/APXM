@@ -60,7 +60,16 @@ export function formatEta(etaMs: number): string {
     duration = totalMinutes < 1 ? '<1m' : `${totalMinutes}m`;
   }
 
-  // Calculate local arrival time
+  return `${duration} (${arrivalClock(etaMs)})`;
+}
+
+/**
+ * Local wall-clock arrival label for a flight ending etaMs from now:
+ * "01:11", or "Fri 14:30" when the arrival is a day or more away.
+ * The bracketed half of formatEta, shared so the send-ship review's
+ * Duration row shows the same arrival clock as the fleet list.
+ */
+export function arrivalClock(etaMs: number): string {
   const arrivalTime = new Date(Date.now() + etaMs);
   const timeStr = arrivalTime.toLocaleTimeString('en-GB', {
     hour: '2-digit',
@@ -68,13 +77,33 @@ export function formatEta(etaMs: number): string {
     hour12: false,
   });
 
-  // For arrivals > 24h away, include day name
-  if (days >= 1) {
+  if (etaMs >= 24 * 60 * 60 * 1000) {
     const dayName = arrivalTime.toLocaleDateString('en-GB', { weekday: 'short' });
-    return `${duration} (${dayName} ${timeStr})`;
+    return `${dayName} ${timeStr}`;
   }
 
-  return `${duration} (${timeStr})`;
+  return timeStr;
+}
+
+/**
+ * Parses an APEX duration string ("2h 54m 25s", "1d 3h 10m") to milliseconds.
+ * Returns null when no duration tokens are found — callers should omit the
+ * arrival clock rather than show one derived from a misread.
+ */
+export function parseApexDuration(text: string): number | null {
+  const unitMs: Record<string, number> = {
+    d: 24 * 60 * 60 * 1000,
+    h: 60 * 60 * 1000,
+    m: 60 * 1000,
+    s: 1000,
+  };
+  let total = 0;
+  let matched = false;
+  for (const [, count, unit] of text.matchAll(/(\d+)\s*([dhms])\b/g)) {
+    total += Number(count) * unitMs[unit];
+    matched = true;
+  }
+  return matched ? total : null;
 }
 
 /**

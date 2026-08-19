@@ -6,7 +6,16 @@ import {
   type SfcSnapshot,
 } from '../../lib/act/sfc-driver';
 import type { SendDestination } from '../../core/send-ship';
+import { arrivalClock, parseApexDuration } from '../../lib/fleet-utils';
 import { useOwnDestinations } from './useOwnDestinations';
+
+/** Appends the local arrival time to APEX's duration text, matching the
+ *  fleet list's "2h 54m (17:38)" convention — no mental clock math. */
+function withArrivalClock(duration: string | undefined): string | undefined {
+  if (!duration) return duration;
+  const ms = parseApexDuration(duration);
+  return ms === null ? duration : `${duration} (${arrivalClock(ms)})`;
+}
 
 interface SendShipViewProps {
   shipId: string;
@@ -210,7 +219,7 @@ export function SendShipView({ shipId, registration, onClose }: SendShipViewProp
         <div className="text-xs">
           <div className="space-y-1">
             {[
-              ['Duration', t.duration],
+              ['Duration', withArrivalClock(t.duration)],
               // APEX mashes the km and parsec figures together ("…km4 parsecs");
               // keep only the km part — parsecs add nothing next to it.
               ['Distance', t.distance.replace(/(?<=km)\s*[\d.,]+\s*parsecs?.*$/, '')],
