@@ -73,7 +73,7 @@ function readCard(li: HTMLElement): BufferCard {
  * 1–4 but stops at the list — no card is created. Returns false with the page
  * restored on failure.
  */
-async function openCardList(): Promise<boolean> {
+export async function openCardList(): Promise<boolean> {
   const container = getContainer();
   if (!container) return false;
 
@@ -163,7 +163,7 @@ function findStopEditingButton(): HTMLElement | null {
  * APEX stuck editing blocks all Stack navigation for every later action
  * (device 2026-08-19).
  */
-async function exitEditMode(): Promise<void> {
+export async function exitEditMode(): Promise<void> {
   const stop = findStopEditingButton();
   const editing = stop !== null || getContainer()?.querySelector('[class*="Stack__edit"]');
   if (!editing) return;
@@ -184,6 +184,71 @@ function waitForCardCount(below: number): Promise<HTMLElement | null> {
     () => (findCardRows().length < below ? getContainer() : null),
     DELETE_SETTLE_MS
   );
+}
+
+
+type RemoveRowResult =
+  | { done: true }
+  | { done: false; ok: true }
+  | { done: false; ok: false; error: string };
+
+/**
+ * Remove ONE card row picked by `select` from the open card list, with the
+ * edit-mode fallback and the count-shrink verification. `done` = no row
+ * matched (nothing left to do). Assumes the card list is already open.
+ */
+async function removeCardRow(
+  select: (rows: HTMLElement[]) => HTMLElement | null
+): Promise<RemoveRowResult> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const rows = findCardRows();
+    const target = select(rows);
+    if (!target) return { done: true };
+
+    const remove = findRemoveButton(target);
+    if (!remove) {
+      // BtnRemove may only render in edit mode — toggle once and re-query.
+      const toggle = attempt === 0 ? findEditToggle() : null;
+      if (!toggle) {
+        return {
+          done: false,
+          ok: false,
+          error: 'No remove button on card rows (edit mode not reachable?)',
+        };
+      }
+      toggle.click();
+      await waitForElement(() => (findCardRows()[0] ? getContainer() : null), STEP_TIMEOUT_MS);
+      continue;
+    }
+
+    remove.click();
+    const shrank = await waitForCardCount(rows.length);
+    if (!shrank) {
+      return {
+        done: false,
+        ok: false,
+        error: `Delete click did not remove "${readCard(target).command}"`,
+      };
+    }
+    return { done: false, ok: true };
+  }
+  return { done: false, ok: false, error: 'Edit mode revealed no remove button' };
+}
+
+/**
+ * Delete the LAST card whose text matches `command` (case-insensitive) from
+ * the open card list. Cards append at the end, so on a stack that already
+ * held a user card with the same command, the last match is the one a driven
+ * action just created (#84 prevention). Lock-free — for callers already
+ * inside a locked action; assumes the card list is open.
+ */
+export async function deleteLastCardMatching(command: string): Promise<boolean> {
+  const needle = command.toLowerCase();
+  const result = await removeCardRow((rows) => {
+    const matches = rows.filter((li) => li.textContent?.toLowerCase().includes(needle));
+    return matches[matches.length - 1] ?? null;
+  });
+  return result.done ? false : result.ok;
 }
 
 /**
@@ -209,42 +274,12 @@ export async function deleteBufferCards(prefixes: Set<string>): Promise<DeleteCa
       return { ok: false, deleted, error: 'Could not open the Buffer stack' };
     }
 
-    let editToggled = false;
     for (;;) {
-      const rows = findCardRows();
-      const target = rows.find((li) => prefixes.has(commandPrefix(readCard(li).command)));
-      if (!target) break;
-
-      const remove = findRemoveButton(target);
-      if (!remove && !editToggled) {
-        // BtnRemove may only render in edit mode — toggle it once, then
-        // re-enter the loop so rows are re-queried post-re-render.
-        const toggle = findEditToggle();
-        if (toggle) {
-          toggle.click();
-          editToggled = true;
-          await waitForElement(() => (findCardRows()[0] ? getContainer() : null), STEP_TIMEOUT_MS);
-          continue;
-        }
-      }
-      if (!remove) {
-        return {
-          ok: false,
-          deleted,
-          error: 'No remove button on card rows (edit mode not reachable?)',
-        };
-      }
-
-      const countBefore = rows.length;
-      remove.click();
-      const shrank = await waitForCardCount(countBefore);
-      if (!shrank) {
-        return {
-          ok: false,
-          deleted,
-          error: `Delete click did not remove "${readCard(target).command}"`,
-        };
-      }
+      const removed = await removeCardRow((rows) =>
+        rows.find((li) => prefixes.has(commandPrefix(readCard(li).command))) ?? null
+      );
+      if (removed.done) break;
+      if (!removed.ok) return { ok: false, deleted, error: removed.error };
       deleted++;
     }
 
