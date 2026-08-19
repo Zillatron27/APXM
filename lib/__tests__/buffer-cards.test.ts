@@ -131,6 +131,32 @@ describe('deleteBufferCards', () => {
     expect(list.querySelectorAll('li').length).toBe(0);
   });
 
+  it('exits edit mode via STOP EDITING even when deletes entered it implicitly', async () => {
+    // Device 2026-08-19: BtnRemove clicks put the Stack into edit mode on
+    // their own; APEX renders a bottom-bar STOP EDITING button and blocks
+    // Stack navigation until it is tapped.
+    const { list } = buildStack(['CONT 111']);
+    const container = document.getElementById('container')!;
+    let stopClicks = 0;
+    list.querySelector('button')!.addEventListener('click', () => {
+      if (document.querySelector('[class*="Stack__edit"]')) return;
+      const editBar = document.createElement('div');
+      editBar.className = 'Stack__edit___xyz';
+      const stop = document.createElement('button');
+      stop.textContent = 'Stop editing';
+      stop.addEventListener('click', () => {
+        stopClicks++;
+        editBar.remove();
+      });
+      editBar.appendChild(stop);
+      container.appendChild(editBar);
+    });
+    const result = await deleteBufferCards(new Set(['CONT']));
+    expect(result).toEqual({ ok: true, deleted: 1 });
+    expect(stopClicks).toBe(1);
+    expect(document.querySelector('[class*="Stack__edit"]')).toBeNull();
+  });
+
   it('aborts when a remove click does not shrink the list (no hammering a re-rendered DOM)', async () => {
     const { list } = buildStack(['CONT 111', 'CONT 222']);
     // First row's remove is a silent no-op — the row never leaves the DOM.

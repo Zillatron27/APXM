@@ -131,17 +131,51 @@ function findRemoveButton(li: HTMLElement): HTMLElement | null {
   return li.querySelector<HTMLElement>('[class*="BtnRemove"]');
 }
 
-/** The card list's edit-mode toggle: a leaf element reading "edit"/"done". */
-function findEditToggle(): HTMLElement | null {
-  const container = getContainer();
-  if (!container) return null;
-  for (const el of container.querySelectorAll<HTMLElement>('*')) {
+/** A control matching one of `labels` by trimmed text, case-insensitive (CSS
+ *  uppercases APEX labels — never match what's on screen). Searched across the
+ *  document minus APXM's own overlay: APEX renders the edit bar outside the
+ *  card list. */
+function findControlByText(labels: string[]): HTMLElement | null {
+  for (const el of document.body.querySelectorAll<HTMLElement>('*')) {
+    if (el.closest('apxm-overlay')) continue;
     if (el.children.length === 0) {
-      const text = el.textContent?.trim().toLowerCase();
-      if (text === 'edit' || text === 'done') return el;
+      const text = el.textContent?.trim().toLowerCase() ?? '';
+      if (labels.includes(text)) return el;
     }
   }
   return null;
+}
+
+/** The card list's enter-edit toggle. */
+function findEditToggle(): HTMLElement | null {
+  return findControlByText(['edit', 'start editing']);
+}
+
+/** The exit control — a bottom-bar STOP EDITING button (device 2026-08-19). */
+function findStopEditingButton(): HTMLElement | null {
+  return findControlByText(['stop editing', 'done']);
+}
+
+/**
+ * Leave edit mode if the list is in it, whatever put it there — a BtnRemove
+ * click can enter edit implicitly, so this keys off the live DOM (the exit
+ * button / Stack__edit marker), never off whether WE toggled edit. Leaving
+ * APEX stuck editing blocks all Stack navigation for every later action
+ * (device 2026-08-19).
+ */
+async function exitEditMode(): Promise<void> {
+  const stop = findStopEditingButton();
+  const editing = stop !== null || getContainer()?.querySelector('[class*="Stack__edit"]');
+  if (!editing) return;
+  if (!stop) {
+    logError('exitEditMode: editing but no stop-editing control found');
+    return;
+  }
+  stop.click();
+  await waitForElement(
+    () => (findStopEditingButton() === null ? document.body : null),
+    STEP_TIMEOUT_MS
+  );
 }
 
 function waitForCardCount(below: number): Promise<HTMLElement | null> {
@@ -214,13 +248,14 @@ export async function deleteBufferCards(prefixes: Set<string>): Promise<DeleteCa
       deleted++;
     }
 
-    // Leave edit mode if we turned it on, so the list isn't left in edit state.
-    if (editToggled) findEditToggle()?.click();
     return { ok: true, deleted };
   } catch (err) {
     logError('deleteBufferCards:', err instanceof Error ? err.message : String(err));
     return { ok: false, deleted, error: err instanceof Error ? err.message : String(err) };
   } finally {
+    // On EVERY exit path: leave edit mode first (an editing Stack blocks all
+    // navigation), then navigate out and restore APEX.
+    await exitEditMode();
     await closeCardList(saved);
     releaseActionLock();
   }
