@@ -4,7 +4,7 @@ import { useFlightsStore, getFlightByShipId } from '../../../stores/entities/fli
 import { useStorageStore } from '../../../stores/entities/storage';
 import { getDestinationName, getCurrentLocation, shipPhase } from '../../../lib/fleet-utils';
 import type { ShipDisplayStatus } from '../../../lib/ship-status';
-import { useTick } from '../../../lib/use-tick';
+import { useTick } from '../../../hooks/useTick';
 import type { PrunApi } from '../../../types/prun-api';
 
 import type { FleetFilter } from '../../../stores/gameState';

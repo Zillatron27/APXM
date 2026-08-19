@@ -7,7 +7,7 @@ import { useConnectionStore } from '../../stores/connection';
 import { useConnectionStatus } from '../../hooks/useConnectionStatus';
 import { formatEta, getDestinationName, getCurrentLocation, shipPhase } from '../../lib/fleet-utils';
 import type { ShipDisplayStatus } from '../../lib/ship-status';
-import { useTick } from '../../lib/use-tick';
+import { useTick } from '../../hooks/useTick';
 
 interface ShipSummary {
   id: string;
