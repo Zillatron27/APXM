@@ -20,6 +20,13 @@ Ship actions
 - **Contract filter taps reverting to ALL** (#81, reported by @aemuthi) — tapping the second of the two contract filters collapsed the selection to ALL. The collapse rule is removed; the tapped filter always lights up. The fleet filter bar had the same latent behaviour
 - **Loan contracts showed no amounts** (#89) — loan instalments now display the amount paid (repayment + interest) in the contract's own currency, for every condition state. Reputation conditions show their signed change
 
+### Changed
+
+- **Theme coverage** — cargo/fuel bars and the WS/FIO data-source badge now follow the theme presets; the Colorblind preset renders them in CVD-safe Okabe-Ito colours. Default themes are unchanged
+- **Settings pickers** — the segmented option groups (refresh mode, currency, material theme) use the standard button styling, with hover/press feedback on every segment
+- **Consistent deadlines** — the Status contracts list shows the same deadline format as the Contracts tab ("5h", not "Today")
+- Under the hood: duplicated time formatters consolidated, dead code removed, minor styling drift fixed
+
 ### Notes
 
 - Tests: 764
