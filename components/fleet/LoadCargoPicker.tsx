@@ -144,8 +144,8 @@ export function LoadCargoPicker({ shipId, onClose }: LoadCargoPickerProps) {
           hold's free space, same bar idiom as the ship card. -m/p-4 counters
           the sheet's padding so the pinned strip spans edge to edge. */}
       <div className="sticky -top-4 z-10 -mx-4 space-y-1 border-b border-apxm-surface bg-apxm-bg px-4 pb-2 pt-4 -mt-4">
-        <ProgressBar label="Weight" current={totals.weight} max={list.freeWeight} color="orange" unit="t" />
-        <ProgressBar label="Vol" current={totals.volume} max={list.freeVolume} color="orange" unit="m³" />
+        <ProgressBar label="Weight" current={totals.weight} max={list.freeWeight} color="cargo" unit="t" />
+        <ProgressBar label="Vol" current={totals.volume} max={list.freeVolume} color="cargo" unit="m³" />
       </div>
       <FilterBar<CategoryFilter>
         options={[

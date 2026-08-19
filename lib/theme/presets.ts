@@ -45,6 +45,14 @@ export interface ApxmThemeTokens {
   statusOk: number;
   /** Burn status: producing more than consumed. */
   statusSurplus: number;
+  /** Neutral informational badge (e.g. FIO data-source) — not a burn state. */
+  statusInfo: number;
+  /** Ledger bar fill: cargo (weight/volume). Data-series colour, not a status. */
+  barCargo: number;
+  /** Ledger bar fill: STL fuel. */
+  barFuelStl: number;
+  /** Ledger bar fill: FTL fuel. */
+  barFuelFtl: number;
 }
 
 // Standard burn-status palette (Tailwind 500-level). Matches the existing
@@ -54,6 +62,16 @@ const STATUS_STANDARD = {
   statusWarning: 0xf59e0b, // amber-500
   statusOk: 0x22c55e, // green-500
   statusSurplus: 0x3b82f6, // blue-500
+} as const;
+
+// Standard data-series colours: info badge + the cargo/fuel ledger bars.
+// Values match the raw Tailwind classes the bars used before tokenisation
+// (orange-500 / yellow-500 / blue-500), so standard presets look unchanged.
+const SERIES_STANDARD = {
+  statusInfo: 0x3b82f6, // blue-500
+  barCargo: 0xf97316, // orange-500
+  barFuelStl: 0xeab308, // yellow-500
+  barFuelFtl: 0x3b82f6, // blue-500
 } as const;
 
 // PrUn — APXM's original navy/gold identity, verbatim. The reference for the
@@ -66,6 +84,7 @@ const prun: ApxmThemeTokens = {
   muted: 0x808080,
   highlight: 0xf7a600,
   ...STATUS_STANDARD,
+  ...SERIES_STANDARD,
 };
 
 // DryDock — Helm's neutral greyscale with an orange highlight. APXM contrast
@@ -78,6 +97,7 @@ const drydock: ApxmThemeTokens = {
   muted: 0x8a8a8a,
   highlight: 0xff8c00,
   ...STATUS_STANDARD,
+  ...SERIES_STANDARD,
 };
 
 // CRT — green phosphor. Dark-green bg, a raised green panel, a bright green
@@ -90,6 +110,7 @@ const crt: ApxmThemeTokens = {
   muted: 0x5f9f5f,
   highlight: 0x33ff33,
   ...STATUS_STANDARD,
+  ...SERIES_STANDARD,
 };
 
 // Vivid — cool blue-purple structure with a hot red-orange highlight.
@@ -101,6 +122,7 @@ const vivid: ApxmThemeTokens = {
   muted: 0x9090b0,
   highlight: 0xff6644,
   ...STATUS_STANDARD,
+  ...SERIES_STANDARD,
 };
 
 // Colorblind — neutral structure with a blue highlight and a CVD-safe burn
@@ -117,6 +139,10 @@ const colorblind: ApxmThemeTokens = {
   statusWarning: 0xf0e442, // yellow
   statusOk: 0x009e73, // bluish green
   statusSurplus: 0x56b4e9, // sky blue
+  statusInfo: 0x56b4e9, // sky blue
+  barCargo: 0xe69f00, // Okabe-Ito orange
+  barFuelStl: 0xf0e442, // Okabe-Ito yellow
+  barFuelFtl: 0x56b4e9, // Okabe-Ito sky blue
 };
 
 export interface ApxmThemePreset {

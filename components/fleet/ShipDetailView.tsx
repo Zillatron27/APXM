@@ -158,8 +158,8 @@ export function ShipDetailView({ shipId }: ShipDetailViewProps) {
       {/* Cargo: weight + volume */}
       <div className="space-y-1">
         <p className="text-[10px] uppercase tracking-wide text-apxm-text/40">Cargo</p>
-        <ProgressBar label="Weight" current={ship.cargo.current} max={ship.cargo.max} color="orange" unit="t" />
-        <ProgressBar label="Vol" current={ship.cargoVolume.current} max={ship.cargoVolume.max} color="orange" unit="m³" />
+        <ProgressBar label="Weight" current={ship.cargo.current} max={ship.cargo.max} color="cargo" unit="t" />
+        <ProgressBar label="Vol" current={ship.cargoVolume.current} max={ship.cargoVolume.max} color="cargo" unit="m³" />
         {holdContents.length > 0 && (
           <div className="flex flex-wrap gap-1.5 pt-1">
             {holdContents.map((item) => (
@@ -177,8 +177,8 @@ export function ShipDetailView({ shipId }: ShipDetailViewProps) {
       {/* Fuel: STL + FTL, whole units (fractional fuel adds noise here) */}
       <div className="space-y-1">
         <p className="text-[10px] uppercase tracking-wide text-apxm-text/40">Fuel</p>
-        <ProgressBar label="SF" current={Math.floor(ship.stlFuel.current)} max={Math.floor(ship.stlFuel.max)} color="yellow" unit="m³" />
-        <ProgressBar label="FF" current={Math.floor(ship.ftlFuel.current)} max={Math.floor(ship.ftlFuel.max)} color="blue" unit="m³" />
+        <ProgressBar label="SF" current={Math.floor(ship.stlFuel.current)} max={Math.floor(ship.stlFuel.max)} color="fuel-stl" unit="m³" />
+        <ProgressBar label="FF" current={Math.floor(ship.ftlFuel.current)} max={Math.floor(ship.ftlFuel.max)} color="fuel-ftl" unit="m³" />
       </div>
 
       {/* Actions — cargo pair and refuel pair share a row (half each) */}

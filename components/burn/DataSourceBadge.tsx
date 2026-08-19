@@ -9,8 +9,8 @@ interface DataSourceBadgeProps {
 /**
  * Small badge showing data source (WS/FIO) with age indicator.
  *
- * - WS (green): Real-time WebSocket data
- * - FIO (blue): Snapshot data from FIO REST API
+ * - WS (status-ok): real-time WebSocket data
+ * - FIO (status-info): snapshot data from FIO REST API
  */
 export function DataSourceBadge({ source, lastUpdated }: DataSourceBadgeProps) {
   if (!source) {
@@ -22,8 +22,8 @@ export function DataSourceBadge({ source, lastUpdated }: DataSourceBadgeProps) {
   const age = lastUpdated ? formatRelativeTime(lastUpdated) : '';
 
   const colorClass = isWebSocket
-    ? 'bg-green-600/20 text-green-400'
-    : 'bg-blue-600/20 text-blue-400';
+    ? 'bg-status-ok/20 text-status-ok'
+    : 'bg-status-info/20 text-status-info';
 
   return (
     <span

@@ -1,4 +1,4 @@
-export type BarColor = 'orange' | 'yellow' | 'blue';
+export type BarColor = 'cargo' | 'fuel-stl' | 'fuel-ftl';
 
 interface ProgressBarProps {
   current: number;
@@ -11,9 +11,9 @@ interface ProgressBarProps {
 }
 
 const colorStyles: Record<BarColor, string> = {
-  orange: 'bg-orange-500',
-  yellow: 'bg-yellow-500',
-  blue: 'bg-blue-500',
+  cargo: 'bg-bar-cargo',
+  'fuel-stl': 'bg-bar-fuel-stl',
+  'fuel-ftl': 'bg-bar-fuel-ftl',
 };
 
 /**

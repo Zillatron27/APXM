@@ -26,6 +26,13 @@ export default {
           warning: 'rgb(var(--apxm-status-warning-rgb) / <alpha-value>)',
           ok: 'rgb(var(--apxm-status-ok-rgb) / <alpha-value>)',
           surplus: 'rgb(var(--apxm-status-surplus-rgb) / <alpha-value>)',
+          info: 'rgb(var(--apxm-status-info-rgb) / <alpha-value>)',
+        },
+        bar: {
+          // Data-series colours for the cargo/fuel ledger bars (ProgressBar).
+          cargo: 'rgb(var(--apxm-bar-cargo-rgb) / <alpha-value>)',
+          'fuel-stl': 'rgb(var(--apxm-bar-fuel-stl-rgb) / <alpha-value>)',
+          'fuel-ftl': 'rgb(var(--apxm-bar-fuel-ftl-rgb) / <alpha-value>)',
         },
       },
       fontFamily: {
