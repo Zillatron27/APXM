@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Panel, MaterialTile, btnPrimary, btnSecondary } from '../shared';
+import { Panel, MaterialTile, btnPrimary, btnSecondary, btnSegment } from '../shared';
 import {
   useSettingsStore,
   DEFAULT_THRESHOLDS,
@@ -89,11 +89,7 @@ function DevRefreshModePane() {
             <button
               key={option.id}
               onClick={() => selectMode(option.id)}
-              className={`flex-1 min-h-touch px-4 py-2 font-mono text-[11px] font-semibold uppercase tracking-wider ${
-                mode === option.id
-                  ? 'bg-prun-yellow text-apxm-bg'
-                  : 'border border-apxm-accent text-apxm-muted'
-              }`}
+              className={`flex-1 min-h-touch px-4 py-2 ${btnSegment(mode === option.id)}`}
             >
               {option.label}
             </button>
@@ -215,11 +211,7 @@ function DevBufferCardsPane() {
                   key={g.prefix}
                   onClick={() => toggleGroup(g.prefix)}
                   disabled={working !== null}
-                  className={`min-h-touch px-3 py-2 font-mono text-[11px] font-semibold uppercase tracking-wider ${
-                    selected.has(g.prefix)
-                      ? 'bg-prun-yellow text-apxm-bg'
-                      : 'border border-apxm-accent text-apxm-muted'
-                  }`}
+                  className={`min-h-touch px-3 py-2 ${btnSegment(selected.has(g.prefix))}`}
                 >
                   {g.prefix} ×{g.count}
                 </button>
@@ -671,11 +663,7 @@ export function SettingsView() {
               <button
                 key={option.label}
                 onClick={() => setPreferredCurrency(option.id)}
-                className={`flex-1 min-h-touch px-2 py-2 font-mono text-[11px] font-semibold uppercase tracking-wider ${
-                  preferredCurrency === option.id
-                    ? 'bg-prun-yellow text-apxm-bg'
-                    : 'border border-apxm-accent text-apxm-muted'
-                }`}
+                className={`flex-1 min-h-touch px-2 py-2 ${btnSegment(preferredCurrency === option.id)}`}
               >
                 {option.label}
               </button>
@@ -742,11 +730,7 @@ export function SettingsView() {
               <button
                 key={option.id}
                 onClick={() => setMaterialTheme(option.id)}
-                className={`flex-1 min-h-touch px-4 py-2 font-mono text-[11px] font-semibold uppercase tracking-wider ${
-                  materialTheme === option.id
-                    ? 'bg-prun-yellow text-apxm-bg'
-                    : 'border border-apxm-accent text-apxm-muted'
-                }`}
+                className={`flex-1 min-h-touch px-4 py-2 ${btnSegment(materialTheme === option.id)}`}
               >
                 {option.label}
               </button>
