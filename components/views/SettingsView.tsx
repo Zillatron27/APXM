@@ -16,6 +16,12 @@ import {
 } from '../../lib/buffer-refresh';
 import { useRefreshState } from '../../stores/refreshState';
 import { useSitesStore } from '../../stores/entities';
+import {
+  scanBufferCards,
+  deleteBufferCards,
+  commandPrefix,
+  type BufferCard,
+} from '../../lib/buffer-cards';
 
 const materialThemeOptions: { id: MaterialTheme; label: string }[] = [
   { id: 'rprun', label: 'rPrUn' },
@@ -109,6 +115,128 @@ function DevRefreshModePane() {
               : 'Refresh all bases'}
           </button>
         )}
+      </div>
+    </Panel>
+  );
+}
+
+/** Cards grouped by command prefix, largest group first. */
+export function groupCards(cards: BufferCard[]): { prefix: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const card of cards) {
+    const prefix = commandPrefix(card.command) || '(blank)';
+    counts.set(prefix, (counts.get(prefix) ?? 0) + 1);
+  }
+  return Array.from(counts, ([prefix, count]) => ({ prefix, count })).sort(
+    (a, b) => b.count - a.count || a.prefix.localeCompare(b.prefix)
+  );
+}
+
+/**
+ * Dev-build-only buffer-card sweeper (#84 remedy): scan the Buffer stack,
+ * pick command groups, bulk-delete. Deletions are server-synced and APEX asks
+ * no confirmation, so the delete button carries the count — that tap is the
+ * informed commit. Nothing is pre-selected.
+ */
+function DevBufferCardsPane() {
+  const [cards, setCards] = useState<BufferCard[] | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [working, setWorking] = useState<'scan' | 'delete' | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function handleScan(): Promise<void> {
+    if (working) return;
+    setWorking('scan');
+    setMessage(null);
+    setSelected(new Set());
+    const result = await scanBufferCards();
+    if (result.ok) {
+      setCards(result.cards);
+      if (result.cards.length === 0) setMessage('Buffer stack is empty.');
+    } else {
+      setMessage(result.error);
+    }
+    setWorking(null);
+  }
+
+  async function handleDelete(): Promise<void> {
+    if (working || selected.size === 0) return;
+    setWorking('delete');
+    setMessage(null);
+    const result = await deleteBufferCards(selected);
+    setMessage(
+      result.ok
+        ? `Deleted ${result.deleted} card${result.deleted === 1 ? '' : 's'}.`
+        : `Deleted ${result.deleted}, then failed: ${result.error}`
+    );
+    // Rescan is authoritative after any deletes; drop the stale inventory.
+    setCards(null);
+    setSelected(new Set());
+    setWorking(null);
+  }
+
+  function toggleGroup(prefix: string): void {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(prefix)) next.delete(prefix);
+      else next.add(prefix);
+      return next;
+    });
+  }
+
+  const groups = cards ? groupCards(cards) : [];
+  const selectedCount = cards
+    ? cards.filter((c) => selected.has(commandPrefix(c.command) || '(blank)')).length
+    : 0;
+
+  return (
+    <Panel title="Buffer Cards" code="DEV">
+      <div className="space-y-3">
+        <p className="text-xs text-apxm-muted">
+          Driven actions leave junk cards in the BUFFER stack. Scan, pick
+          command groups, delete. Deletion is immediate — APEX asks no
+          confirmation.
+        </p>
+
+        <button
+          onClick={handleScan}
+          disabled={working !== null}
+          className={`${btnSecondary} w-full min-h-touch`}
+        >
+          {working === 'scan' ? 'Scanning…' : 'Scan buffer cards'}
+        </button>
+
+        {groups.length > 0 && (
+          <>
+            <div className="flex flex-wrap gap-2">
+              {groups.map((g) => (
+                <button
+                  key={g.prefix}
+                  onClick={() => toggleGroup(g.prefix)}
+                  disabled={working !== null}
+                  className={`min-h-touch px-3 py-2 font-mono text-[11px] font-semibold uppercase tracking-wider ${
+                    selected.has(g.prefix)
+                      ? 'bg-prun-yellow text-apxm-bg'
+                      : 'border border-apxm-accent text-apxm-muted'
+                  }`}
+                >
+                  {g.prefix} ×{g.count}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={handleDelete}
+              disabled={working !== null || selectedCount === 0}
+              className={`${btnPrimary} w-full min-h-touch disabled:opacity-30`}
+            >
+              {working === 'delete'
+                ? 'Deleting…'
+                : `Delete ${selectedCount} card${selectedCount === 1 ? '' : 's'}`}
+            </button>
+          </>
+        )}
+
+        {message && <p className="text-xs font-mono text-apxm-text">{message}</p>}
       </div>
     </Panel>
   );
@@ -647,6 +775,7 @@ export function SettingsView() {
       </Panel>
 
       {__DEV__ && <DevRefreshModePane />}
+      {__DEV__ && <DevBufferCardsPane />}
     </div>
   );
 }
