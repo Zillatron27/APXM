@@ -362,17 +362,24 @@ export function SendShipView({ shipId, registration, onClose }: SendShipViewProp
                 ['Surface landing', snapshot?.surfaceLanding],
                 ['Unload on arrival', snapshot?.unloadOnArrival],
               ] as const
-            ).map(([label, active]) => (
-              <button
-                key={label}
-                type="button"
-                className={active ? chipActive : chip}
-                disabled={busy}
-                onClick={() => drive(() => sessionRef.current!.toggle(label))}
-              >
-                {label}
-              </button>
-            ))}
+            ).map(([label, active], index, options) => {
+              // A lone trailing option spans both columns and centres itself
+              // at a single column's width (the SET theme-picker idiom).
+              const isLoneLast = index === options.length - 1 && options.length % 2 === 1;
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  className={`${active ? chipActive : chip} ${
+                    isLoneLast ? 'col-span-2 justify-self-center w-[calc(50%-0.125rem)]' : ''
+                  }`}
+                  disabled={busy}
+                  onClick={() => drive(() => sessionRef.current!.toggle(label))}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
