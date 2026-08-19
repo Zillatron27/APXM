@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Panel, MaterialTile, btnPrimary, btnSecondary } from '../shared';
+import { Panel, MaterialTile, btnPrimary, btnSecondary, btnSegment } from '../shared';
 import {
   useSettingsStore,
   DEFAULT_THRESHOLDS,
@@ -8,6 +8,7 @@ import {
 } from '../../stores/settings';
 import { testConnection, populateStoresFromFio, type FioProgressStep } from '../../lib/fio';
 import { clearAllCache } from '../../stores/cache';
+import { formatRelativeTimeVerbose } from '../../lib/format-time';
 import { themePresets } from '../../lib/theme';
 import {
   setRefreshMode as applyRefreshMode,
@@ -88,11 +89,7 @@ function DevRefreshModePane() {
             <button
               key={option.id}
               onClick={() => selectMode(option.id)}
-              className={`flex-1 min-h-touch px-4 py-2 font-mono text-[11px] font-semibold uppercase tracking-wider ${
-                mode === option.id
-                  ? 'bg-prun-yellow text-apxm-bg'
-                  : 'border border-apxm-accent text-apxm-muted'
-              }`}
+              className={`flex-1 min-h-touch px-4 py-2 ${btnSegment(mode === option.id)}`}
             >
               {option.label}
             </button>
@@ -214,11 +211,7 @@ function DevBufferCardsPane() {
                   key={g.prefix}
                   onClick={() => toggleGroup(g.prefix)}
                   disabled={working !== null}
-                  className={`min-h-touch px-3 py-2 font-mono text-[11px] font-semibold uppercase tracking-wider ${
-                    selected.has(g.prefix)
-                      ? 'bg-prun-yellow text-apxm-bg'
-                      : 'border border-apxm-accent text-apxm-muted'
-                  }`}
+                  className={`min-h-touch px-3 py-2 ${btnSegment(selected.has(g.prefix))}`}
                 >
                   {g.prefix} ×{g.count}
                 </button>
@@ -248,14 +241,6 @@ const STEP_LABELS: Record<FioProgressStep, string> = {
   storage: 'Storage',
   production: 'Production',
 };
-
-function formatRelativeTime(timestamp: number): string {
-  const seconds = Math.floor((Date.now() - timestamp) / 1000);
-  if (seconds < 60) return 'just now';
-  if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
-  return `${Math.floor(seconds / 86400)} days ago`;
-}
 
 export function validateThresholds(
   critical: number,
@@ -632,7 +617,7 @@ export function SettingsView() {
           <div className="flex items-center justify-between text-sm">
             <span className="text-apxm-muted">Last refresh:</span>
             <span className="text-apxm-text">
-              {fio.lastFetch ? formatRelativeTime(fio.lastFetch) : 'Never'}
+              {fio.lastFetch ? formatRelativeTimeVerbose(fio.lastFetch) : 'Never'}
             </span>
           </div>
 
@@ -678,11 +663,7 @@ export function SettingsView() {
               <button
                 key={option.label}
                 onClick={() => setPreferredCurrency(option.id)}
-                className={`flex-1 min-h-touch px-2 py-2 font-mono text-[11px] font-semibold uppercase tracking-wider ${
-                  preferredCurrency === option.id
-                    ? 'bg-prun-yellow text-apxm-bg'
-                    : 'border border-apxm-accent text-apxm-muted'
-                }`}
+                className={`flex-1 min-h-touch px-2 py-2 ${btnSegment(preferredCurrency === option.id)}`}
               >
                 {option.label}
               </button>
@@ -749,11 +730,7 @@ export function SettingsView() {
               <button
                 key={option.id}
                 onClick={() => setMaterialTheme(option.id)}
-                className={`flex-1 min-h-touch px-4 py-2 font-mono text-[11px] font-semibold uppercase tracking-wider ${
-                  materialTheme === option.id
-                    ? 'bg-prun-yellow text-apxm-bg'
-                    : 'border border-apxm-accent text-apxm-muted'
-                }`}
+                className={`flex-1 min-h-touch px-4 py-2 ${btnSegment(materialTheme === option.id)}`}
               >
                 {option.label}
               </button>

@@ -39,6 +39,10 @@ const VAR_NAMES: Record<keyof ApxmThemeTokens, string> = {
   statusWarning: '--apxm-status-warning',
   statusOk: '--apxm-status-ok',
   statusSurplus: '--apxm-status-surplus',
+  statusInfo: '--apxm-status-info',
+  barCargo: '--apxm-bar-cargo',
+  barFuelStl: '--apxm-bar-fuel-stl',
+  barFuelFtl: '--apxm-bar-fuel-ftl',
 };
 
 // Tracks the applied id so the store subscription (which fires on every

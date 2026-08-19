@@ -18,3 +18,11 @@ export function useLoadableMaterials(shipId: string): LoadableList {
     );
   }, [shipId, shipsUpdated, storageUpdated, materialsUpdated]);
 }
+
+/** User-facing copy for each unavailable reason, shared by the ship sheet and the picker. */
+export const LOADABLE_REASON_TEXT: Record<string, string> = {
+  'no-hold': 'Hold data unavailable',
+  'hold-full': 'Hold is full',
+  'nothing-loadable': 'Nothing loadable at this location',
+  'no-reference-data': 'Material data loading',
+};

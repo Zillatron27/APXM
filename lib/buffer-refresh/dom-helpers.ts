@@ -6,6 +6,8 @@
  * callers decide how to handle missing elements.
  */
 
+import { warn } from '../debug/logger';
+
 // -- Saved styles type --
 
 export interface SavedStyles {
@@ -225,7 +227,7 @@ export function setInputValue(input: HTMLInputElement, value: string): void {
   }
 
   // Fallback: simulate typing each character (Firefox Xray workaround)
-  console.log('[APXM BufferRefresh] Native setter failed, falling back to keyboard events');
+  warn('[APXM BufferRefresh] Native setter failed, falling back to keyboard events');
   input.focus();
   for (const char of value) {
     input.dispatchEvent(new KeyboardEvent('keydown', { key: char, bubbles: true }));

@@ -27,3 +27,12 @@ export const btnPrimary =
   'font-mono text-[11px] font-bold tracking-wider uppercase ' +
   'bg-prun-yellow text-apxm-bg border border-prun-yellow ' +
   btnPress;
+
+/**
+ * Segmented-control option (mode pickers, filter-style option groups): the
+ * selected segment reads as btnPrimary, the rest as btnSecondary. Callers add
+ * their own layout classes (flex-1, min-h-touch, padding).
+ */
+export function btnSegment(active: boolean): string {
+  return active ? btnPrimary : btnSecondary;
+}

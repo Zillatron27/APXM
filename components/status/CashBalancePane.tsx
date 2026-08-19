@@ -87,7 +87,7 @@ export function CashBalancePane() {
         <button
           onClick={() => setExpanded(!expanded)}
           aria-expanded={expanded}
-          className="w-full min-h-[44px] flex flex-col items-stretch justify-start text-left hover:bg-apxm-accent/30"
+          className="w-full min-h-touch flex flex-col items-stretch justify-start text-left hover:bg-apxm-accent/30"
         >
           <BalanceRow
             currency={primary.currency}

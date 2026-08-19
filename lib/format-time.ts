@@ -17,6 +17,18 @@ export function formatRelativeTime(timestamp: number): string {
 }
 
 /**
+ * Verbose relative time for settings-style prose (e.g. "5 minutes ago",
+ * "2 hours ago"). Use formatRelativeTime for the compact data-display form.
+ */
+export function formatRelativeTimeVerbose(timestamp: number): string {
+  const seconds = Math.floor((Date.now() - timestamp) / 1000);
+  if (seconds < 60) return 'just now';
+  if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`;
+  return `${Math.floor(seconds / 86400)} days ago`;
+}
+
+/**
  * Formats a days-remaining figure for display. Infinity (net-positive or
  * zero-rate burn) renders as the infinity symbol; finite values render as
  * a rounded-down integer with a `d` suffix. Null/undefined renders as ∞

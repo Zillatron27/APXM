@@ -5,6 +5,7 @@ import { useGameState } from '../../stores/gameState';
 import { useConnectionStore } from '../../stores/connection';
 import { useConnectionStatus } from '../../hooks/useConnectionStatus';
 import type { PrunApi } from '../../types/prun-api';
+import { formatDeadline } from '../contracts/format';
 
 // Active statuses that need attention
 const ACTIVE_STATUSES: PrunApi.ContractStatus[] = ['OPEN', 'CLOSED', 'PARTIALLY_FULFILLED'];
@@ -43,17 +44,6 @@ function getConditionTypeLabel(type: PrunApi.ContractConditionType): string {
     FINISH_FLIGHT: 'Flight',
   };
   return labels[type] ?? type.toLowerCase().replace(/_/g, ' ');
-}
-
-function formatDeadline(dueDate: number): string {
-  const now = Date.now();
-  const diffMs = dueDate - now;
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays < 0) return 'Overdue';
-  if (diffDays === 0) return 'Today';
-  if (diffDays === 1) return '1d';
-  return `${diffDays}d`;
 }
 
 function getDeadlineColor(dueDate: number | null): string {
@@ -147,7 +137,7 @@ export function ContractsMiniList({ handle }: { handle?: ReactNode }) {
                 <div className="text-sm text-apxm-text truncate">{contract.partnerName}</div>
               </div>
               <span className={`font-mono text-xs whitespace-nowrap ${getDeadlineColor(contract.dueDate)}`}>
-                {contract.dueDate ? formatDeadline(contract.dueDate) : '--'}
+                {formatDeadline(contract.dueDate)}
               </span>
             </div>
           );
