@@ -32,8 +32,8 @@ export interface FioConfig {
  *  (cash) and attention panels are pinned above these and are not reorderable.
  *  reconcileOrder() appends ids missing from a persisted order, so adding a
  *  panel here needs no migration. */
-export type StatusPanelId = 'bases' | 'fleet' | 'contracts' | 'empire' | 'alerts';
-export const STATUS_PANEL_IDS: StatusPanelId[] = ['bases', 'fleet', 'contracts', 'empire', 'alerts'];
+export type StatusPanelId = 'bases' | 'fleet' | 'contracts' | 'empire';
+export const STATUS_PANEL_IDS: StatusPanelId[] = ['bases', 'fleet', 'contracts', 'empire'];
 
 interface SettingsState {
   burnThresholds: BurnThresholds;

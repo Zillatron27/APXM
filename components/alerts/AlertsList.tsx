@@ -6,17 +6,9 @@ import { scopeAlerts } from '../../lib/alert-scope';
 import { markAllAlertsRead } from '../../lib/alert-actions';
 import { AlertRow } from './AlertRow';
 
-interface AlertsListProps {
-  /** Show at most this many rows; the rest are summarised by `overflow`. */
-  limit?: number;
-  /** Renders the "+N more" affordance when `limit` truncates the list. */
-  overflow?: (hidden: number) => React.ReactNode;
-}
-
 /**
- * The unread alerts list body shared by the Status-tab mirror (AlertsPanel)
- * and the full Notifications view (AlertsView), so both render the same
- * rows, empty states, and MARK ALL READ behaviour.
+ * The unread alerts list body of the Notifications view: rows, empty
+ * states, and MARK ALL READ.
  *
  * Unread only: the login snapshot carries the full NOTS history, which is
  * several screens of already-read noise. Read alerts live in APEX's NOTS
@@ -24,7 +16,7 @@ interface AlertsListProps {
  * unread is reported as a count, never interleaved — the row set is the
  * player's own context only (see lib/alert-scope.ts).
  */
-export function AlertsList({ limit, overflow }: AlertsListProps) {
+export function AlertsList() {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fetched = useAlertsStore((s) => s.fetched);
@@ -36,8 +28,6 @@ export function AlertsList({ limit, overflow }: AlertsListProps) {
     () => scopeAlerts(Array.from(entities.values()), contexts, companyContextId),
     [entities, contexts, companyContextId]
   );
-  const rows = limit === undefined ? own : own.slice(0, limit);
-  const hidden = own.length - rows.length;
 
   async function handleMarkAllRead(): Promise<void> {
     if (running) return;
@@ -74,10 +64,9 @@ export function AlertsList({ limit, overflow }: AlertsListProps) {
         <p className="text-xs text-apxm-muted">No unread notifications</p>
       ) : (
         <div className="space-y-1">
-          {rows.map((alert) => (
+          {own.map((alert) => (
             <AlertRow key={alert.id} alert={alert} />
           ))}
-          {hidden > 0 && overflow?.(hidden)}
         </div>
       )}
       {fetched && otherUnread > 0 && (
