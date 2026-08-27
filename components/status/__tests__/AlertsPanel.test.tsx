@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { AlertsPanel } from '../AlertsPanel';
 import { useAlertsStore } from '../../../stores/entities';
 import { useUserStore } from '../../../stores/user';
+import { useGameState } from '../../../stores/gameState';
 import { createTestAlert } from '../../../__tests__/fixtures/factories';
 
 // Unread-only panel: the login snapshot carries the full NOTS history, so an
@@ -64,17 +65,33 @@ describe('AlertsPanel (unread only)', () => {
     expect(html).toContain('No unread notifications');
   });
 
-  it('caps rows at 50 and counts only unread in the overflow line', () => {
-    const alerts = Array.from({ length: 55 }, (_, i) =>
+  it('caps rows at 5 and counts only unread in the overflow line', () => {
+    const alerts = Array.from({ length: 10 }, (_, i) =>
       createTestAlert({ id: `a-${i}`, read: false })
     ).concat(Array.from({ length: 20 }, (_, i) => createTestAlert({ id: `r-${i}`, read: true })));
     useAlertsStore.getState().setAll(alerts);
     useAlertsStore.getState().setFetched('websocket');
 
     const html = renderPanel();
-    expect(html).toContain('55 unread');
-    // 55 unread − 50 shown = 5; the 20 read alerts must not inflate this.
+    expect(html).toContain('10 unread');
+    // 10 unread − 5 shown = 5; the 20 read alerts must not inflate this.
     expect(html).toContain('+5 more unread');
+  });
+
+  it('overflow link opens the Notifications view', () => {
+    useAlertsStore.getState().setAll(
+      Array.from({ length: 6 }, (_, i) => createTestAlert({ id: `a-${i}`, read: false }))
+    );
+    useAlertsStore.getState().setFetched('websocket');
+    useGameState.setState({ alertsViewOpen: false });
+
+    renderPanel();
+    const link = Array.from(container.querySelectorAll('button')).find((el) =>
+      el.textContent?.includes('more unread')
+    );
+    act(() => link?.click());
+
+    expect(useGameState.getState().alertsViewOpen).toBe(true);
   });
 
   it('appends the corp count when other-context unread alerts exist', () => {

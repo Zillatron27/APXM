@@ -9,9 +9,15 @@ import { FleetView } from '../views/FleetView';
 import { BasesView } from '../views/BasesView';
 import { ContractsView } from '../views/ContractsView';
 import { SettingsView } from '../views/SettingsView';
+import { AlertsView } from '../alerts';
 
 function ViewContent() {
   const activeTab = useGameState((s) => s.activeTab);
+  const alertsViewOpen = useGameState((s) => s.alertsViewOpen);
+
+  // The Notifications view sits in the tab content slot rather than as a
+  // sheet, keeping detailView free for an alert's tap-through target.
+  if (alertsViewOpen) return <AlertsView />;
 
   switch (activeTab) {
     case 'status':
