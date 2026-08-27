@@ -1,5 +1,11 @@
 # APXM Changelog
 
+## 1.2.2 (2026-08-27)
+
+### Fixed
+
+- **Alerts list wiped when an alert was read in APEX** (#106) — the server confirms a mark-as-read with a partial alert list; APXM treated it as the full list. Alerts are now merged.
+
 ## 1.2.0 (2026-08-19)
 
 Ship actions
