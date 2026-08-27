@@ -1,6 +1,8 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Panel } from '../shared';
 import { useAlertsStore } from '../../stores/entities';
+import { useUserStore } from '../../stores/user';
+import { scopeAlerts } from '../../lib/alert-scope';
 import { AlertRow } from '../alerts';
 
 // Unread can still run long (the login snapshot arrives before APEX marks
@@ -23,15 +25,16 @@ export function AlertsPanel({ handle }: { handle?: ReactNode }) {
   const [collapsed, setCollapsed] = useState(true);
   const fetched = useAlertsStore((s) => s.fetched);
   const entities = useAlertsStore((s) => s.entities);
+  const contexts = useUserStore((s) => s.contexts);
+  const companyContextId = useUserStore((s) => s.companyContextId);
 
-  const unreadAlerts = useMemo(
-    () =>
-      Array.from(entities.values())
-        .filter((a) => !a.read)
-        .sort((a, b) => b.time.timestamp - a.time.timestamp),
-    [entities]
+  const { own, otherUnread, dropped } = useMemo(
+    () => scopeAlerts(Array.from(entities.values()), contexts, companyContextId),
+    [entities, contexts, companyContextId]
   );
-  const rows = unreadAlerts.slice(0, MAX_ROWS);
+  const rows = own.slice(0, MAX_ROWS);
+
+  const summary = `${own.length} unread${otherUnread > 0 ? ` · ${otherUnread} corp` : ''}`;
 
   return (
     <Panel
@@ -40,24 +43,33 @@ export function AlertsPanel({ handle }: { handle?: ReactNode }) {
       collapsible
       collapsed={collapsed}
       onToggleCollapse={() => setCollapsed((c) => !c)}
-      summary={`${unreadAlerts.length} unread`}
+      summary={summary}
       handle={handle}
     >
       {!fetched ? (
         <p className="text-xs text-apxm-muted">Waiting for game data...</p>
-      ) : unreadAlerts.length === 0 ? (
+      ) : own.length === 0 ? (
         <p className="text-xs text-apxm-muted">No unread notifications</p>
       ) : (
         <div className="space-y-1">
           {rows.map((alert) => (
             <AlertRow key={alert.id} alert={alert} />
           ))}
-          {unreadAlerts.length > MAX_ROWS && (
+          {own.length > MAX_ROWS && (
             <p className="text-[10px] text-apxm-muted pt-1">
-              +{unreadAlerts.length - MAX_ROWS} more unread — see NOTS in APEX
+              +{own.length - MAX_ROWS} more unread — see NOTS in APEX
             </p>
           )}
         </div>
+      )}
+      {/* Dev-only visibility into the unreachable-context filter — outside
+          the list branch so it still shows when the filter removed
+          everything, which is the case worth seeing. Never shown to users:
+          there is nothing they can act on for these alerts. */}
+      {__DEV__ && fetched && dropped > 0 && (
+        <p className="text-[10px] text-apxm-muted pt-1">
+          {dropped} from unreachable contexts hidden
+        </p>
       )}
     </Panel>
   );

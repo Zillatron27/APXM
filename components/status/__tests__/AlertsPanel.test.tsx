@@ -3,6 +3,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { AlertsPanel } from '../AlertsPanel';
 import { useAlertsStore } from '../../../stores/entities';
+import { useUserStore } from '../../../stores/user';
 import { createTestAlert } from '../../../__tests__/fixtures/factories';
 
 // Unread-only panel: the login snapshot carries the full NOTS history, so an
@@ -27,6 +28,7 @@ function renderPanel(): string {
 
 beforeEach(() => {
   useAlertsStore.getState().clear();
+  useUserStore.getState().clear();
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
@@ -73,5 +75,32 @@ describe('AlertsPanel (unread only)', () => {
     expect(html).toContain('55 unread');
     // 55 unread − 50 shown = 5; the 20 read alerts must not inflate this.
     expect(html).toContain('+5 more unread');
+  });
+
+  it('appends the corp count when other-context unread alerts exist', () => {
+    useUserStore.getState().setUser([
+      { id: 'company-1', type: 'COMPANY' },
+      { id: 'corp-1', type: 'CORPORATION' },
+    ]);
+    useAlertsStore.getState().setAll([
+      createTestAlert({ id: 'own', contextId: 'company-1', read: false }),
+      createTestAlert({ id: 'corp', contextId: 'corp-1', read: false }),
+    ]);
+    useAlertsStore.getState().setFetched('websocket');
+
+    const html = renderPanel();
+    expect(html).toContain('1 unread · 1 corp');
+  });
+
+  it('omits the corp suffix when there is no other-context unread', () => {
+    useUserStore.getState().setUser([{ id: 'company-1', type: 'COMPANY' }]);
+    useAlertsStore.getState().setAll([
+      createTestAlert({ id: 'own', contextId: 'company-1', read: false }),
+    ]);
+    useAlertsStore.getState().setFetched('websocket');
+
+    const html = renderPanel();
+    expect(html).toContain('1 unread');
+    expect(html).not.toContain('corp');
   });
 });

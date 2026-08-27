@@ -27,6 +27,7 @@ import {
 } from '../../__tests__/fixtures/factories';
 import { useSiteSourceStore } from '../site-data-sources';
 import { useCompanyStore } from '../company';
+import { useUserStore } from '../user';
 import { useWarehouseStore } from '../warehouses';
 import { useExchangeStore } from '../exchanges';
 import { useCxobStore } from '../cxob';
@@ -64,6 +65,7 @@ describe('message-handlers', () => {
     clearAllEntityStores();
     useSiteSourceStore.getState().clear();
     useCompanyStore.getState().clear();
+    useUserStore.getState().clear();
     useProductionLoadedStore.getState().clear();
     useWarehouseStore.getState().clear();
     useExchangeStore.getState().clear();
@@ -202,6 +204,21 @@ describe('message-handlers', () => {
       dispatchMessage('CLIENT_CONNECTION_OPENED', {});
 
       expect(useCompanyStore.getState().company).toBeNull();
+    });
+
+    it('clears user contexts on reconnection', () => {
+      // First connection
+      dispatchMessage('CLIENT_CONNECTION_OPENED', {});
+
+      useUserStore.getState().setUser([{ id: 'company-1', type: 'COMPANY' }]);
+      expect(useUserStore.getState().contexts).toHaveLength(1);
+      expect(useUserStore.getState().companyContextId).toBe('company-1');
+
+      // Reconnection — contexts re-arrive via USER_DATA, so clear is safe
+      dispatchMessage('CLIENT_CONNECTION_OPENED', {});
+
+      expect(useUserStore.getState().contexts).toHaveLength(0);
+      expect(useUserStore.getState().companyContextId).toBeUndefined();
     });
 
     it('increments reconnect count', () => {
@@ -599,6 +616,51 @@ describe('message-handlers', () => {
       expect(warnSpy).toHaveBeenCalledWith(
         '[APXM]',
         'COMPANY_DATA: unexpected payload structure',
+        expect.anything()
+      );
+
+      warnSpy.mockRestore();
+    });
+  });
+
+  describe('USER_DATA', () => {
+    it('populates contexts and derives companyContextId', () => {
+      dispatchMessage('USER_DATA', {
+        contexts: [
+          { id: 'company-1', type: 'COMPANY' },
+          { id: 'corp-1', type: 'CORPORATION' },
+        ],
+      });
+
+      expect(useUserStore.getState().contexts).toEqual([
+        { id: 'company-1', type: 'COMPANY' },
+        { id: 'corp-1', type: 'CORPORATION' },
+      ]);
+      expect(useUserStore.getState().companyContextId).toBe('company-1');
+    });
+
+    it('skips context entries missing id or type', () => {
+      dispatchMessage('USER_DATA', {
+        contexts: [
+          { id: 'company-1', type: 'COMPANY' },
+          { id: 'no-type' },
+          { type: 'CORPORATION' },
+        ],
+      });
+
+      expect(useUserStore.getState().contexts).toEqual([{ id: 'company-1', type: 'COMPANY' }]);
+    });
+
+    it('discards a non-array payload and increments discarded', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      dispatchMessage('USER_DATA', { contexts: 'nonsense' });
+
+      expect(useUserStore.getState().contexts).toEqual([]);
+      expect(useConnectionStore.getState().discardedMessages).toBe(1);
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[APXM]',
+        'USER_DATA: unexpected payload structure',
         expect.anything()
       );
 

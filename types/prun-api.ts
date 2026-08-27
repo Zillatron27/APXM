@@ -603,6 +603,22 @@ export namespace PrunApi {
   }
 
   // ============================================================================
+  // User / Context Types (from the USER_DATA login message, refined-prun's
+  // user-data model). Only the fields APXM consumes are declared here — the
+  // real USER_DATA message carries many more (profile, settings, etc).
+  // ============================================================================
+
+  /** One context the user can reach: their own COMPANY, or a corporation. */
+  export interface UserContext {
+    id: string;
+    type: string;
+  }
+
+  export interface UserData {
+    contexts: UserContext[];
+  }
+
+  // ============================================================================
   // Alert Types (the NOTS buffer's data — shapes from refined-prun's
   // alerts.types.d.ts). Alerts carry NO display text: the game composes the
   // string client-side from `type` + `data`, so APXM does the same
