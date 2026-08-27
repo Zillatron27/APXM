@@ -34,10 +34,17 @@ export default defineContentScript({
       }
     });
 
-    // APXM is a mobile-only overlay. On desktop (no coarse pointer) it stays
-    // dormant so the native APEX client is left untouched — unless ?apxm_force
-    // is set for testing the overlay on a desktop browser.
-    const isMobile = window.matchMedia('(pointer: coarse)').matches;
+    // APXM is a mobile-only overlay. On desktop it stays dormant so the native
+    // APEX client is left untouched — unless ?apxm_force is set for testing.
+    //
+    // Two touch signals, either is enough (#98): Android Firefox's "Desktop
+    // site" mode spoofs the viewport so far that `pointer: coarse` fails, yet
+    // PrUn only serves desktop APEX to that mode — so a guard on pointer style
+    // alone locks real phone users out. `navigator.maxTouchPoints` reports the
+    // hardware and survives the spoof.
+    const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
+    const touchHardware = navigator.maxTouchPoints > 0;
+    const isMobile = coarsePointer || touchHardware;
     const forceEnabled = new URLSearchParams(window.location.search).has('apxm_force');
     if (!isMobile && !forceEnabled) {
       return;
@@ -48,7 +55,11 @@ export default defineContentScript({
     if (debug) {
       createOverlay();
       markStep(1, 'ok');
-      markStep(2, 'ok', isMobile ? 'mobile detected' : 'forced via ?apxm_force');
+      markStep(
+        2,
+        'ok',
+        coarsePointer ? 'coarse pointer' : touchHardware ? `touch points: ${navigator.maxTouchPoints}` : 'forced via ?apxm_force',
+      );
     }
 
     // 1. Inject main-world interceptor (includes script blocker)
