@@ -52,7 +52,13 @@ export function commandPrefix(command: string): string {
   return command.trim().split(/\s+/)[0]?.toUpperCase() ?? '';
 }
 
-function findCardRows(): HTMLElement[] {
+/**
+ * Exported for mobile-buffer-navigator's appended-card sweep (a driven click
+ * inside a buffer can open a further buffer as a new card, distinct from the
+ * cards this module tracks by command — see closeMobileBuffer's sweepAppended
+ * option).
+ */
+export function findCardRows(): HTMLElement[] {
   const container = getContainer();
   if (!container) return [];
   return Array.from(container.querySelectorAll<HTMLElement>('li')).filter((li) =>
@@ -248,6 +254,18 @@ export async function deleteLastCardMatching(command: string): Promise<boolean> 
     const matches = rows.filter((li) => li.textContent?.toLowerCase().includes(needle));
     return matches[matches.length - 1] ?? null;
   });
+  return result.done ? false : result.ok;
+}
+
+/**
+ * Delete the LAST card in the open card list, whatever it is. Used by the
+ * appended-card sweep (mobile-buffer-navigator's sweepAppended option), which
+ * removes cards by POSITION (everything past the count recorded at open time)
+ * rather than by command — the card it's cleaning up wasn't created by any
+ * command APXM issued, so there's no command text to match against.
+ */
+export async function deleteLastCard(): Promise<boolean> {
+  const result = await removeCardRow((rows) => rows[rows.length - 1] ?? null);
   return result.done ? false : result.ok;
 }
 

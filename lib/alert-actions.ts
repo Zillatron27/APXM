@@ -1,7 +1,7 @@
 // NOTS mark-as-read passthrough (#93): the user taps READ on an APXM alert
 // row (or MARK ALL READ on the panel), and APXM drives APEX's own NOTS
 // buffer off-screen — open buffer, click APEX's row or "mark all as read"
-// button, observe the feedback overlay, close and restore. This satisfies
+// button, confirm via the alerts store, close and restore. This satisfies
 // the HARD RULE on action authorisation (see CLAUDE.md): APXM never sends
 // ALERTS_MARK_AS_READ itself. APEX sends that message and the server
 // confirms it; APXM only clicks a control that already exists in APEX's
@@ -18,13 +18,11 @@
 // the device-captured DOM shapes and wire trace this module implements.
 
 import { openMobileBuffer, closeMobileBuffer } from './mobile-buffer-navigator';
-import { waitActionFeedback } from './act/action-feedback';
 import { setupActGlobals } from './act/globals-setup';
 import { clickElement } from './act/_compat';
 import { acquireActionLock, releaseActionLock } from './act/action-lock';
 import { isApexButtonDisabled } from './act/apex-button';
-import { useSettingsStore } from '../stores/settings';
-import { useGameState } from '../stores/gameState';
+import { useAlertsStore } from '../stores/entities';
 
 export type AlertActionResult =
   | { ok: true }
@@ -61,6 +59,57 @@ export function findMarkAllReadButton(anchor: HTMLElement): HTMLElement | undefi
 }
 
 /**
+ * NOTS is a LIST buffer with no form (device finding 2026-08-27) — the
+ * default findReady (findBufferForm) never resolves and openMobileBuffer
+ * times out reporting a false "Failed to open NOTS". APEX always renders the
+ * "mark all as read" button, even against zero rows, so it's the readiness
+ * sentinel for this buffer.
+ */
+function notsReady(): HTMLElement | null {
+  const anchor = document.getElementById('container');
+  return anchor ? findMarkAllReadButton(anchor) ?? null : null;
+}
+
+/**
+ * Wait for the server's confirmation that `ids` are read, via the alerts
+ * store rather than APEX's ActionFeedback overlay. Device finding
+ * 2026-08-27: neither a NOTS row click nor "mark all as read" ever shows
+ * that overlay — it's a form-action mechanism, and NOTS has no form. The
+ * real confirmation is the server's ALERTS_ALERTS landing in the store, so
+ * that's what this polls for. Resolves true once every id is either
+ * `read === true` or has left the store entirely (aged out / superseded);
+ * false if `timeoutMs` elapses first. Always unsubscribes before returning.
+ */
+export function waitForAlertsRead(ids: string[], timeoutMs = 5000): Promise<boolean> {
+  const isSatisfied = () =>
+    ids.every((id) => {
+      const alert = useAlertsStore.getState().getById(id);
+      return alert === undefined || alert.read === true;
+    });
+
+  if (isSatisfied()) {
+    return Promise.resolve(true);
+  }
+
+  return new Promise<boolean>((resolve) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      unsubscribe();
+      resolve(false);
+    }, timeoutMs);
+    const unsubscribe = useAlertsStore.subscribe(() => {
+      if (settled || !isSatisfied()) return;
+      settled = true;
+      clearTimeout(timer);
+      unsubscribe();
+      resolve(true);
+    });
+  });
+}
+
+/**
  * Marks one alert read by opening NOTS and clicking APEX's own row for it —
  * the same click a user would make in APEX. There is no per-alert dismiss
  * control; the row itself is the only click target (see discovery spec).
@@ -71,7 +120,7 @@ export async function markAlertRead(alertId: string): Promise<AlertActionResult>
   }
   try {
     setupActGlobals();
-    const opened = await openMobileBuffer('NOTS');
+    const opened = await openMobileBuffer('NOTS', notsReady);
     const anchor = document.getElementById('container');
     if (!opened || !anchor) {
       return { ok: false, error: 'Failed to open NOTS' };
@@ -84,16 +133,16 @@ export async function markAlertRead(alertId: string): Promise<AlertActionResult>
         return { ok: false, error: 'Alert not found in NOTS — already read or removed' };
       }
       await clickElement(row);
-      const autoConfirm = useSettingsStore.getState().autoConfirm;
-      const error = await waitActionFeedback({ anchor }, autoConfirm, (pending) =>
-        useGameState.getState().setActConfirmPending(pending)
-      );
-      if (error) {
-        return { ok: false, error };
+      const confirmed = await waitForAlertsRead([alertId]);
+      if (!confirmed) {
+        return { ok: false, error: 'APEX did not confirm the read' };
       }
       return { ok: true };
     } finally {
-      await closeMobileBuffer();
+      // The click above marks the alert read AND opens its target buffer as
+      // a new appended card in the Buffer stack (device finding 2026-08-27)
+      // — a card no command of ours created, so it needs the opt-in sweep.
+      await closeMobileBuffer({ sweepAppended: true });
     }
   } finally {
     releaseActionLock();
@@ -112,7 +161,7 @@ export async function markAllAlertsRead(): Promise<AlertActionResult> {
   }
   try {
     setupActGlobals();
-    const opened = await openMobileBuffer('NOTS');
+    const opened = await openMobileBuffer('NOTS', notsReady);
     const anchor = document.getElementById('container');
     if (!opened || !anchor) {
       return { ok: false, error: 'Failed to open NOTS' };
@@ -125,13 +174,21 @@ export async function markAllAlertsRead(): Promise<AlertActionResult> {
       if (isApexButtonDisabled(button)) {
         return { ok: false, disabledInApex: true, error: 'Nothing unread in APEX' };
       }
+      // Captured BEFORE the click: APEX's own view of what's unread is
+      // authoritative, and the click empties this set server-side.
+      const unreadIds = useAlertsStore
+        .getState()
+        .getAll()
+        .filter((a) => a.read === false)
+        .map((a) => a.id);
       await clickElement(button);
-      const autoConfirm = useSettingsStore.getState().autoConfirm;
-      const error = await waitActionFeedback({ anchor }, autoConfirm, (pending) =>
-        useGameState.getState().setActConfirmPending(pending)
-      );
-      if (error) {
-        return { ok: false, error };
+      // If APXM's store somehow shows nothing unread but APEX's button was
+      // enabled, still wait — for an empty id list waitForAlertsRead
+      // resolves immediately, so this never blocks on a click that already
+      // happened.
+      const confirmed = await waitForAlertsRead(unreadIds);
+      if (!confirmed) {
+        return { ok: false, error: 'APEX did not confirm the read' };
       }
       return { ok: true };
     } finally {
