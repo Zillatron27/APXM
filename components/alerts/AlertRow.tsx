@@ -91,7 +91,7 @@ export function AlertRow({ alert }: { alert: PrunApi.Alert }) {
       {target && (
         <span
           aria-hidden
-          className={`shrink-0 px-2 py-1 font-mono text-[10px] text-prun-yellow ${keycapClasses}`}
+          className={`shrink-0 min-h-touch px-2 flex items-center font-mono text-[10px] text-prun-yellow ${keycapClasses}`}
         >
           {TARGET_CODE[target.type] ?? 'OPEN'} ›
         </span>
