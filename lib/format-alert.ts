@@ -79,6 +79,7 @@ const LABELS: LabelEntry[] = [
   },
   {
     types: [
+      'ADMIN_CENTER_ELECTION_REMINDER',
       'ADMIN_CENTER_ELECTION_STARTED',
       'ADMIN_CENTER_GOVERNOR_ELECTED',
       'ADMIN_CENTER_NO_GOVERNOR_ELECTED',
@@ -305,6 +306,7 @@ const CONTRACT_PHRASES: Partial<Record<PrunApi.AlertType, string>> = {
 // Fixed-text families: types whose meaning is fully carried by the type
 // itself; the place (when the game attaches one) is appended uniformly.
 const FIXED_TEXT: Partial<Record<PrunApi.AlertType, string>> = {
+  ADMIN_CENTER_ELECTION_REMINDER: 'Election reminder',
   ADMIN_CENTER_ELECTION_STARTED: 'Election started',
   ADMIN_CENTER_GOVERNOR_ELECTED: 'Governor elected',
   ADMIN_CENTER_NO_GOVERNOR_ELECTED: 'No governor elected',

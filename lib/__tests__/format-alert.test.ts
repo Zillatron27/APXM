@@ -79,6 +79,17 @@ describe('formatAlert — material chips', () => {
     expect(result.text).toBe('Production finished: 20x BER @ Montem');
   });
 
+  it('resolves the wire form seen on device: camelCase internal names matching FIO MaterialName', () => {
+    useMaterialsStore.getState().setAll([
+      { ticker: 'PWO', name: 'pioneerLuxuryDrink', category: 'consumables (luxury)', weight: 1, volume: 1 },
+    ]);
+    const result = formatAlert(
+      withData('COMEX_TRADE', [{ key: 'commodity', value: 'pioneerLuxuryDrink' }, { key: 'quantity', value: 40 }])
+    );
+    expect(result.material?.ticker).toBe('PWO');
+    expect(result.text).toBe('CX trade: 40x PWO');
+  });
+
   it('keeps the raw name when the lookup misses (FIO/APEX name drift)', () => {
     useMaterialsStore.getState().setAll([
       { ticker: 'BER', name: 'beryl', category: 'minerals', weight: 1, volume: 1 },

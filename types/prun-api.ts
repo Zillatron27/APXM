@@ -622,6 +622,7 @@ export namespace PrunApi {
   }
 
   export type AlertType =
+    | 'ADMIN_CENTER_ELECTION_REMINDER'
     | 'ADMIN_CENTER_ELECTION_STARTED'
     | 'ADMIN_CENTER_GOVERNOR_ELECTED'
     | 'ADMIN_CENTER_MOTION_ENDED'
