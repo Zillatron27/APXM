@@ -47,10 +47,10 @@ describe('AlertsPanel (unread only)', () => {
 
     const html = renderPanel();
     expect(html).toContain('1 unread');
-    // The read alert's category must not render (SHIP alerts are the only
-    // fleet-category row in this fixture set).
-    expect(html).toContain('production');
-    expect(html).not.toContain('fleet');
+    // The read alert's label must not render (SHIP_FLIGHT_ENDED is the only
+    // ARRIVAL row in this fixture set).
+    expect(html).toContain('PRODUCED');
+    expect(html).not.toContain('ARRIVAL');
   });
 
   it('reads "No unread notifications" when everything is read', () => {
