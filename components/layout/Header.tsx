@@ -80,16 +80,19 @@ export function Header() {
             <text x="64" y="94" textAnchor="middle" dominantBaseline="central" fill="#f7a600" fontFamily="'Courier New', monospace" fontWeight="bold" fontSize="54" letterSpacing="2">XM</text>
           </svg>
         </button>
-        <span className="text-xs text-apxm-muted">{BUILD_VERSION}</span>
+        {/* Identity + system state stack beside the logo: version over data
+            status. Keeps the left side "information" and the right side
+            "actions" (bell, SHOW APEX), and frees the 320pt header's width. */}
+        <div className="flex flex-col justify-center gap-0.5 leading-none">
+          <span className="text-xs text-apxm-muted">{BUILD_VERSION}</span>
+          <ConnectionStatusBadge />
+        </div>
       </div>
-      {/* gap-2 (not 3) and px-2 on SHOW APEX: with the bell added, the
-          320pt header only fits at these tighter spacings. */}
-      <div className="flex items-center gap-2">
-        <ConnectionStatusBadge />
+      <div className="flex items-center gap-3">
         <AlertsBell />
         <button
           onClick={() => setApexVisible(true)}
-          className={`px-2 min-h-touch flex items-center ${btnSecondary}`}
+          className={`px-3 min-h-touch flex items-center ${btnSecondary}`}
         >
           SHOW APEX
         </button>
