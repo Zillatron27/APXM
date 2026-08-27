@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { formatAlert, type AlertTone } from '../../lib/format-alert';
 import { formatRelativeTime } from '../../lib/format-time';
 import { resolveAlertTarget } from '../../lib/alert-target';
+import { markAlertRead } from '../../lib/alert-actions';
 import { useGameState, type DetailView } from '../../stores/gameState';
 import { useShipsStore, useContractsStore, useSitesStore } from '../../stores/entities';
 import { MaterialTile } from '../shared/MaterialTile';
+import { keycapClasses } from '../shared/keycap';
 import type { PrunApi } from '../../types/prun-api';
 
 // Label colour per severity, through the theme's status tokens so every
@@ -45,6 +48,19 @@ export function AlertRow({ alert }: { alert: PrunApi.Alert }) {
   useContractsStore((s) => s.entities);
   useSitesStore((s) => s.entities);
   const target = resolveAlertTarget(alert);
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleMarkRead(): Promise<void> {
+    if (running) return;
+    setRunning(true);
+    setError(null);
+    const result = await markAlertRead(alert.id);
+    setRunning(false);
+    // Success needs no local update: the store delta removes the row once
+    // APEX's ALERTS_ALERTS confirmation lands (see lib/alert-actions.ts).
+    if (!result.ok) setError(result.error);
+  }
 
   const content = (
     <>
@@ -64,18 +80,39 @@ export function AlertRow({ alert }: { alert: PrunApi.Alert }) {
     </>
   );
 
-  if (target) {
-    return (
-      <button
-        type="button"
-        onClick={() => setDetailView(target)}
-        aria-label={`${text}. Open ${DETAIL_NOUN[target.type] ?? target.type} detail.`}
-        className="w-full min-h-touch flex items-center gap-2 text-xs hover:bg-apxm-accent/30 active:bg-apxm-accent/50 transition-colors motion-reduce:transition-none"
-      >
-        {content}
-      </button>
-    );
-  }
-
-  return <div className="min-h-touch flex items-center gap-2 text-xs">{content}</div>;
+  return (
+    <div className="flex flex-col">
+      <div className="flex items-center gap-2">
+        {target ? (
+          <button
+            type="button"
+            onClick={() => setDetailView(target)}
+            aria-label={`${text}. Open ${DETAIL_NOUN[target.type] ?? target.type} detail.`}
+            className="flex-1 min-w-0 min-h-touch flex items-center gap-2 text-xs hover:bg-apxm-accent/30 active:bg-apxm-accent/50 transition-colors motion-reduce:transition-none"
+          >
+            {content}
+          </button>
+        ) : (
+          <div className="flex-1 min-w-0 min-h-touch flex items-center gap-2 text-xs">
+            {content}
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={handleMarkRead}
+          disabled={running}
+          aria-label={`Mark read: ${text}`}
+          className={`shrink-0 min-h-touch px-2 text-[10px] text-apxm-text/70 disabled:opacity-50 disabled:cursor-not-allowed ${keycapClasses}`}
+        >
+          {running ? '…' : 'READ'}
+        </button>
+      </div>
+      {error && (
+        <p className="text-[10px] text-status-critical pl-1">
+          <span aria-hidden>! </span>
+          {error}
+        </p>
+      )}
+    </div>
+  );
 }

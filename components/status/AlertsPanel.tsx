@@ -1,8 +1,9 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { Panel } from '../shared';
+import { Panel, btnSecondary } from '../shared';
 import { useAlertsStore } from '../../stores/entities';
 import { useUserStore } from '../../stores/user';
 import { scopeAlerts } from '../../lib/alert-scope';
+import { markAllAlertsRead } from '../../lib/alert-actions';
 import { AlertRow } from '../alerts';
 
 // Unread can still run long (the login snapshot arrives before APEX marks
@@ -23,6 +24,8 @@ const MAX_ROWS = 50;
  */
 export function AlertsPanel({ handle }: { handle?: ReactNode }) {
   const [collapsed, setCollapsed] = useState(true);
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const fetched = useAlertsStore((s) => s.fetched);
   const entities = useAlertsStore((s) => s.entities);
   const contexts = useUserStore((s) => s.contexts);
@@ -36,6 +39,17 @@ export function AlertsPanel({ handle }: { handle?: ReactNode }) {
 
   const summary = `${own.length} unread${otherUnread > 0 ? ` · ${otherUnread} corp` : ''}`;
 
+  async function handleMarkAllRead(): Promise<void> {
+    if (running) return;
+    setRunning(true);
+    setError(null);
+    const result = await markAllAlertsRead();
+    setRunning(false);
+    // Success needs no local update: the store clears via APEX's
+    // ALERTS_ALERTS confirmation (see lib/alert-actions.ts).
+    if (!result.ok) setError(result.error);
+  }
+
   return (
     <Panel
       title="Alerts"
@@ -46,6 +60,22 @@ export function AlertsPanel({ handle }: { handle?: ReactNode }) {
       summary={summary}
       handle={handle}
     >
+      <div className="flex justify-end mb-1">
+        <button
+          type="button"
+          onClick={handleMarkAllRead}
+          disabled={running || own.length === 0}
+          className={`min-h-touch px-3 text-xs ${btnSecondary} disabled:opacity-50 disabled:cursor-not-allowed`}
+        >
+          {running ? 'Working…' : 'MARK ALL READ'}
+        </button>
+      </div>
+      {error && (
+        <p className="text-xs text-status-critical pb-1">
+          <span aria-hidden>! </span>
+          {error}
+        </p>
+      )}
       {!fetched ? (
         <p className="text-xs text-apxm-muted">Waiting for game data...</p>
       ) : own.length === 0 ? (

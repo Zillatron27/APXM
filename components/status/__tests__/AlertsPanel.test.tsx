@@ -103,4 +103,34 @@ describe('AlertsPanel (unread only)', () => {
     expect(html).toContain('1 unread');
     expect(html).not.toContain('corp');
   });
+
+  describe('MARK ALL READ', () => {
+    function findMarkAllButton(): HTMLButtonElement {
+      const button = Array.from(container.querySelectorAll('button')).find(
+        (el) => el.textContent === 'MARK ALL READ'
+      );
+      expect(button).not.toBeUndefined();
+      return button as HTMLButtonElement;
+    }
+
+    it('is disabled when there are no own unread alerts', () => {
+      useAlertsStore.getState().setAll([createTestAlert({ id: 'a-read', read: true })]);
+      useAlertsStore.getState().setFetched('websocket');
+
+      renderPanel();
+
+      expect(findMarkAllButton().disabled).toBe(true);
+    });
+
+    it('is enabled when there are own unread alerts', () => {
+      useAlertsStore.getState().setAll([
+        createTestAlert({ id: 'a-unread', read: false }),
+      ]);
+      useAlertsStore.getState().setFetched('websocket');
+
+      renderPanel();
+
+      expect(findMarkAllButton().disabled).toBe(false);
+    });
+  });
 });
