@@ -30,6 +30,15 @@ const DETAIL_NOUN: Partial<Record<DetailView['type'], string>> = {
   production: 'production',
 };
 
+// Keycap text naming where a tap lands, in the tab bar's own codes so the
+// destination is recognisable without a legend.
+const TARGET_CODE: Partial<Record<DetailView['type'], string>> = {
+  ship: 'SHIP',
+  contract: 'CONT',
+  burn: 'BASE',
+  production: 'BASE',
+};
+
 /**
  * One row in the Alerts panel. Tap-through navigation (#91): an alert whose
  * target entity still exists renders as a button that opens the same detail
@@ -64,24 +73,29 @@ export function AlertRow({ alert }: { alert: PrunApi.Alert }) {
 
   const content = (
     <>
-      <span className={`font-mono text-[10px] w-16 shrink-0 ${TONE_CLASS[tone]}`}>
-        {tone === 'critical' ? '! ' : ''}
-        {label}
+      {/* Type label over the timestamp: one fixed column, freeing the right
+          edge for the target keycap + READ at 320pt. */}
+      <span className="flex flex-col gap-0.5 w-16 shrink-0 font-mono text-[10px] leading-none text-left">
+        <span className={TONE_CLASS[tone]}>
+          {tone === 'critical' ? '! ' : ''}
+          {label}
+        </span>
+        <span className="text-apxm-text/50">{formatRelativeTime(alert.time.timestamp)}</span>
       </span>
       {material?.ticker && <MaterialTile ticker={material.ticker} size="sm" />}
-      {/* Tappable rows read at full text strength with a highlight chevron;
-          plain rows drop to muted so the difference is visible at a glance
-          (device feedback: a 40% chevron alone wasn't). */}
-      <span className={`flex-1 min-w-0 text-left ${target ? 'text-apxm-text' : 'text-apxm-text/60'}`}>
-        {text}
-      </span>
-      <span className="font-mono text-[10px] text-apxm-text/50 shrink-0">
-        {formatRelativeTime(alert.time.timestamp)}
-      </span>
-      {/* Reserved width so interactive and plain rows align in the same column. */}
-      <span aria-hidden className="w-3 shrink-0 text-center text-prun-yellow/80">
-        {target ? '›' : ''}
-      </span>
+      <span className="flex-1 min-w-0 text-left text-apxm-text">{text}</span>
+      {/* The tappable affordance is the app's keycap, naming the destination
+          (device feedback: a chevron and text-weight cues were both missed).
+          Visual only — the whole row is the button. Plain rows render
+          nothing here; the row stays a plain div. */}
+      {target && (
+        <span
+          aria-hidden
+          className={`shrink-0 px-2 py-1 font-mono text-[10px] text-prun-yellow ${keycapClasses}`}
+        >
+          {TARGET_CODE[target.type] ?? 'OPEN'} ›
+        </span>
+      )}
     </>
   );
 

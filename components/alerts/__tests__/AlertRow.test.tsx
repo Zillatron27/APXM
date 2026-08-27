@@ -34,7 +34,7 @@ afterEach(() => {
 });
 
 describe('AlertRow', () => {
-  it('renders a button with a chevron for a resolvable alert and opens the detail sheet on tap', () => {
+  it('renders a button with a target keycap for a resolvable alert and opens the detail sheet on tap', () => {
     const ship = createTestShip({ name: 'Wanderer' });
     useShipsStore.getState().setOne(ship);
     const alert = createTestAlert({
@@ -49,7 +49,7 @@ describe('AlertRow', () => {
     const buttons = container.querySelectorAll('button');
     // Tap-through button + the READ button.
     expect(buttons.length).toBe(2);
-    expect(container.innerHTML).toContain('›');
+    expect(buttons[0].textContent).toContain('SHIP ›');
 
     act(() => {
       buttons[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -62,7 +62,7 @@ describe('AlertRow', () => {
     });
   });
 
-  it('renders a plain row with no chevron for an unresolvable alert, but still has a READ button', () => {
+  it('renders a plain row with no target keycap for an unresolvable alert, but still has a READ button', () => {
     const alert = createTestAlert({ type: 'COMEX_TRADE', data: [] });
 
     act(() => {
