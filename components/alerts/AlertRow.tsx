@@ -91,7 +91,7 @@ export function AlertRow({ alert }: { alert: PrunApi.Alert }) {
       {target && (
         <span
           aria-hidden
-          className={`shrink-0 min-h-touch px-2 flex items-center font-mono text-[10px] text-prun-yellow ${keycapClasses}`}
+          className={`shrink-0 min-h-touch w-14 flex items-center justify-center font-mono text-[10px] text-prun-yellow ${keycapClasses}`}
         >
           {TARGET_CODE[target.type] ?? 'OPEN'} ›
         </span>
@@ -121,7 +121,7 @@ export function AlertRow({ alert }: { alert: PrunApi.Alert }) {
           onClick={handleMarkRead}
           disabled={running}
           aria-label={`Mark read: ${text}`}
-          className={`shrink-0 min-h-touch px-2 text-[10px] text-apxm-text/70 disabled:opacity-50 disabled:cursor-not-allowed ${keycapClasses}`}
+          className={`shrink-0 min-h-touch w-14 text-[10px] text-apxm-text/70 disabled:opacity-50 disabled:cursor-not-allowed ${keycapClasses}`}
         >
           {running ? '…' : 'READ'}
         </button>
