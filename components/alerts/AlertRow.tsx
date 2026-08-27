@@ -69,12 +69,17 @@ export function AlertRow({ alert }: { alert: PrunApi.Alert }) {
         {label}
       </span>
       {material?.ticker && <MaterialTile ticker={material.ticker} size="sm" />}
-      <span className="flex-1 min-w-0 text-apxm-text text-left">{text}</span>
+      {/* Tappable rows read at full text strength with a highlight chevron;
+          plain rows drop to muted so the difference is visible at a glance
+          (device feedback: a 40% chevron alone wasn't). */}
+      <span className={`flex-1 min-w-0 text-left ${target ? 'text-apxm-text' : 'text-apxm-text/60'}`}>
+        {text}
+      </span>
       <span className="font-mono text-[10px] text-apxm-text/50 shrink-0">
         {formatRelativeTime(alert.time.timestamp)}
       </span>
       {/* Reserved width so interactive and plain rows align in the same column. */}
-      <span aria-hidden className="w-3 shrink-0 text-center text-apxm-text/40">
+      <span aria-hidden className="w-3 shrink-0 text-center text-prun-yellow/80">
         {target ? '›' : ''}
       </span>
     </>
