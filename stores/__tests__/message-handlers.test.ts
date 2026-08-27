@@ -538,6 +538,32 @@ describe('message-handlers', () => {
       expect(useAlertsStore.getState().dataSource).toBe('websocket');
     });
 
+    it('merges a partial ALERTS_ALERTS list delivered via ACTION_COMPLETED (mark-as-read)', () => {
+      dispatchMessage('ALERTS_ALERTS', {
+        alerts: [
+          createTestAlert({ id: 'a-1', read: false }),
+          createTestAlert({ id: 'a-2', read: false }),
+          createTestAlert({ id: 'a-3', read: false }),
+        ],
+      });
+
+      // Server confirms a mark-as-read with ACTION_COMPLETED wrapping
+      // ALERTS_ALERTS containing ONLY the changed alert, not the full list.
+      dispatchMessage('ACTION_COMPLETED', {
+        actionId: 'action-3',
+        status: 'COMPLETED',
+        message: {
+          messageType: 'ALERTS_ALERTS',
+          payload: { alerts: [createTestAlert({ id: 'a-2', read: true })] },
+        },
+      });
+
+      expect(useAlertsStore.getState().entities.size).toBe(3);
+      expect(useAlertsStore.getState().getById('a-1')?.read).toBe(false);
+      expect(useAlertsStore.getState().getById('a-2')?.read).toBe(true);
+      expect(useAlertsStore.getState().getById('a-3')?.read).toBe(false);
+    });
+
     it('ALERTS_ALERT upserts a single alert (delta)', () => {
       dispatchMessage('ALERTS_ALERT', createTestAlert({ id: 'a-1', read: false }));
       dispatchMessage('ALERTS_ALERT', createTestAlert({ id: 'a-1', read: true }));
