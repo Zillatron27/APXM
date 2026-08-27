@@ -457,7 +457,13 @@ export function initMessageHandlers(): void {
   typeHandlers.set('ALERTS_ALERTS', (msg: ProcessedMessage) => {
     const payload = extractPayload(msg) as { alerts?: PrunApi.Alert[] };
     if (Array.isArray(payload?.alerts)) {
-      useAlertsStore.getState().setAll(payload.alerts);
+      // Upsert, never replace: the login snapshot lands in a store that
+      // CLIENT_CONNECTION_OPENED has already cleared (so upsert == replace
+      // there anyway), removals arrive via ALERTS_ALERTS_DELETED, and this
+      // same messageType also arrives as a PARTIAL list wrapped inside
+      // ACTION_COMPLETED after a mark-as-read (only the changed alerts are
+      // included). setAll would wipe the rest of the alert list in that case.
+      useAlertsStore.getState().setMany(payload.alerts);
       useAlertsStore.getState().setFetched('websocket');
     } else {
       warn('ALERTS_ALERTS: unexpected payload structure', payload);
