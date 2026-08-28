@@ -5,6 +5,11 @@
 ### Fixed
 
 - **Alerts list wiped when an alert was read in APEX** (#106) — the server confirms a mark-as-read with a partial alert list; APXM treated it as the full list. Alerts are now merged.
+## 1.2.1 (2026-08-27)
+
+### Fixed
+
+- **APXM never activated on Android Firefox in Desktop site mode** (#98) — the mobile guard checked pointer style only, which Firefox's desktop mode spoofs away, while PrUn only serves the desktop APEX client to that mode. The guard now also accepts touch hardware (`navigator.maxTouchPoints`). The `?apxm_debug` overlay reports which signal activated APXM
 
 ## 1.2.0 (2026-08-19)
 
