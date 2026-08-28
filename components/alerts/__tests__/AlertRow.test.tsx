@@ -43,6 +43,8 @@ describe('AlertRow', () => {
     const buttons = container.querySelectorAll('button');
     expect(buttons.length).toBe(1);
     expect(buttons[0].textContent).toContain('SHIP ›');
+    // Resolved name replaces the registration in the row text.
+    expect(buttons[0].textContent).toContain('Wanderer arrived');
 
     act(() => {
       buttons[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));

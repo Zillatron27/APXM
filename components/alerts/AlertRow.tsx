@@ -46,7 +46,6 @@ const TARGET_CODE: Partial<Record<DetailView['type'], string>> = {
  */
 export function AlertRow({ alert }: { alert: PrunApi.Alert }) {
   const setDetailView = useGameState((s) => s.setDetailView);
-  const { text, label, tone, material } = formatAlert(alert);
   // The resolver reads these stores directly; subscribing here makes the row
   // re-render when a target entity arrives after the alert list did
   // (FIO/WS data landing late, reconnect refill), so the chevron appears as
@@ -55,6 +54,9 @@ export function AlertRow({ alert }: { alert: PrunApi.Alert }) {
   useContractsStore((s) => s.entities);
   useSitesStore((s) => s.entities);
   const target = resolveAlertTarget(alert);
+  const { text, label, tone, material } = formatAlert(alert, {
+    shipName: target?.type === 'ship' ? target.shipName : undefined,
+  });
   const content = (
     <>
       {/* Type label over the timestamp: one fixed column, freeing the right

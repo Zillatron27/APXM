@@ -119,6 +119,14 @@ describe('formatAlert — templates', () => {
     expect(result.text).toBe('AVI-04X21 arrived at Promitor');
   });
 
+  it('SHIP_FLIGHT_ENDED prefers a resolved ship name over the registration', () => {
+    const alert = withData('SHIP_FLIGHT_ENDED', [
+      { key: 'registration', value: 'AVI-04X21' },
+      { key: 'destination', value: { address: createAddress({ planetName: 'Promitor' }) } },
+    ]);
+    expect(formatAlert(alert, { shipName: 'Wanderer' }).text).toBe('Wanderer arrived at Promitor');
+  });
+
   it('workforce alerts carry the planet and escalate wording', () => {
     expect(formatAlert(withData('WORKFORCE_LOW_SUPPLIES', [planet('Vallis')])).text).toBe(
       'Workforce low on supplies @ Vallis'

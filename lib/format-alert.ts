@@ -357,7 +357,17 @@ const FIXED_TEXT: Partial<Record<PrunApi.AlertType, string>> = {
   WELCOME: 'Welcome to APEX',
 };
 
-export function formatAlert(alert: PrunApi.Alert): FormattedAlert {
+/**
+ * Entity names the caller has already resolved from the stores. formatAlert
+ * stays a pure transform over the wire payload; the row supplies these from
+ * the same resolution that drives its tap-through target, so text and keycap
+ * agree. Absent → the wire identifier (e.g. registration) is shown instead.
+ */
+export interface ResolvedNames {
+  shipName?: string;
+}
+
+export function formatAlert(alert: PrunApi.Alert, names: ResolvedNames = {}): FormattedAlert {
   const { label, tone } = labelFor(alert.type) ?? { label: 'APEX' as const, tone: 'neutral' as const };
   const base = { label, tone };
 
@@ -385,7 +395,12 @@ export function formatAlert(alert: PrunApi.Alert): FormattedAlert {
     case 'SHIP_FLIGHT_ENDED':
       return {
         ...base,
-        text: (str(alert, 'registration') ?? 'Ship') + ' arrived' + suffix(place(alert, 'destination'), ' at '),
+        // Players know ships by name; the registration is a wire id and only
+        // shows when the ship hasn't landed in the store yet.
+        text:
+          (names.shipName ?? str(alert, 'registration') ?? 'Ship') +
+          ' arrived' +
+          suffix(place(alert, 'destination'), ' at '),
       };
     case 'COGC_PROGRAM_CHANGED':
       return {
