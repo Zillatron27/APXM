@@ -28,13 +28,15 @@ const DETAIL_NOUN: Partial<Record<DetailView['type'], string>> = {
   production: 'production',
 };
 
-// Keycap text naming where a tap lands, in the tab bar's own codes so the
-// destination is recognisable without a legend.
-const TARGET_CODE: Partial<Record<DetailView['type'], string>> = {
+// Keycap text naming the detail sheet a tap opens — the destination, not
+// the tab it lives under, so PRODUCED reads PROD and a workforce alert
+// reads BURN (the same way a ship alert reads SHIP).
+const TARGET_CODE: Record<DetailView['type'], string> = {
   ship: 'SHIP',
   contract: 'CONT',
-  burn: 'BASE',
-  production: 'BASE',
+  burn: 'BURN',
+  production: 'PROD',
+  repair: 'REPAIR',
 };
 
 /**
@@ -79,7 +81,7 @@ export function AlertRow({ alert }: { alert: PrunApi.Alert }) {
           aria-hidden
           className={`shrink-0 min-h-touch w-14 flex items-center justify-center font-mono text-[10px] text-prun-yellow ${keycapClasses}`}
         >
-          {TARGET_CODE[target.type] ?? 'OPEN'} ›
+          {TARGET_CODE[target.type]} ›
         </span>
       )}
     </>

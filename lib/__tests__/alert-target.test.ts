@@ -36,6 +36,16 @@ describe('resolveAlertTarget — ships', () => {
     expect(target).toEqual({ type: 'ship', shipId: ship.id, shipName: 'Wanderer' });
   });
 
+  it('resolves SHIPYARD_PROJECT_FINISHED to the new ship once it is in the store', () => {
+    const ship = createTestShip({ name: 'Newbuild', registration: 'AVI-99ZZZ' });
+    useShipsStore.getState().setOne(ship);
+
+    const target = resolveAlertTarget(
+      withData('SHIPYARD_PROJECT_FINISHED', [{ key: 'registration', value: 'AVI-99ZZZ' }])
+    );
+    expect(target).toEqual({ type: 'ship', shipId: ship.id, shipName: 'Newbuild' });
+  });
+
   it('falls back to a registration scan when shipId is absent or unmatched', () => {
     const ship = createTestShip({ registration: 'XYZ-9999', name: 'Comet' });
     useShipsStore.getState().setOne(ship);

@@ -27,6 +27,9 @@ import { getSiteNameFromAddress } from '../core/burn';
 export function resolveAlertTarget(alert: PrunApi.Alert): DetailView | null {
   switch (alert.type) {
     case 'SHIP_FLIGHT_ENDED':
+    // A finished shipyard project is a new ship; it resolves only once the
+    // fleet store has it (same shipId/registration scan as an arrival).
+    case 'SHIPYARD_PROJECT_FINISHED':
       return resolveShipTarget(alert);
 
     case 'COMEX_PICKUP_CONTRACT_CREATED':
