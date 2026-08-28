@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { formatInventory, formatDailyRate } from '../../lib/format-burn';
 import type { BurnRate } from '../../core/burn';
 import { BurnBadge } from './BurnBadge';
 import { MaterialTile } from '../shared';
@@ -28,7 +29,6 @@ export function BurnRow({ burn }: BurnRowProps) {
   } = burn;
 
   const isConsuming = dailyAmount < 0;
-  const dailyDisplay = dailyAmount >= 0 ? `+${dailyAmount.toFixed(1)}` : dailyAmount.toFixed(1);
 
   // Only the active components — a zero line in the breakdown is noise
   const breakdown = [
@@ -55,12 +55,12 @@ export function BurnRow({ burn }: BurnRowProps) {
         <div className="flex items-center">
           {/* Inventory */}
           <span className="w-12 text-right font-mono text-xs text-apxm-text/70">
-            {Math.floor(inventoryAmount)}
+            {formatInventory(inventoryAmount)}
           </span>
 
           {/* Daily rate */}
           <span className={`w-20 text-right font-mono text-xs ${isConsuming ? 'text-status-critical' : 'text-status-ok'}`}>
-            {dailyDisplay}/d
+            {formatDailyRate(dailyAmount)}/d
           </span>
 
           {/* Days remaining */}
