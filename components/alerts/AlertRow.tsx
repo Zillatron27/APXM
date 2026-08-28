@@ -13,10 +13,10 @@ import type { PrunApi } from '../../types/prun-api';
 // preset (Colorblind included) renders it. Critical rows also carry a "!"
 // glyph — colour is never the only signal.
 const TONE_CLASS: Record<AlertTone, string> = {
-  critical: 'text-apxm-status-critical',
-  warning: 'text-apxm-status-warning',
-  ok: 'text-apxm-status-ok',
-  info: 'text-apxm-status-info',
+  critical: 'text-status-critical',
+  warning: 'text-status-warning',
+  ok: 'text-status-ok',
+  info: 'text-status-info',
   neutral: 'text-apxm-text/50',
 };
 
