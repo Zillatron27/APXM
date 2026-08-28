@@ -17,7 +17,6 @@ export function BurnRow({ burn }: BurnRowProps) {
   const [expanded, setExpanded] = useState(false);
   const {
     materialTicker,
-    materialName,
     dailyAmount,
     urgency,
     inventoryAmount,
@@ -83,11 +82,8 @@ export function BurnRow({ burn }: BurnRowProps) {
         }`}
       >
         <div className="overflow-hidden">
-          <div className="flex items-center justify-between gap-2 pb-1 text-[11px] text-apxm-text/50">
-            <span className="truncate">{materialName ?? materialTicker}</span>
-            {breakdown && (
-              <span className="font-mono shrink-0">{breakdown} /d</span>
-            )}
+          <div className="flex items-center justify-end pb-1 text-[11px] text-apxm-text/50">
+            {breakdown && <span className="font-mono">{breakdown} /d</span>}
           </div>
         </div>
       </div>

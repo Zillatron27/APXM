@@ -90,7 +90,7 @@ describe('formatAlert — material chips', () => {
     expect(result.text).toBe('CX trade: 40x PWO');
   });
 
-  it('keeps the raw name when the lookup misses (FIO/APEX name drift)', () => {
+  it('never shows the wire identifier when the lookup misses — placeholder in text, identifier kept for aria', () => {
     useMaterialsStore.getState().setAll([
       { ticker: 'BER', name: 'beryl', category: 'minerals', weight: 1, volume: 1 },
     ]);
@@ -98,7 +98,8 @@ describe('formatAlert — material chips', () => {
       withData('PRODUCTION_ORDER_FINISHED', [{ key: 'material', value: 'Beryl Crystals' }])
     );
     expect(result.material).toEqual({ ticker: undefined, name: 'Beryl Crystals', quantity: undefined });
-    expect(result.text).toBe('Production finished: Beryl Crystals');
+    expect(result.text).toBe('Production finished: ?');
+    expect(result.text).not.toContain('Beryl');
   });
 
   it('COMEX_ORDER_FILLED degrades gracefully without data', () => {

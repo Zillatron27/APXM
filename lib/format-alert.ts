@@ -1,6 +1,6 @@
 import type { PrunApi } from '../types/prun-api';
 import { getEntityDisplayName } from './address';
-import { useMaterialsStore } from '../stores/reference';
+import { resolveMaterialTicker } from './materials';
 
 /**
  * Alerts arrive with NO display text — just a type enum and {key, value}
@@ -46,7 +46,7 @@ export type AlertTone = 'critical' | 'warning' | 'ok' | 'info' | 'neutral';
 export interface AlertMaterial {
   /** Resolved ticker when the wire value could be matched; renders a tile. */
   ticker?: string;
-  /** The raw wire value — always present so a lookup miss still shows text. */
+  /** The raw wire identifier — kept for title/aria only, never rendered as text. */
   name: string;
   quantity?: number;
 }
@@ -252,20 +252,6 @@ function suffix(part: string | undefined, sep: string): string {
 }
 
 /** Reverse index of the FIO materials database, rebuilt when the store changes. */
-let nameToTicker: Map<string, string> | undefined;
-let indexedEntities: unknown;
-
-function tickerForName(name: string): string | undefined {
-  const state = useMaterialsStore.getState();
-  if (indexedEntities !== state.entities) {
-    nameToTicker = new Map(
-      Array.from(state.entities.values()).map((m) => [m.name.toLowerCase(), m.ticker])
-    );
-    indexedEntities = state.entities;
-  }
-  return nameToTicker?.get(name.toLowerCase());
-}
-
 /**
  * Resolve the alert's material reference. The wire value may be a ticker or
  * a display name (unconfirmed on device), and APEX names drift from FIO's
@@ -275,15 +261,19 @@ function tickerForName(name: string): string | undefined {
 function materialOf(alert: PrunApi.Alert, key: 'commodity' | 'material'): AlertMaterial | undefined {
   const raw = str(alert, key);
   if (!raw) return undefined;
-  const store = useMaterialsStore.getState();
-  const ticker = store.getById(raw.toUpperCase())?.ticker ?? tickerForName(raw);
-  return { ticker, name: raw, quantity: num(alert, 'quantity') };
+  return { ticker: resolveMaterialTicker(raw), name: raw, quantity: num(alert, 'quantity') };
 }
 
-/** "200x PE" / "200x Beryl Crystals" for the text line. */
+/**
+ * "200x PE" for the text line. An unresolved material shows a placeholder,
+ * never the wire identifier (see lib/materials.ts); the row exposes the
+ * identifier via title/aria on the chip.
+ */
+export const UNRESOLVED_MATERIAL = '?';
+
 function amountText(m: AlertMaterial | undefined): string | undefined {
   if (!m) return undefined;
-  const shown = m.ticker ?? m.name;
+  const shown = m.ticker ?? UNRESOLVED_MATERIAL;
   return m.quantity !== undefined ? `${m.quantity}x ${shown}` : shown;
 }
 

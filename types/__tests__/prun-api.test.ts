@@ -41,7 +41,7 @@ describe('PrunApi types and fixture factories', () => {
     it('representative entity shapes stay assignable', () => {
       const material: PrunApi.Material = {
         id: 'mat-123',
-        name: 'Basic Rations',
+        name: 'rations',
         ticker: 'RAT',
         category: 'consumables (basic)',
         weight: 0.21,

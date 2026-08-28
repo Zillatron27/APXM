@@ -1,4 +1,4 @@
-import { formatAlert, type AlertTone } from '../../lib/format-alert';
+import { formatAlert, UNRESOLVED_MATERIAL, type AlertTone } from '../../lib/format-alert';
 import { formatRelativeTime } from '../../lib/format-time';
 import { resolveAlertTarget } from '../../lib/alert-target';
 import { useGameState, type DetailView } from '../../stores/gameState';
@@ -70,7 +70,20 @@ export function AlertRow({ alert }: { alert: PrunApi.Alert }) {
         </span>
         <span className="text-apxm-text/50">{formatRelativeTime(alert.time.timestamp)}</span>
       </span>
-      {material?.ticker && <MaterialTile ticker={material.ticker} size="sm" />}
+      {material &&
+        (material.ticker ? (
+          <MaterialTile ticker={material.ticker} size="sm" />
+        ) : (
+          // Unresolved material: placeholder chip; the wire identifier is
+          // exposed to assistive tech and hover only (#103).
+          <span
+            title={material.name}
+            aria-label={`Unknown material ${material.name}`}
+            className="shrink-0 w-8 h-5 flex items-center justify-center font-mono text-[10px] rounded border border-apxm-text/30 text-apxm-text/50"
+          >
+            {UNRESOLVED_MATERIAL}
+          </span>
+        ))}
       <span className="flex-1 min-w-0 text-left text-apxm-text">{text}</span>
       {/* The tappable affordance is the app's keycap, naming the destination
           (device feedback: a chevron and text-weight cues were both missed).
