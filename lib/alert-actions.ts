@@ -1,7 +1,7 @@
-// NOTS mark-as-read passthrough (#93): the user taps READ on an APXM alert
-// row (or MARK ALL READ on the panel), and APXM drives APEX's own NOTS
-// buffer off-screen — open buffer, click APEX's row or "mark all as read"
-// button, confirm via the alerts store, close and restore. This satisfies
+// NOTS mark-as-read passthrough (#93): the user taps MARK ALL READ on the
+// alerts view, and APXM drives APEX's own NOTS buffer off-screen — open
+// buffer, click APEX's "mark all as read" button, confirm via the alerts
+// store, close and restore. This satisfies
 // the HARD RULE on action authorisation (see CLAUDE.md): APXM never sends
 // ALERTS_MARK_AS_READ itself. APEX sends that message and the server
 // confirms it; APXM only clicks a control that already exists in APEX's
@@ -33,18 +33,6 @@ export type AlertActionResult =
        *  unread in APEX's own view. Mirror the disabled state, don't retry. */
       disabledInApex?: true;
     };
-
-/**
- * Finds an alert's row inside the opened NOTS buffer by its game id.
- * Exported for tests, mirroring findContractActionButton.
- */
-export function findAlertRow(anchor: HTMLElement, alertId: string): HTMLElement | undefined {
-  // alertId comes off the wire: compare the attribute value directly rather
-  // than interpolating untrusted text into a selector.
-  return Array.from(
-    anchor.querySelectorAll<HTMLElement>('[class*="AlertListItem__container"]')
-  ).find((row) => row.dataset.prunId === alertId);
-}
 
 /**
  * Finds APEX's "mark all as read" button inside the opened NOTS buffer.
@@ -107,46 +95,6 @@ export function waitForAlertsRead(ids: string[], timeoutMs = 5000): Promise<bool
       resolve(true);
     });
   });
-}
-
-/**
- * Marks one alert read by opening NOTS and clicking APEX's own row for it —
- * the same click a user would make in APEX. There is no per-alert dismiss
- * control; the row itself is the only click target (see discovery spec).
- */
-export async function markAlertRead(alertId: string): Promise<AlertActionResult> {
-  if (!acquireActionLock()) {
-    return { ok: false, error: 'Another action is already running' };
-  }
-  try {
-    setupActGlobals();
-    const opened = await openMobileBuffer('NOTS', notsReady);
-    const anchor = document.getElementById('container');
-    if (!opened || !anchor) {
-      return { ok: false, error: 'Failed to open NOTS' };
-    }
-    try {
-      const row = findAlertRow(anchor, alertId);
-      if (!row) {
-        // Not a transient failure — the alert already left APEX's NOTS list
-        // (read elsewhere, or aged out). Retrying won't produce a row.
-        return { ok: false, error: 'Alert not found in NOTS — already read or removed' };
-      }
-      await clickElement(row);
-      const confirmed = await waitForAlertsRead([alertId]);
-      if (!confirmed) {
-        return { ok: false, error: 'APEX did not confirm the read' };
-      }
-      return { ok: true };
-    } finally {
-      // The click above marks the alert read AND opens its target buffer as
-      // a new appended card in the Buffer stack (device finding 2026-08-27)
-      // — a card no command of ours created, so it needs the opt-in sweep.
-      await closeMobileBuffer({ sweepAppended: true });
-    }
-  } finally {
-    releaseActionLock();
-  }
 }
 
 /**

@@ -12,9 +12,7 @@ vi.mock('../mobile-buffer-navigator', () => ({
 
 import { openMobileBuffer, closeMobileBuffer } from '../mobile-buffer-navigator';
 import {
-  markAlertRead,
   markAllAlertsRead,
-  findAlertRow,
   findMarkAllReadButton,
   waitForAlertsRead,
 } from '../alert-actions';
@@ -81,19 +79,6 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe('findAlertRow', () => {
-  it('finds a row by data-prun-id', () => {
-    const { container } = buildContainer(['a-1', 'a-2']);
-    expect(findAlertRow(container, 'a-2')).not.toBeUndefined();
-    expect(findAlertRow(container, 'a-2')?.getAttribute('data-prun-id')).toBe('a-2');
-  });
-
-  it('returns undefined when the id is not present', () => {
-    const { container } = buildContainer(['a-1']);
-    expect(findAlertRow(container, 'missing')).toBeUndefined();
-  });
-});
-
 describe('findMarkAllReadButton', () => {
   it('matches case-insensitively (APEX uppercases via CSS)', () => {
     const { container } = buildContainer([], 'MARK ALL AS READ');
@@ -125,86 +110,6 @@ describe('waitForAlertsRead', () => {
     const promise = waitForAlertsRead(['a-1'], 5000);
     await vi.advanceTimersByTimeAsync(5000);
     await expect(promise).resolves.toBe(false);
-  });
-});
-
-describe('markAlertRead', () => {
-  it('opens NOTS with a sentinel function, clicks the matching row, and reports success', async () => {
-    useAlertsStore.getState().setOne(makeAlert('a-2', false));
-    const { clicks } = buildContainer(['a-1', 'a-2']);
-
-    const promise = markAlertRead('a-2');
-    // Simulate the server confirming the read shortly after the click.
-    useAlertsStore.getState().setOne(makeAlert('a-2', true));
-    const result = await promise;
-
-    expect(openMobileBuffer).toHaveBeenCalledWith('NOTS', expect.any(Function));
-    expect(clicks).toEqual(['a-2']);
-    expect(result).toEqual({ ok: true });
-    expect(closeMobileBuffer).toHaveBeenCalledWith({ sweepAppended: true });
-  });
-
-  it('fails without retrying when the row is missing, and still restores the buffer', async () => {
-    const { clicks } = buildContainer(['a-1']);
-
-    const result = await markAlertRead('missing');
-
-    expect(result).toEqual({
-      ok: false,
-      error: 'Alert not found in NOTS — already read or removed',
-    });
-    expect(clicks).toEqual([]);
-    expect(closeMobileBuffer).toHaveBeenCalledWith({ sweepAppended: true });
-  });
-
-  it('reports the confirm error when the store never shows the alert read', async () => {
-    vi.useFakeTimers();
-    useAlertsStore.getState().setOne(makeAlert('a-1', false));
-    buildContainer(['a-1']);
-
-    const promise = markAlertRead('a-1');
-    await vi.advanceTimersByTimeAsync(5000);
-    const result = await promise;
-
-    expect(result).toEqual({ ok: false, error: 'APEX did not confirm the read' });
-    expect(closeMobileBuffer).toHaveBeenCalledWith({ sweepAppended: true });
-  });
-
-  it('fails cleanly when the buffer cannot be opened, without clicking anything', async () => {
-    const { clicks } = buildContainer(['a-1']);
-    vi.mocked(openMobileBuffer).mockResolvedValueOnce(false);
-
-    const result = await markAlertRead('a-1');
-
-    expect(result.ok).toBe(false);
-    expect(clicks).toEqual([]);
-    expect(closeMobileBuffer).not.toHaveBeenCalled();
-  });
-
-  it('rejects a second tap while an action is in flight', async () => {
-    useAlertsStore.getState().setOne(makeAlert('a-1', false));
-    buildContainer(['a-1']);
-
-    const first = markAlertRead('a-1');
-    const second = await markAlertRead('a-1');
-    expect(second).toEqual({ ok: false, error: 'Another action is already running' });
-
-    useAlertsStore.getState().setOne(makeAlert('a-1', true));
-    expect(await first).toEqual({ ok: true });
-    expect(openMobileBuffer).toHaveBeenCalledTimes(1);
-  });
-
-  it('always releases the action lock, even on failure', async () => {
-    buildContainer(['a-1']);
-    const result = await markAlertRead('missing');
-    expect(result.ok).toBe(false);
-
-    // Lock released: a following call can still open a buffer.
-    document.body.innerHTML = '';
-    useAlertsStore.getState().setOne(makeAlert('a-2', true));
-    buildContainer(['a-2']);
-    const second = await markAlertRead('a-2');
-    expect(second).toEqual({ ok: true });
   });
 });
 
