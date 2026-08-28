@@ -53,14 +53,6 @@ export const useCxStore = createEntityStore<CxEntry>(
 );
 
 /**
- * Full display name for a material ticker, if the materials database has
- * been fetched. Callers must degrade to the ticker when undefined.
- */
-export function getMaterialName(ticker: string): string | undefined {
-  return useMaterialsStore.getState().getById(ticker.toUpperCase())?.name;
-}
-
-/**
  * Market entry for a material on a specific exchange (e.g. 'RAT', 'AI1').
  */
 export function getCxEntry(

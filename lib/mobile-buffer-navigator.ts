@@ -31,7 +31,7 @@ import {
   type SavedStyles,
 } from './buffer-refresh/dom-helpers';
 import { warn, error } from './debug/logger';
-import { openCardList, deleteLastCardMatching, exitEditMode } from './buffer-cards';
+import { openCardList, deleteLastCardMatching, deleteLastCard, exitEditMode, findCardRows } from './buffer-cards';
 
 /** Timeout for each Stack-navigation DOM step. */
 const STEP_TIMEOUT_MS = 2000;
@@ -56,6 +56,14 @@ let savedStyles: SavedStyles | null = null;
  * (#84) — so closeMobileBuffer deletes them on the way out.
  */
 let createdCardCommands: string[] = [];
+
+/**
+ * Card-list row count captured just before openMobileBuffer creates its own
+ * card (i.e. the count of cards that already existed). Used only by
+ * closeMobileBuffer's opt-in sweepAppended cleanup (see there for why) — null
+ * whenever no open is in flight or the buffer hasn't recorded it yet.
+ */
+let cardCountAtOpen: number | null = null;
 
 /**
  * The buffer form sentinel. APEX renders a FormComponent container element
@@ -139,11 +147,16 @@ export async function openMobileBuffer(
     }
     setInputValue(input, command);
 
-    // Step 7: confirm card creation.
+    // Step 7: confirm card creation. Record the pre-existing card count right
+    // before this click creates ours — closeMobileBuffer's sweepAppended
+    // option needs this baseline to spot a further card opened later by a
+    // driven click inside the buffer (e.g. a NOTS row), which is nobody's
+    // tracked command and so invisible to the createdCardCommands cleanup.
     const createBtn = await waitForElement(findCreateButton, STEP_TIMEOUT_MS);
     if (!createBtn) {
       throw new Error('CREATE button did not appear');
     }
+    cardCountAtOpen = findCardRows().length;
     createBtn.click();
 
     // Step 8: open the freshly created card. It exists from here on, so it
@@ -170,13 +183,35 @@ export async function openMobileBuffer(
   }
 }
 
+export interface CloseMobileBufferOptions {
+  /**
+   * Also delete any card left in the list beyond the count recorded at open
+   * time, on top of the normal command-based cleanup. ADDITIVE ONLY — the
+   * default (omitted/false) path is byte-for-byte the pre-existing behaviour.
+   *
+   * Why this exists: a driven click INSIDE an already-open buffer can itself
+   * open a further buffer as a new appended card — e.g. clicking a NOTS row
+   * both marks the alert read and opens its target buffer as a new Stack
+   * card (device finding 2026-08-27). No command of ours created that card,
+   * so createdCardCommands never sees it and it survives as litter (#84).
+   *
+   * Why opt-in: contract/ship actions never trigger this side effect —
+   * their buffers don't spawn further cards on click — so their cleanup
+   * must stay exactly as it was rather than pay for a sweep they don't need.
+   */
+  sweepAppended?: boolean;
+}
+
+/** Ceiling on the appended-card sweep loop — never delete unboundedly. */
+const MAX_APPENDED_SWEEP = 5;
+
 /**
  * Close the current buffer: dismiss any leftover add-card dialog, navigate back
  * to the Stacks top level, and restore #container to its pre-open styles.
  *
  * Safe to call when no buffer is open — every step is a no-op in that case.
  */
-export async function closeMobileBuffer(): Promise<void> {
+export async function closeMobileBuffer(options?: CloseMobileBufferOptions): Promise<void> {
   // Dismiss a half-finished add-card dialog left behind by a failed open.
   const cancelBtn = findCancelButton();
   if (cancelBtn) {
@@ -191,9 +226,11 @@ export async function closeMobileBuffer(): Promise<void> {
     }
   }
 
-  // Delete the cards this run created (#84). Best-effort: a failed sweep
-  // must never block restoring APEX — leftover cards are litter, not harm.
-  if (createdCardCommands.length > 0) {
+  // Delete the cards this run created (#84), plus any appended card when
+  // asked to. Best-effort: a failed sweep must never block restoring APEX —
+  // leftover cards are litter, not harm.
+  const sweepAppended = options?.sweepAppended === true && cardCountAtOpen !== null;
+  if (createdCardCommands.length > 0 || sweepAppended) {
     const pending = createdCardCommands;
     createdCardCommands = [];
     try {
@@ -201,6 +238,22 @@ export async function closeMobileBuffer(): Promise<void> {
         for (const command of pending) {
           if (!(await deleteLastCardMatching(command))) {
             warn(`closeMobileBuffer: could not delete created card "${command}"`);
+          }
+        }
+        if (sweepAppended) {
+          // cardCountAtOpen is the baseline captured before OUR card was
+          // created; the command-based loop above already removed it (and
+          // any other tracked cards), so anything still past the baseline
+          // is the untracked appended card(s).
+          const baseline = cardCountAtOpen as number;
+          for (let i = 0; i < MAX_APPENDED_SWEEP && findCardRows().length > baseline; i++) {
+            // deleteLastCard already verifies the row count actually dropped
+            // (removeCardRow's waitForCardCount) — a false here means the
+            // click didn't take, so stop rather than hammer a stuck DOM.
+            if (!(await deleteLastCard())) {
+              warn('closeMobileBuffer: appended-card sweep delete failed, stopping');
+              break;
+            }
           }
         }
         // BtnRemove clicks drop APEX into edit mode; leaving it on blocks
@@ -223,4 +276,5 @@ export async function closeMobileBuffer(): Promise<void> {
     restoreContainerStyles(container, savedStyles);
   }
   savedStyles = null;
+  cardCountAtOpen = null;
 }

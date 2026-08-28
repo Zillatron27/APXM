@@ -12,7 +12,6 @@ import { getProductionBySiteId } from '../stores/entities/production';
 import { getWorkforceBySiteId } from '../stores/entities/workforce';
 import { getStorageByAddressableId } from '../stores/entities/storage';
 import { useSitesStore } from '../stores/entities/sites';
-import { getMaterialName } from '../stores/reference';
 import { getEntityDisplayName } from '../lib/address';
 
 // ============================================================================
@@ -45,12 +44,12 @@ export function classifyBurnStatus(
 
 export interface BurnRate {
   materialTicker: string;
-  materialName?: string;
   dailyAmount: number; // negative = consuming, positive = producing
   type: BurnType;
   productionInput: number; // daily consumed by production (>= 0)
   productionOutput: number; // daily produced (>= 0)
   workforceConsumption: number; // daily consumed by workforce (>= 0)
+  /** Store amount plus workforce remaining allocation — see calculateSiteBurn. */
   inventoryAmount: number;
   daysRemaining: number; // Infinity if not consuming
   need: number; // amount to buy to reach green threshold
@@ -72,12 +71,12 @@ export interface SiteBurnSummary {
 interface ProductionRateEntry {
   input: number;
   output: number;
-  name?: string;
 }
 
 interface WorkforceRateEntry {
   consumption: number;
-  name?: string;
+  /** Sum of the needs' remainingAllocation — stock drawn but not yet consumed. */
+  allocation: number;
 }
 
 // ============================================================================
@@ -141,7 +140,6 @@ export function calculateProductionRates(
 
         const existing = rates.get(ticker) ?? { input: 0, output: 0 };
         existing.input += dailyRate;
-        existing.name = existing.name ?? input.material.name;
         rates.set(ticker, existing);
       }
 
@@ -152,7 +150,6 @@ export function calculateProductionRates(
 
         const existing = rates.get(ticker) ?? { input: 0, output: 0 };
         existing.output += dailyRate;
-        existing.name = existing.name ?? output.material.name;
         rates.set(ticker, existing);
       }
     }
@@ -176,9 +173,11 @@ export function calculateWorkforceConsumption(
       // unitsPerInterval is already the daily rate
       const dailyRate = need.unitsPerInterval;
 
-      const existing = rates.get(ticker) ?? { consumption: 0 };
+      const existing = rates.get(ticker) ?? { consumption: 0, allocation: 0 };
       existing.consumption += dailyRate;
-      existing.name = existing.name ?? need.material.name;
+      // Nullish guard: workforce entities cached by a build that predates
+      // the field, or FIO-sourced ones, carry no allocation.
+      existing.allocation += need.remainingAllocation ?? 0;
       rates.set(ticker, existing);
     }
   }
@@ -298,7 +297,6 @@ export function findMostUrgent(burns: BurnRate[]): BurnRate | null {
  */
 function buildBurnRate(
   ticker: string,
-  materialName: string | undefined,
   productionInput: number,
   productionOutput: number,
   workforceConsumption: number,
@@ -326,7 +324,6 @@ function buildBurnRate(
 
   return {
     materialTicker: ticker,
-    materialName,
     dailyAmount,
     type,
     productionInput,
@@ -375,18 +372,18 @@ export function calculateSiteBurn(siteId: string): SiteBurnSummary {
 
   for (const ticker of allTickers) {
     const production = productionRates.get(ticker) ?? { input: 0, output: 0 };
-    const workforce = workforceRates.get(ticker) ?? { consumption: 0 };
+    const workforce = workforceRates.get(ticker) ?? { consumption: 0, allocation: 0 };
 
     burns.push(
       buildBurnRate(
         ticker,
-        // WS/FIO payload names, falling back to the public materials
-        // database for tickers those payloads didn't name
-        production.name ?? workforce.name ?? getMaterialName(ticker),
         production.input,
         production.output,
         workforce.consumption,
-        inventory.get(ticker) ?? 0,
+        // The store holds whole units; the workforce's remaining allocation
+        // is the fraction already drawn from it. Both get consumed before
+        // the base runs dry, so days/need count both (#102; matches rPrun).
+        (inventory.get(ticker) ?? 0) + workforce.allocation,
         thresholds
       )
     );
@@ -432,8 +429,7 @@ export function aggregateEmpireBurn(
     productionOutput: number;
     workforceConsumption: number;
     inventoryAmount: number;
-    materialName?: string;
-  }
+    }
 
   const totals = new Map<string, MaterialTotals>();
 
@@ -449,7 +445,6 @@ export function aggregateEmpireBurn(
       existing.productionOutput += burn.productionOutput;
       existing.workforceConsumption += burn.workforceConsumption;
       existing.inventoryAmount += burn.inventoryAmount;
-      existing.materialName = existing.materialName ?? burn.materialName;
       totals.set(burn.materialTicker, existing);
     }
   }
@@ -459,7 +454,6 @@ export function aggregateEmpireBurn(
     rows.push(
       buildBurnRate(
         ticker,
-        t.materialName,
         t.productionInput,
         t.productionOutput,
         t.workforceConsumption,

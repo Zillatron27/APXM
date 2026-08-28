@@ -3,11 +3,11 @@ import { reconcileOrder, applyReorder } from '../reorder-utils';
 
 describe('reconcileOrder', () => {
   it('returns the canonical order for an empty/default input', () => {
-    expect(reconcileOrder([])).toEqual(['bases', 'fleet', 'contracts', 'empire', 'alerts']);
+    expect(reconcileOrder([])).toEqual(['bases', 'fleet', 'contracts', 'empire']);
   });
 
   it('preserves a valid saved order', () => {
-    const saved = ['alerts', 'fleet', 'empire', 'contracts', 'bases'];
+    const saved = ['fleet', 'empire', 'contracts', 'bases'];
     expect(reconcileOrder(saved)).toEqual(saved);
   });
 
@@ -18,20 +18,20 @@ describe('reconcileOrder', () => {
       // appended in canonical order
       'contracts',
       'empire',
-      'alerts',
     ]);
   });
 
-  it('appends known panels missing from a stale saved order (no migration needed)', () => {
-    // A persisted order from before 'alerts' existed — the exact upgrade path
-    // every existing user hits when the NOTS panel ships.
-    expect(reconcileOrder(['fleet', 'bases', 'contracts', 'empire'])).toEqual([
+  it('drops a retired panel id from a saved order (the alerts panel moved to the header bell)', () => {
+    expect(reconcileOrder(['alerts', 'fleet', 'bases', 'contracts', 'empire'])).toEqual([
       'fleet',
       'bases',
       'contracts',
       'empire',
-      'alerts',
     ]);
+  });
+
+  it('appends known panels missing from a stale saved order (no migration needed)', () => {
+    expect(reconcileOrder(['fleet', 'bases'])).toEqual(['fleet', 'bases', 'contracts', 'empire']);
   });
 
   it('dedupes a corrupted saved order (a repeated id must not render a panel twice)', () => {
@@ -40,7 +40,6 @@ describe('reconcileOrder', () => {
       'bases',
       'contracts',
       'empire',
-      'alerts',
     ]);
   });
 });

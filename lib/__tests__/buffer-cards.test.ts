@@ -2,7 +2,9 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   scanBufferCards,
   deleteBufferCards,
+  deleteLastCard,
   commandPrefix,
+  openCardList,
 } from '../buffer-cards';
 import { isActionInFlight, acquireActionLock, releaseActionLock } from '../act/action-lock';
 
@@ -176,5 +178,27 @@ describe('deleteBufferCards', () => {
     expect(result.ok).toBe(false);
     expect(result.deleted).toBe(0);
     expect(isActionInFlight()).toBe(false);
+  });
+});
+
+describe('deleteLastCard', () => {
+  // Used by mobile-buffer-navigator's opt-in appended-card sweep, which
+  // removes by POSITION rather than by command — there's no gap in coverage
+  // here beyond what these two cases need: it removes whatever is last, and
+  // it reports failure like removeCardRow does for every other delete path.
+  it('removes the last row in the list regardless of its command', async () => {
+    const { list } = buildStack(['CONT 111', 'INV aaa', 'FLT']);
+    expect(await openCardList()).toBe(true);
+
+    expect(await deleteLastCard()).toBe(true);
+
+    const remaining = Array.from(list.querySelectorAll('h4')).map((h) => h.textContent);
+    expect(remaining).toEqual(['CONT 111', 'INV aaa']);
+  });
+
+  it('returns false when the list is already empty', async () => {
+    buildStack([]);
+    expect(await openCardList()).toBe(true);
+    expect(await deleteLastCard()).toBe(false);
   });
 });

@@ -245,27 +245,6 @@ describe('burn.ts', () => {
       expect(rates.get('RAT')?.output).toBe(15); // 10 + 5
     });
 
-    it('preserves material name', () => {
-      const order = createOrderWithIO(
-        [{ ticker: 'H2O', name: 'Water', amount: 4 }],
-        [{ ticker: 'RAT', name: 'Basic Rations', amount: 10 }],
-        MS_PER_DAY
-      );
-      const line = createTestProductionLine({ orders: [order] });
-
-      const rates = calculateProductionRates([line]);
-
-      expect(rates.get('H2O')?.name).toBe('Water');
-      expect(rates.get('RAT')?.name).toBe('Basic Rations');
-    });
-  });
-
-  describe('calculateWorkforceConsumption', () => {
-    it('returns empty map for no workforces', () => {
-      const rates = calculateWorkforceConsumption([]);
-      expect(rates.size).toBe(0);
-    });
-
     it('calculates consumption from single workforce tier', () => {
       const workforce = createWorkforce({
         needs: [
@@ -315,7 +294,7 @@ describe('burn.ts', () => {
       const pioneers = createWorkforce({
         needs: [
           createNeed({
-            material: createMaterial({ ticker: 'DW', name: 'Drinking Water' }),
+            material: createMaterial({ ticker: 'DW', name: 'drinkingWater' }),
             unitsPerInterval: 5,
           }),
         ],
@@ -323,7 +302,7 @@ describe('burn.ts', () => {
       const settlers = createWorkforce({
         needs: [
           createNeed({
-            material: createMaterial({ ticker: 'DW', name: 'Drinking Water' }),
+            material: createMaterial({ ticker: 'DW', name: 'drinkingWater' }),
             unitsPerInterval: 8,
           }),
         ],
@@ -332,7 +311,6 @@ describe('burn.ts', () => {
       const rates = calculateWorkforceConsumption([pioneers, settlers]);
 
       expect(rates.get('DW')?.consumption).toBe(13);
-      expect(rates.get('DW')?.name).toBe('Drinking Water');
     });
   });
 
@@ -709,6 +687,32 @@ describe('burn.ts', () => {
         address: createAddress({ planetName: 'Montem' }),
       });
       useSitesStore.getState().setOne(site);
+    });
+
+    it('counts the workforce remaining allocation as inventory (#102)', () => {
+      // Amethyst b WS as observed: store 0, allocation 0.59, burn 0.01/d.
+      // Store-only maths says 0d (false RED); the allocation is real stock.
+      useWorkforceStore.getState().setOne({
+        siteId,
+        address: createAddress({ planetName: 'Montem' }),
+        workforces: [
+          createWorkforce({
+            level: 'PIONEER',
+            needs: [
+              createNeed({
+                material: createMaterial({ ticker: 'WS' }),
+                unitsPerInterval: 0.01,
+                remainingAllocation: 0.59,
+              }),
+            ],
+          }),
+        ],
+      });
+      useStorageStore.getState().setOne(createStorageWithItems(siteId, [{ ticker: 'WS', amount: 0 }]));
+
+      const ws = calculateSiteBurn(siteId).burns.find((b) => b.materialTicker === 'WS');
+      expect(ws?.inventoryAmount).toBeCloseTo(0.59);
+      expect(ws?.daysRemaining).toBeCloseTo(59);
     });
 
     it('calculates pioneers-only consumption correctly', () => {
@@ -1488,26 +1492,6 @@ describe('burn.ts', () => {
       const h2o = rows.find((r) => r.materialTicker === 'H2O');
       expect(rat?.type).toBe('output'); // net +3
       expect(h2o?.type).toBe('input'); // net negative with production input
-    });
-
-    it('propagates the first available material name', () => {
-      const rows = aggregateEmpireBurn(
-        [
-          makeSummary('a', [
-            makeRate({ materialTicker: 'RAT', workforceConsumption: 1 }),
-          ]),
-          makeSummary('b', [
-            makeRate({
-              materialTicker: 'RAT',
-              workforceConsumption: 1,
-              materialName: 'Rations',
-            }),
-          ]),
-        ],
-        thresholds
-      );
-
-      expect(rows[0].materialName).toBe('Rations');
     });
 
     it('marks a consuming material with zero empire inventory as critical with 0 days', () => {

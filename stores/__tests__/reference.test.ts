@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   useMaterialsStore,
   useCxStore,
-  getMaterialName,
   getCxEntry,
 } from '../reference';
 
@@ -10,32 +9,6 @@ describe('reference stores', () => {
   beforeEach(() => {
     useMaterialsStore.getState().clear();
     useCxStore.getState().clear();
-  });
-
-  describe('getMaterialName', () => {
-    beforeEach(() => {
-      useMaterialsStore.getState().setAll([
-        { ticker: 'RAT', name: 'Rations', category: 'consumables (basic)', weight: 0.21, volume: 0.1 },
-        { ticker: 'DW', name: 'Drinking Water', category: 'consumables (basic)', weight: 0.1, volume: 0.1 },
-      ]);
-    });
-
-    it('returns the name for a known ticker', () => {
-      expect(getMaterialName('RAT')).toBe('Rations');
-    });
-
-    it('is case-insensitive on the ticker', () => {
-      expect(getMaterialName('dw')).toBe('Drinking Water');
-    });
-
-    it('returns undefined for an unknown ticker', () => {
-      expect(getMaterialName('XYZ')).toBeUndefined();
-    });
-
-    it('returns undefined when the store is empty', () => {
-      useMaterialsStore.getState().clear();
-      expect(getMaterialName('RAT')).toBeUndefined();
-    });
   });
 
   describe('getCxEntry', () => {

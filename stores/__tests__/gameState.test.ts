@@ -39,6 +39,26 @@ describe('gameState store', () => {
       expect(useGameState.getState().detailView).toBeNull();
     });
 
+    it('starts with the Notifications view closed', () => {
+      expect(useGameState.getState().alertsViewOpen).toBe(false);
+    });
+  });
+
+  describe('Notifications view', () => {
+    it('opens and closes via setAlertsViewOpen', () => {
+      useGameState.getState().setAlertsViewOpen(true);
+      expect(useGameState.getState().alertsViewOpen).toBe(true);
+      useGameState.getState().setAlertsViewOpen(false);
+      expect(useGameState.getState().alertsViewOpen).toBe(false);
+    });
+
+    it('a tab tap closes it — the tab bar is the way back', () => {
+      useGameState.getState().setAlertsViewOpen(true);
+      useGameState.getState().setActiveTab('fleet');
+      expect(useGameState.getState().activeTab).toBe('fleet');
+      expect(useGameState.getState().alertsViewOpen).toBe(false);
+    });
+
     it('starts with no manual-confirm window pending', () => {
       expect(useGameState.getState().actConfirmPending).toBe(false);
     });

@@ -117,8 +117,8 @@ export function createEmpireFixture(): EmpireFixture {
   // Storage
   // ============================================================================
 
-  const ratMaterial = createMaterial({ ticker: 'RAT', name: 'Basic Rations' });
-  const dwMaterial = createMaterial({ ticker: 'DW', name: 'Drinking Water' });
+  const ratMaterial = createMaterial({ ticker: 'RAT', name: 'rations' });
+  const dwMaterial = createMaterial({ ticker: 'DW', name: 'drinkingWater' });
   const h2oMaterial = createMaterial({ ticker: 'H2O', name: 'Water' });
   const lseMaterial = createMaterial({ ticker: 'LSE', name: 'Limestone' });
   const feMaterial = createMaterial({ ticker: 'FE', name: 'Iron Ore' });

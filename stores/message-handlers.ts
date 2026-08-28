@@ -18,6 +18,7 @@ import {
 } from './entities';
 import { useSiteSourceStore } from './site-data-sources';
 import { useCompanyStore } from './company';
+import { useUserStore } from './user';
 import { useWarehouseStore, type WarehouseLocation } from './warehouses';
 import { useExchangeStore } from './exchanges';
 import { useCxobStore } from './cxob';
@@ -104,9 +105,10 @@ export function initMessageHandlers(): void {
       clearAllEntityStores();
       useSiteSourceStore.getState().clear();
       // Not entity stores, so clearAllEntityStores doesn't cover them.
-      // COMPANY_DATA re-arrives with the login dump; production loaded
-      // markers re-accumulate as per-site data arrives.
+      // COMPANY_DATA and USER_DATA re-arrive with the login dump; production
+      // loaded markers re-accumulate as per-site data arrives.
       useCompanyStore.getState().clear();
+      useUserStore.getState().clear();
       useProductionLoadedStore.getState().clear();
       // ACT-engine stores: warehouses re-arrive with the login dump;
       // exchange mappings and order books re-learn from CX buffers.
@@ -455,7 +457,13 @@ export function initMessageHandlers(): void {
   typeHandlers.set('ALERTS_ALERTS', (msg: ProcessedMessage) => {
     const payload = extractPayload(msg) as { alerts?: PrunApi.Alert[] };
     if (Array.isArray(payload?.alerts)) {
-      useAlertsStore.getState().setAll(payload.alerts);
+      // Upsert, never replace: the login snapshot lands in a store that
+      // CLIENT_CONNECTION_OPENED has already cleared (so upsert == replace
+      // there anyway), removals arrive via ALERTS_ALERTS_DELETED, and this
+      // same messageType also arrives as a PARTIAL list wrapped inside
+      // ACTION_COMPLETED after a mark-as-read (only the changed alerts are
+      // included). setAll would wipe the rest of the alert list in that case.
+      useAlertsStore.getState().setMany(payload.alerts);
       useAlertsStore.getState().setFetched('websocket');
     } else {
       warn('ALERTS_ALERTS: unexpected payload structure', payload);
@@ -536,6 +544,29 @@ export function initMessageHandlers(): void {
       });
     } else {
       warn('COMPANY_DATA: unexpected payload structure', payload);
+      useConnectionStore.getState().incrementDiscarded();
+    }
+  });
+
+  // ============================================================================
+  // User (contexts sent on login — drives own/other/unreachable alert scoping)
+  // ============================================================================
+
+  // USER_DATA carries the user's reachable contexts (their COMPANY plus any
+  // corporations). Only id/type are consumed; entries missing either are
+  // dropped rather than failing the whole message, since one malformed
+  // context shouldn't cost us the rest of the (usually short) list.
+  typeHandlers.set('USER_DATA', (msg: ProcessedMessage) => {
+    const payload = extractPayload(msg) as { contexts?: unknown };
+    if (Array.isArray(payload?.contexts)) {
+      const contexts = (payload.contexts as unknown[]).filter(
+        (c): c is PrunApi.UserContext =>
+          typeof (c as Record<string, unknown>)?.id === 'string' &&
+          typeof (c as Record<string, unknown>)?.type === 'string'
+      );
+      useUserStore.getState().setUser(contexts);
+    } else {
+      warn('USER_DATA: unexpected payload structure', payload);
       useConnectionStore.getState().incrementDiscarded();
     }
   });

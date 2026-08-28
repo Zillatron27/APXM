@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { formatInventory, formatDailyRate } from '../../lib/format-burn';
 import type { BurnRate } from '../../core/burn';
 import { BurnBadge } from './BurnBadge';
 import { MaterialTile } from '../shared';
@@ -16,7 +17,6 @@ export function BurnRow({ burn }: BurnRowProps) {
   const [expanded, setExpanded] = useState(false);
   const {
     materialTicker,
-    materialName,
     dailyAmount,
     urgency,
     inventoryAmount,
@@ -28,7 +28,6 @@ export function BurnRow({ burn }: BurnRowProps) {
   } = burn;
 
   const isConsuming = dailyAmount < 0;
-  const dailyDisplay = dailyAmount >= 0 ? `+${dailyAmount.toFixed(1)}` : dailyAmount.toFixed(1);
 
   // Only the active components — a zero line in the breakdown is noise
   const breakdown = [
@@ -55,12 +54,12 @@ export function BurnRow({ burn }: BurnRowProps) {
         <div className="flex items-center">
           {/* Inventory */}
           <span className="w-12 text-right font-mono text-xs text-apxm-text/70">
-            {Math.floor(inventoryAmount)}
+            {formatInventory(inventoryAmount)}
           </span>
 
           {/* Daily rate */}
           <span className={`w-20 text-right font-mono text-xs ${isConsuming ? 'text-status-critical' : 'text-status-ok'}`}>
-            {dailyDisplay}/d
+            {formatDailyRate(dailyAmount)}/d
           </span>
 
           {/* Days remaining */}
@@ -83,11 +82,8 @@ export function BurnRow({ burn }: BurnRowProps) {
         }`}
       >
         <div className="overflow-hidden">
-          <div className="flex items-center justify-between gap-2 pb-1 text-[11px] text-apxm-text/50">
-            <span className="truncate">{materialName ?? materialTicker}</span>
-            {breakdown && (
-              <span className="font-mono shrink-0">{breakdown} /d</span>
-            )}
+          <div className="flex items-center justify-end pb-1 text-[11px] text-apxm-text/50">
+            {breakdown && <span className="font-mono">{breakdown} /d</span>}
           </div>
         </div>
       </div>

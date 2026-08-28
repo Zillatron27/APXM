@@ -81,7 +81,7 @@ export function createMaterial(
 ): PrunApi.Material {
   return {
     id: nextId('mat'),
-    name: 'Basic Rations',
+    name: 'rations',
     ticker: 'RAT',
     category: 'consumables (basic)',
     weight: 0.21,
@@ -216,10 +216,11 @@ export function createNeed(
   return {
     category: 'FOOD',
     essential: true,
-    material: createMaterial({ ticker: 'RAT', name: 'Basic Rations' }),
+    material: createMaterial({ ticker: 'RAT', name: 'rations' }),
     satisfaction: 1.0,
     unitsPerInterval: 4.0,
     unitsPer100: 4.0,
+    remainingAllocation: 0,
     ...overrides,
   };
 }
@@ -236,7 +237,7 @@ export function createWorkforce(
     satisfaction: 0.85,
     needs: [
       createNeed({ category: 'FOOD', material: createMaterial({ ticker: 'RAT' }) }),
-      createNeed({ category: 'WATER', material: createMaterial({ ticker: 'DW', name: 'Drinking Water' }) }),
+      createNeed({ category: 'WATER', material: createMaterial({ ticker: 'DW', name: 'drinkingWater' }) }),
     ],
     ...overrides,
   };
@@ -290,7 +291,7 @@ export function createProductionTemplate(
 ): PrunApi.ProductionTemplate {
   return {
     id: nextId('template'),
-    name: 'Basic Rations',
+    name: 'rations',
     inputFactors: [{ material: createMaterial({ ticker: 'H2O' }), factor: 1 }],
     outputFactors: [{ material: createMaterial({ ticker: 'RAT' }), factor: 10 }],
     experience: 0,

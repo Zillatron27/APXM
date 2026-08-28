@@ -1,5 +1,34 @@
 # APXM Changelog
 
+## 1.3.0 (2026-08-28)
+
+Notifications
+
+### Added
+
+- **Notifications view** (#94) — a bell in the header, with an unread badge (capped at 9+), opens the full alerts list from any tab. Any tab tap closes it. The Status-tab Alerts panel is retired; saved panel orders are healed on load
+- **Alert rendering** (#90) — every alert type has a short label with a severity colour (PRODUCED, ARRIVAL, ORDER, CONT, ELECTION …), a material ticker tile where the alert names one, and a readable template
+- **Tap-through** (#91) — alerts whose target exists open it directly; the row carries a keycap naming the sheet it opens (`SHIP ›`, `CONT ›`, `PROD ›`, `BURN ›`). Ship-built alerts open the new ship once it is in the fleet
+- **Context-aware unread counts** (#92) — the badge counts the unread alerts of the context you are in; alerts from a corporation context are counted separately, not mixed in
+- **Mark all read** (#93) — clears every unread alert by driving APEX's own NOTS buffer off-screen; the tap is the commit, APXM never sends the message itself
+- **Ship names in alerts** — arrival rows show the ship's name rather than its registration
+
+### Fixed
+
+- **Burn showed 0 inventory / 0d for slow-burn consumables** (#102) — the store amount on the wire is a whole number; the fraction already drawn for a workforce need is carried separately (`remainingAllocation`) and is now counted. Fractional stock and rates under 0.1/d display with the precision they need instead of `0` / `-0.0`
+- **Internal material identifiers shown to the user** (#103) — `pioneerLuxuryDrink`-style names are never displayed; every material resolves to its ticker, or a `?` placeholder when the materials database can't resolve it
+- **Alert type labels rendered without colour** — the label colour classes referenced a theme token namespace that doesn't exist
+
+### Changed
+
+- Burn rows no longer show a material name line under the ticker; the expanded row keeps the in/out/workforce breakdown
+- Header: version and data status stack beside the logo; the right side holds only actions
+
+## 1.2.2 (2026-08-27)
+
+### Fixed
+
+- **Alerts list wiped when an alert was read in APEX** (#106) — the server confirms a mark-as-read with a partial alert list; APXM treated it as the full list. Alerts are now merged.
 ## 1.2.1 (2026-08-27)
 
 ### Fixed

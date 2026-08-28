@@ -83,12 +83,18 @@ interface GameState {
    *  ConfirmBar is the only APXM chrome. Set from the action-feedback
    *  onManualConfirm signal. Session-scoped. */
   actConfirmPending: boolean;
+  /** True while the full Notifications view (#94) replaces the active tab's
+   *  content. A view, not a DetailSheet: the single detailView slot must stay
+   *  free so an alert's tap-through can open its target sheet over the list.
+   *  Session-scoped. */
+  alertsViewOpen: boolean;
   setOverlayVisible: (visible: boolean) => void;
   setDebugMode: (debug: boolean) => void;
   setApexVisible: (visible: boolean) => void;
   setActiveTab: (tab: TabId) => void;
   setDetailView: (view: DetailView | null) => void;
   setActConfirmPending: (pending: boolean) => void;
+  setAlertsViewOpen: (open: boolean) => void;
   toggleBurnFilter: (filter: BurnFilter) => void;
   toggleFleetFilter: (filter: FleetFilter) => void;
   toggleContractFilter: (filter: ContractFilter) => void;
@@ -105,12 +111,17 @@ export const useGameState = create<GameState>((set) => ({
   contractFilters: new Set<ContractFilter>(['active']),
   detailView: null,
   actConfirmPending: false,
+  alertsViewOpen: false,
   setOverlayVisible: (overlayVisible) => set({ overlayVisible }),
   setDebugMode: (debugMode) => set({ debugMode }),
   setApexVisible: (apexVisible) => set({ apexVisible }),
-  setActiveTab: (activeTab) => set({ activeTab }),
+  // A tab tap is also the way out of the Notifications view: the tab bar
+  // stays visible beneath it, so leaving it open would show a tab lit for
+  // content that isn't on screen.
+  setActiveTab: (activeTab) => set({ activeTab, alertsViewOpen: false }),
   setDetailView: (detailView) => set({ detailView }),
   setActConfirmPending: (actConfirmPending) => set({ actConfirmPending }),
+  setAlertsViewOpen: (alertsViewOpen) => set({ alertsViewOpen }),
   toggleBurnFilter: (filter) =>
     set((state) => ({
       burnFilters: toggleFilterSelection(state.burnFilters, filter),
