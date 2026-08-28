@@ -689,6 +689,32 @@ describe('burn.ts', () => {
       useSitesStore.getState().setOne(site);
     });
 
+    it('counts the workforce remaining allocation as inventory (#102)', () => {
+      // Amethyst b WS as observed: store 0, allocation 0.59, burn 0.01/d.
+      // Store-only maths says 0d (false RED); the allocation is real stock.
+      useWorkforceStore.getState().setOne({
+        siteId,
+        address: createAddress({ planetName: 'Montem' }),
+        workforces: [
+          createWorkforce({
+            level: 'PIONEER',
+            needs: [
+              createNeed({
+                material: createMaterial({ ticker: 'WS' }),
+                unitsPerInterval: 0.01,
+                remainingAllocation: 0.59,
+              }),
+            ],
+          }),
+        ],
+      });
+      useStorageStore.getState().setOne(createStorageWithItems(siteId, [{ ticker: 'WS', amount: 0 }]));
+
+      const ws = calculateSiteBurn(siteId).burns.find((b) => b.materialTicker === 'WS');
+      expect(ws?.inventoryAmount).toBeCloseTo(0.59);
+      expect(ws?.daysRemaining).toBeCloseTo(59);
+    });
+
     it('calculates pioneers-only consumption correctly', () => {
       // Pioneers consuming RAT (4/day) and DW (5/day)
       const workforce: WorkforceEntity = {

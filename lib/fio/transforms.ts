@@ -75,6 +75,9 @@ function transformWorkforceNeed(fioNeed: FioWorkforceNeed): PrunApi.Need {
     satisfaction: fioNeed.Satisfaction,
     unitsPerInterval: fioNeed.UnitsPerInterval,
     unitsPer100: fioNeed.UnitsPerOneHundred,
+    // FIO does not expose the allocation; burn degrades to store-only for
+    // FIO-sourced workforce (pre-#102 behaviour).
+    remainingAllocation: 0,
   };
 }
 

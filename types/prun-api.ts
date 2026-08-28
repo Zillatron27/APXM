@@ -301,6 +301,12 @@ export namespace PrunApi {
     satisfaction: number;
     unitsPerInterval: number;
     unitsPer100: number;
+    /**
+     * Stock the game has already drawn from the store for this need but not
+     * yet consumed — the fractional remainder of the last whole unit taken.
+     * Real inventory for burn purposes is store amount + this (#102).
+     */
+    remainingAllocation: number;
   }
 
   export type NeedCategory = 'CLOTHING' | 'FOOD' | 'HEALTH' | 'TOOLS' | 'WATER';

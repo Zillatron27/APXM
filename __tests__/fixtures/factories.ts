@@ -220,6 +220,7 @@ export function createNeed(
     satisfaction: 1.0,
     unitsPerInterval: 4.0,
     unitsPer100: 4.0,
+    remainingAllocation: 0,
     ...overrides,
   };
 }

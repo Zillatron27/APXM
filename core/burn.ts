@@ -49,6 +49,7 @@ export interface BurnRate {
   productionInput: number; // daily consumed by production (>= 0)
   productionOutput: number; // daily produced (>= 0)
   workforceConsumption: number; // daily consumed by workforce (>= 0)
+  /** Store amount plus workforce remaining allocation — see calculateSiteBurn. */
   inventoryAmount: number;
   daysRemaining: number; // Infinity if not consuming
   need: number; // amount to buy to reach green threshold
@@ -74,6 +75,8 @@ interface ProductionRateEntry {
 
 interface WorkforceRateEntry {
   consumption: number;
+  /** Sum of the needs' remainingAllocation — stock drawn but not yet consumed. */
+  allocation: number;
 }
 
 // ============================================================================
@@ -170,8 +173,11 @@ export function calculateWorkforceConsumption(
       // unitsPerInterval is already the daily rate
       const dailyRate = need.unitsPerInterval;
 
-      const existing = rates.get(ticker) ?? { consumption: 0 };
+      const existing = rates.get(ticker) ?? { consumption: 0, allocation: 0 };
       existing.consumption += dailyRate;
+      // Nullish guard: workforce entities cached by a build that predates
+      // the field, or FIO-sourced ones, carry no allocation.
+      existing.allocation += need.remainingAllocation ?? 0;
       rates.set(ticker, existing);
     }
   }
@@ -366,7 +372,7 @@ export function calculateSiteBurn(siteId: string): SiteBurnSummary {
 
   for (const ticker of allTickers) {
     const production = productionRates.get(ticker) ?? { input: 0, output: 0 };
-    const workforce = workforceRates.get(ticker) ?? { consumption: 0 };
+    const workforce = workforceRates.get(ticker) ?? { consumption: 0, allocation: 0 };
 
     burns.push(
       buildBurnRate(
@@ -374,7 +380,10 @@ export function calculateSiteBurn(siteId: string): SiteBurnSummary {
         production.input,
         production.output,
         workforce.consumption,
-        inventory.get(ticker) ?? 0,
+        // The store holds whole units; the workforce's remaining allocation
+        // is the fraction already drawn from it. Both get consumed before
+        // the base runs dry, so days/need count both (#102; matches rPrun).
+        (inventory.get(ticker) ?? 0) + workforce.allocation,
         thresholds
       )
     );
