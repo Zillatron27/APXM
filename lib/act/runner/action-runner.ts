@@ -9,6 +9,7 @@ import { Logger, type LogPart } from './logger';
 import { StepMachine } from './step-machine';
 import { StepGenerator } from './step-generator';
 import { ActionPackageConfig, ActionStep } from '../shared-types';
+import { acquireActionLock } from '../action-lock';
 
 interface ActionRunnerOptions {
   log: Logger;
@@ -66,6 +67,17 @@ export class ActionRunner {
     const { steps, fail } = await this.stepGenerator.generateSteps(copy, config);
     if (fail) {
       this.log.error('Action Package execution failed');
+      return;
+    }
+    // Step generation touches no DOM, so the lock is only taken right before
+    // the StepMachine starts driving #container — the same buffer contract
+    // actions, ship actions, and SFC sessions all share. Held for the whole
+    // run (release is in StepMachine.stop(), the single teardown point), not
+    // just this synchronous call: the message names the real cause (another
+    // driver has the buffer, not this runner) rather than reusing the
+    // isRunning re-entrancy text above, which would be misleading here.
+    if (!acquireActionLock()) {
+      this.log.error('Another action is already running');
       return;
     }
     this.log.info('Action Package execution started');

@@ -12,6 +12,7 @@ import { waitActionFeedback } from '../action-feedback';
 import { openMobileBuffer, closeMobileBuffer } from '../../mobile-buffer-navigator';
 import { clearMtraBufferCache } from '../action-steps/MTRA_TRANSFER';
 import { useSettingsStore } from '../../../stores/settings';
+import { releaseActionLock } from '../action-lock';
 
 interface StepMachineOptions {
   log: Logger;
@@ -84,6 +85,11 @@ export class StepMachine {
     clearMtraBufferCache();
     // Close any open buffer and restore APEX before signalling the end.
     void closeMobileBuffer();
+    // ActionRunner.execute() acquires the shared #container lock right
+    // before starting this machine; stop() is the single point every run
+    // (success, error, cancel) passes through, so it's the right place to
+    // free it for the next driver.
+    releaseActionLock();
     this.options.onEnd();
   }
 
