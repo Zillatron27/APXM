@@ -16,6 +16,7 @@ import type { BufferRefreshOptions, BufferRefreshStep } from './types';
 import { useRefreshState } from '../../stores/refreshState';
 import { useSitesStore } from '../../stores/entities';
 import { useSiteSourceStore } from '../../stores/site-data-sources';
+import { acquireActionLock, releaseActionLock } from '../act/action-lock';
 import {
   getContainer,
   isAtStacksTopLevel,
@@ -75,8 +76,30 @@ export function buildBufferCommand(siteId: string): string {
  *
  * Returns true on success, false on failure. Always restores container
  * styles in the finally block — no visual leak on error.
+ *
+ * BS buffer opens drive the same #container as contract/ship actions, SFC
+ * sessions and ACT runs, so the shared action lock is held for the whole
+ * refresh (#95). It is taken per call, i.e. per site, so a batch's later
+ * sites can still run once earlier ones release. A refused refresh never
+ * touches the DOM; 'error' is the status the card already shows for any
+ * other failed refresh, so no new state is needed to surface it.
  */
 export async function executeBufferRefresh(options: BufferRefreshOptions): Promise<boolean> {
+  if (!acquireActionLock()) {
+    console.error('[APXM BufferRefresh] Another action is already running');
+    useRefreshState.getState().updateSiteStatus(options.siteId, 'error');
+    return false;
+  }
+  try {
+    return await driveBufferRefresh(options);
+  } finally {
+    // Released only after the cleanup sweep inside driveBufferRefresh has
+    // finished, so the next driver never sees a half-restored #container.
+    releaseActionLock();
+  }
+}
+
+async function driveBufferRefresh(options: BufferRefreshOptions): Promise<boolean> {
   const { siteId, command, stepTimeoutMs = 1500 } = options;
   const store = useRefreshState.getState();
 
