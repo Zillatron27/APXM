@@ -7,6 +7,12 @@
 import { clickElement } from './_compat';
 import type { PrunTile } from './runtime-types';
 
+// APEX clears the progress state within seconds; a minute means the overlay
+// is wedged (reconnect, buffer torn down) and waiting longer would hold the
+// shared action lock until page reload.
+const PROGRESS_TIMEOUT_MS = 60_000;
+const FEEDBACK_LOST = 'Action feedback lost — check APEX';
+
 export async function waitActionFeedback(
   tile: PrunTile,
   autoConfirm: boolean,
@@ -23,7 +29,9 @@ export async function waitActionFeedback(
   if (!overlay) {
     return 'Action feedback overlay did not appear';
   }
-  await waitActionProgress(overlay);
+  if (!(await waitActionProgress(overlay))) {
+    return FEEDBACK_LOST;
+  }
   if (overlay.classList.contains(C.ActionConfirmationOverlay.container)) {
     if (autoConfirm) {
       const confirm = _$$(overlay, C.Button.btn)[1];
@@ -50,7 +58,9 @@ export async function waitActionFeedback(
         anchor.style.visibility = prev.visibility;
       }
     }
-    await waitActionProgress(overlay);
+    if (!(await waitActionProgress(overlay))) {
+      return FEEDBACK_LOST;
+    }
   }
   if (overlay.classList.contains(C.ActionFeedback.success)) {
     await clickElement(overlay);
@@ -101,17 +111,39 @@ function waitConfirmationResolved(overlay: HTMLElement): Promise<void> {
   });
 }
 
-async function waitActionProgress(overlay: HTMLElement) {
+// Resolves true when the overlay leaves the progress state, false if the
+// overlay is detached while in progress or stays there past the timeout.
+// Unlike the manual-confirm wait this is machine time, so it is bounded.
+function waitActionProgress(overlay: HTMLElement): Promise<boolean> {
   if (!overlay.classList.contains(C.ActionFeedback.progress)) {
-    return;
+    return Promise.resolve(true);
   }
-  await new Promise<void>(resolve => {
-    const mutationObserver = new MutationObserver(() => {
+  if (!overlay.isConnected) {
+    return Promise.resolve(false);
+  }
+  return new Promise<boolean>(resolve => {
+    const done = (cleared: boolean) => {
+      attrObserver.disconnect();
+      removalObserver.disconnect();
+      clearTimeout(timer);
+      resolve(cleared);
+    };
+    const attrObserver = new MutationObserver(() => {
       if (!overlay.classList.contains(C.ActionFeedback.progress)) {
-        mutationObserver.disconnect();
-        resolve();
+        done(true);
       }
     });
-    mutationObserver.observe(overlay, { attributes: true });
+    attrObserver.observe(overlay, { attributes: true });
+    // A class observer never fires on node removal — watch the parent tree.
+    const removalObserver = new MutationObserver(() => {
+      if (!overlay.isConnected) {
+        done(false);
+      }
+    });
+    removalObserver.observe(overlay.parentElement ?? document.body, {
+      childList: true,
+      subtree: true,
+    });
+    const timer = setTimeout(() => done(false), PROGRESS_TIMEOUT_MS);
   });
 }

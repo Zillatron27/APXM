@@ -121,3 +121,49 @@ describe('waitActionFeedback onManualConfirm signal', () => {
     expect(onManualConfirm).not.toHaveBeenCalled();
   });
 });
+
+describe('waitActionFeedback progress wait (#5)', () => {
+  function buildProgressOverlay(): { anchor: HTMLElement; overlay: HTMLElement } {
+    const anchor = document.createElement('div');
+    document.body.appendChild(anchor);
+    const overlay = document.createElement('div');
+    overlay.className = 'af-overlay af-progress';
+    anchor.appendChild(overlay);
+    return { anchor, overlay };
+  }
+
+  it('returns an error instead of hanging when the overlay is detached mid-progress', async () => {
+    const { anchor, overlay } = buildProgressOverlay();
+    const result = waitActionFeedback({ anchor }, false);
+    setTimeout(() => overlay.remove(), 10);
+    await expect(result).resolves.toBe('Action feedback lost — check APEX');
+  });
+
+  it('returns an error when the overlay stays in progress past the timeout', async () => {
+    vi.useFakeTimers();
+    try {
+      const { anchor } = buildProgressOverlay();
+      const result = waitActionFeedback({ anchor }, false);
+      await vi.advanceTimersByTimeAsync(60_000);
+      await expect(result).resolves.toBe('Action feedback lost — check APEX');
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('still reports success when progress clears normally, leaving no timer behind', async () => {
+    vi.useFakeTimers();
+    try {
+      const { anchor, overlay } = buildProgressOverlay();
+      const result = waitActionFeedback({ anchor }, false);
+      await vi.advanceTimersByTimeAsync(0);
+      overlay.classList.remove('af-progress');
+      overlay.classList.add('af-success');
+      await expect(result).resolves.toBeUndefined();
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
