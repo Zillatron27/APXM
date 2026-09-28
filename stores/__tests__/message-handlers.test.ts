@@ -308,6 +308,20 @@ describe('message-handlers', () => {
       expect(entries.get('site-1')?.source).toBe('websocket');
       expect(entries.get('site-2')?.source).toBe('websocket');
     });
+
+    it('prunes workforce entries for sites no longer in the site list', () => {
+      // Workforce for a site that still exists, plus one for a demolished base.
+      dispatchMessage('WORKFORCE_WORKFORCES', createTestWorkforce({ siteId: 'site-1' }));
+      dispatchMessage('WORKFORCE_WORKFORCES', createTestWorkforce({ siteId: 'gone-site' }));
+      expect(useWorkforceStore.getState().entities.size).toBe(2);
+
+      // Fresh site list no longer includes 'gone-site' — it was demolished.
+      dispatchMessage('SITE_SITES', { sites: [createTestSite({ siteId: 'site-1' })] });
+
+      expect(useWorkforceStore.getState().getById('site-1')).toBeDefined();
+      expect(useWorkforceStore.getState().getById('gone-site')).toBeUndefined();
+      expect(useWorkforceStore.getState().entities.size).toBe(1);
+    });
   });
 
   describe('SITE_SITE', () => {
