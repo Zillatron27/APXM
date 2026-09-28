@@ -249,10 +249,11 @@ export function waitUntil(
     const interval = setInterval(() => {
       if (condition()) {
         clearInterval(interval);
+        clearTimeout(timeout);
         resolve();
       }
     }, intervalMs);
-    setTimeout(() => {
+    const timeout = setTimeout(() => {
       clearInterval(interval);
       reject(new Error('waitUntil timed out'));
     }, timeoutMs);
