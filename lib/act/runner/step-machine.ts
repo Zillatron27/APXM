@@ -23,10 +23,23 @@ interface StepMachineOptions {
 }
 
 const AssertionError = new Error('Assertion failed');
+// Thrown into a step's execute() when the machine has stopped (APEX error
+// feedback, buffer open failure) or moved on without it (cancel, UI skip),
+// so the step unwinds instead of carrying on against a run that is no longer
+// its own. Swallowed by startNext's catch, like AssertionError.
+const StepAbandoned = new Error('Step abandoned');
 
 export class StepMachine {
   private next?: ActionStep;
   private nextAct?: () => void;
+  // Bumped by every startNext() and stop(). A step's ctx callbacks capture
+  // the value current when that step started, and go inert once it moves on
+  // — so a cancelled or UI-skipped step that is still mid-await can't
+  // complete() its way into running another step.
+  private generation = 0;
+  // True from start() until the first stop(): onEnd fires exactly once per
+  // run, however many paths reach stop().
+  private active = false;
 
   constructor(
     private steps: ActionStep[],
@@ -42,6 +55,7 @@ export class StepMachine {
   }
 
   start() {
+    this.active = true;
     this.options.onStart();
     void this.startNext();
   }
@@ -78,6 +92,12 @@ export class StepMachine {
   }
 
   stop() {
+    if (!this.active) {
+      return;
+    }
+    this.active = false;
+    this.generation++;
+    this.steps = [];
     this.next = undefined;
     this.nextAct = undefined;
     // Reset the MTRA buffer cache so a fresh run never skips the open step.
@@ -88,6 +108,7 @@ export class StepMachine {
   }
 
   private async startNext() {
+    const token = ++this.generation;
     if (this.steps.length === 0) {
       this.log.success('Action Package execution completed');
       this.stop();
@@ -98,16 +119,30 @@ export class StepMachine {
     const info = act.getActionStepInfo(next.type);
     let description: string | undefined;
     const log = this.options.log;
+    const isCurrent = () => token === this.generation;
+    // For awaits: a step whose run moved on mid-await must not continue.
+    const ensureCurrent = () => {
+      if (!isCurrent()) {
+        throw StepAbandoned;
+      }
+    };
     try {
       await info.execute({
         data: next,
         log,
-        setStatus: status => this.options.onStatusChanged(status),
+        setStatus: status => {
+          if (isCurrent()) {
+            this.options.onStatusChanged(status);
+          }
+        },
         waitAct: async status => {
+          ensureCurrent();
           status ??= description ?? info.description(next);
           await this.waitAct(status);
+          ensureCurrent();
         },
         waitActionFeedback: async tile => {
+          ensureCurrent();
           // Read at use time so a settings change mid-run takes effect on the
           // next step. Default false: the user taps APEX's CONFIRM themselves
           // (action-authorisation rule); auto-click is opt-in.
@@ -118,26 +153,43 @@ export class StepMachine {
               : 'Waiting for action feedback (confirm in APEX if prompted)...',
           );
           const error = await waitActionFeedback(tile, autoConfirm);
+          ensureCurrent();
           if (error) {
             log.error(error);
             log.error(description ?? info.description(next));
             log.error('Action Package execution failed');
             this.stop();
-            return;
+            throw StepAbandoned;
           }
         },
         cacheDescription: () => {
+          if (!isCurrent()) {
+            return;
+          }
           description = info.description(next);
           this.options.onStatusChanged(description, true);
         },
         complete: async () => {
+          if (!isCurrent()) {
+            return;
+          }
           // Wait a moment to allow data to update.
           await sleep(0);
+          if (!isCurrent()) {
+            return;
+          }
           log.success(description ?? info.description(next));
           void this.startNext();
         },
-        skip: () => this.skip(),
+        skip: () => {
+          if (isCurrent()) {
+            this.skip();
+          }
+        },
         fail: message => {
+          if (!isCurrent()) {
+            return;
+          }
           if (message) {
             log.error(message);
           }
@@ -151,25 +203,35 @@ export class StepMachine {
             throw AssertionError;
           }
         },
-        requestTile: async command => await this.requestBuffer(command),
+        requestTile: async command => await this.requestBuffer(command, ensureCurrent),
       });
     } catch (e) {
-      if (e !== AssertionError) {
+      if (e !== AssertionError && e !== StepAbandoned) {
         log.runtimeError(e);
       }
-      this.stop();
+      // An abandoned step's run has already moved on: stopping here would
+      // end whatever the machine is doing now.
+      if (isCurrent()) {
+        this.stop();
+      }
     }
   }
 
-  private async requestBuffer(command: string): Promise<PrunTile | undefined> {
+  private async requestBuffer(
+    command: string,
+    ensureCurrent: () => void,
+  ): Promise<PrunTile | undefined> {
+    ensureCurrent();
     await this.waitAct(`Open ${command}`);
+    ensureCurrent();
     this.options.onStatusChanged(`Opening ${command}...`);
     const opened = await openMobileBuffer(command);
+    ensureCurrent();
     const anchor = document.getElementById('container');
     if (!opened || !anchor) {
       this.log.error(`Failed to open ${command}`);
       this.stop();
-      return undefined;
+      throw StepAbandoned;
     }
     return { anchor };
   }
