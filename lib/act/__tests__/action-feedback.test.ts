@@ -28,6 +28,7 @@ interface Fixture {
   anchor: HTMLElement;
   overlay: HTMLElement;
   resolveConfirmation: () => void;
+  cancelClicks: () => number;
 }
 
 function buildConfirmationOverlay(): Fixture {
@@ -38,10 +39,18 @@ function buildConfirmationOverlay(): Fixture {
 
   const overlay = document.createElement('div');
   overlay.className = 'af-overlay aco-container';
+  // Lowercase, as in APEX's DOM (CSS uppercases the visible label).
   const cancelBtn = document.createElement('button');
   cancelBtn.className = 'apex-btn';
+  cancelBtn.textContent = 'cancel';
+  let cancelClicks = 0;
+  cancelBtn.addEventListener('click', () => {
+    cancelClicks++;
+    overlay.remove();
+  });
   const confirmBtn = document.createElement('button');
   confirmBtn.className = 'apex-btn';
+  confirmBtn.textContent = 'confirm';
   confirmBtn.addEventListener('click', () => {
     overlay.classList.remove('aco-container');
     overlay.classList.add('af-success');
@@ -55,6 +64,7 @@ function buildConfirmationOverlay(): Fixture {
       overlay.classList.remove('aco-container');
       overlay.classList.add('af-success');
     },
+    cancelClicks: () => cancelClicks,
   };
 }
 
@@ -224,6 +234,53 @@ describe('abandonManualConfirmWait (APXM-side escape)', () => {
     const fixture = buildConfirmationOverlay();
     setTimeout(() => fixture.resolveConfirmation(), 20);
     const error = await waitActionFeedback({ anchor: fixture.anchor }, false);
+    expect(error).toBeUndefined();
+  });
+});
+
+describe('abandonManualConfirmWait and APEX cancel', () => {
+  it("clicks APEX's cancel (matched by text) while the dialog is still confirming", async () => {
+    const fixture = buildConfirmationOverlay();
+    // Put the cancel button second so an index-based pick would miss it.
+    fixture.overlay.appendChild(fixture.overlay.querySelector('button')!);
+    setTimeout(() => abandonManualConfirmWait(), 20);
+
+    const error = await waitActionFeedback({ anchor: fixture.anchor }, false);
+
+    expect(fixture.cancelClicks()).toBe(1);
+    expect(error).toBe('Stopped waiting for APEX confirmation');
+  });
+
+  it('clicks nothing, and follows the real outcome, when the dialog already moved to progress', async () => {
+    const fixture = buildConfirmationOverlay();
+    setTimeout(() => {
+      // The user's CONFIRM landed; STOP WAITING arrives in the same tick,
+      // before the class observer has run.
+      fixture.overlay.classList.remove('aco-container');
+      fixture.overlay.classList.add('af-progress');
+      abandonManualConfirmWait();
+      setTimeout(() => {
+        fixture.overlay.classList.remove('af-progress');
+        fixture.overlay.classList.add('af-success');
+      }, 10);
+    }, 20);
+
+    const error = await waitActionFeedback({ anchor: fixture.anchor }, false);
+
+    expect(fixture.cancelClicks()).toBe(0);
+    expect(error).toBeUndefined();
+  });
+
+  it('clicks nothing when the dialog already reached success', async () => {
+    const fixture = buildConfirmationOverlay();
+    setTimeout(() => {
+      fixture.resolveConfirmation();
+      abandonManualConfirmWait();
+    }, 20);
+
+    const error = await waitActionFeedback({ anchor: fixture.anchor }, false);
+
+    expect(fixture.cancelClicks()).toBe(0);
     expect(error).toBeUndefined();
   });
 });

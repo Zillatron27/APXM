@@ -11,8 +11,9 @@ import { abandonManualConfirmWait } from '../../lib/act/action-feedback';
  * body — but that is device-validated, not guaranteed (#73 checklist).
  *
  * STOP WAITING is the escape when the dialog can't be reached (wrong place on
- * screen, APEX wedged): it ends APXM's wait without touching APEX, so the
- * action fails, the buffer closes and the action lock is released.
+ * screen, APEX wedged): it taps APEX's cancel if the dialog is still asking,
+ * ends APXM's wait, and the action fails, the buffer closes and the action
+ * lock is released. It never confirms.
  */
 export function ConfirmBar() {
   return (

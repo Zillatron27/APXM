@@ -23,8 +23,10 @@ let abandonPendingConfirm: (() => void) | null = null;
  * APXM-side escape from the manual-confirm wait (ConfirmBar's button). The
  * human wait has no timeout by design, so this is what guarantees the action
  * lock can always be released without a reload — e.g. when APEX's dialog is
- * unreachable. It commits nothing in APEX: the caller's cleanup closes the
- * buffer. No-op when no wait is pending.
+ * unreachable. While APEX's dialog is still asking, it taps APEX's cancel so
+ * no confirmable dialog is left behind; it never confirms. If the dialog has
+ * already moved on (the user's CONFIRM landed), it clicks nothing and the
+ * wait follows the real outcome. No-op when no wait is pending.
  */
 export function abandonManualConfirmWait(): void {
   abandonPendingConfirm?.();
@@ -123,7 +125,12 @@ function waitConfirmationResolved(overlay: HTMLElement): Promise<boolean> {
     return Promise.resolve(true);
   }
   return new Promise<boolean>(resolve => {
+    let settled = false;
     const done = (resolved: boolean) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
       attrObserver.disconnect();
       removalObserver.disconnect();
       abandonPendingConfirm = null;
@@ -136,7 +143,28 @@ function waitConfirmationResolved(overlay: HTMLElement): Promise<boolean> {
     });
     attrObserver.observe(overlay, { attributes: true, attributeFilter: ['class'] });
     const removalObserver = observeDetach(overlay, () => done(true));
-    abandonPendingConfirm = () => done(false);
+    abandonPendingConfirm = () => {
+      // Decide from the live DOM, not observer state: the class observer may
+      // not have run yet for a transition that already happened.
+      const stillConfirming =
+        overlay.isConnected &&
+        overlay.classList.contains(C.ActionConfirmationOverlay.container);
+      if (!stillConfirming) {
+        done(true);
+        return;
+      }
+      // Matched by label, never position: the confirm button must be
+      // impossible to hit from here. textContent is lowercase in APEX's DOM.
+      const cancel = _$$(overlay, C.Button.btn).find(btn =>
+        /cancel/i.test(btn.textContent ?? ''),
+      );
+      if (cancel) {
+        (cancel as HTMLElement).click();
+      } else {
+        console.warn('[APXM] confirmation dialog has no cancel button; abandoning wait only');
+      }
+      done(false);
+    };
   });
 }
 
