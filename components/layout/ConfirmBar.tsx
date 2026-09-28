@@ -1,3 +1,5 @@
+import { abandonManualConfirmWait } from '../../lib/act/action-feedback';
+
 /**
  * The only APXM chrome shown during a manual-confirm window: a driven APEX
  * action hit the game's confirmation dialog and settings.autoConfirm is off,
@@ -7,6 +9,10 @@
  *
  * Top placement keeps clear of the dialog, which APEX renders over the buffer
  * body — but that is device-validated, not guaranteed (#73 checklist).
+ *
+ * STOP WAITING is the escape when the dialog can't be reached (wrong place on
+ * screen, APEX wedged): it ends APXM's wait without touching APEX, so the
+ * action fails, the buffer closes and the action lock is released.
  */
 export function ConfirmBar() {
   return (
@@ -15,6 +21,13 @@ export function ConfirmBar() {
         <span className="text-prun-yellow">▼</span>
         <span className="ml-2">Confirm or cancel in APEX below</span>
       </span>
+      <button
+        type="button"
+        onClick={abandonManualConfirmWait}
+        className="min-h-touch px-2 text-apxm-muted uppercase tracking-wider"
+      >
+        Stop waiting
+      </button>
     </div>
   );
 }

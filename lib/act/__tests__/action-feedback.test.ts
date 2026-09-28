@@ -4,7 +4,7 @@
 // opaque cover, so without this signal the dialog is un-hidden underneath it.
 
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
-import { waitActionFeedback } from '../action-feedback';
+import { waitActionFeedback, abandonManualConfirmWait } from '../action-feedback';
 import { setupActGlobals } from '../globals-setup';
 import { C } from '../prun-css';
 
@@ -165,5 +165,65 @@ describe('waitActionFeedback progress wait (#5)', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe('overlay removal at any ancestor level', () => {
+  it('manual confirm: resolves when an ancestor of the overlay is removed', async () => {
+    const fixture = buildConfirmationOverlay();
+    const events: boolean[] = [];
+    // The overlay's own parent leaves the document — the overlay itself is
+    // never the removed node, so a parent-scoped observer never fires.
+    setTimeout(() => fixture.anchor.remove(), 20);
+
+    const error = await waitActionFeedback({ anchor: fixture.anchor }, false, (p) =>
+      events.push(p)
+    );
+
+    expect(error).toBe('Unknown action feedback overlay');
+    expect(events).toEqual([true, false]);
+  });
+
+  it('progress: returns the feedback-lost error well before the timeout when an ancestor is removed', async () => {
+    const wrapper = document.createElement('div');
+    document.body.appendChild(wrapper);
+    const anchor = document.createElement('div');
+    wrapper.appendChild(anchor);
+    const overlay = document.createElement('div');
+    overlay.className = 'af-overlay af-progress';
+    anchor.appendChild(overlay);
+
+    const started = Date.now();
+    setTimeout(() => wrapper.remove(), 20);
+    const error = await waitActionFeedback({ anchor }, false);
+
+    expect(error).toBe('Action feedback lost — check APEX');
+    expect(Date.now() - started).toBeLessThan(1000);
+  });
+});
+
+describe('abandonManualConfirmWait (APXM-side escape)', () => {
+  it('ends a pending manual-confirm wait with an error and restores the buffer styles', async () => {
+    const fixture = buildConfirmationOverlay();
+    const events: boolean[] = [];
+    setTimeout(() => abandonManualConfirmWait(), 20);
+
+    const error = await waitActionFeedback({ anchor: fixture.anchor }, false, (p) =>
+      events.push(p)
+    );
+
+    expect(error).toBe('Stopped waiting for APEX confirmation');
+    expect(events).toEqual([true, false]);
+    expect(fixture.anchor.style.visibility).toBe('hidden');
+    expect(fixture.anchor.style.left).toBe('-9999px');
+  });
+
+  it('is a no-op when no manual-confirm wait is pending', async () => {
+    abandonManualConfirmWait();
+    // A later wait is unaffected by the earlier call.
+    const fixture = buildConfirmationOverlay();
+    setTimeout(() => fixture.resolveConfirmation(), 20);
+    const error = await waitActionFeedback({ anchor: fixture.anchor }, false);
+    expect(error).toBeUndefined();
   });
 });

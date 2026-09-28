@@ -12,6 +12,23 @@ import type { PrunTile } from './runtime-types';
 // shared action lock until page reload.
 const PROGRESS_TIMEOUT_MS = 60_000;
 const FEEDBACK_LOST = 'Action feedback lost — check APEX';
+const CONFIRM_ABANDONED = 'Stopped waiting for APEX confirmation';
+
+// Ends the in-flight manual-confirm wait, if any. Set only while
+// waitConfirmationResolved is pending — there is at most one, because the
+// shared action lock allows one driven action at a time.
+let abandonPendingConfirm: (() => void) | null = null;
+
+/**
+ * APXM-side escape from the manual-confirm wait (ConfirmBar's button). The
+ * human wait has no timeout by design, so this is what guarantees the action
+ * lock can always be released without a reload — e.g. when APEX's dialog is
+ * unreachable. It commits nothing in APEX: the caller's cleanup closes the
+ * buffer. No-op when no wait is pending.
+ */
+export function abandonManualConfirmWait(): void {
+  abandonPendingConfirm?.();
+}
 
 export async function waitActionFeedback(
   tile: PrunTile,
@@ -50,12 +67,16 @@ export async function waitActionFeedback(
       anchor.style.visibility = 'visible';
       anchor.style.left = '0px';
       onManualConfirm?.(true);
+      let abandoned: boolean;
       try {
-        await waitConfirmationResolved(overlay);
+        abandoned = !(await waitConfirmationResolved(overlay));
       } finally {
         onManualConfirm?.(false);
         anchor.style.left = prev.left;
         anchor.style.visibility = prev.visibility;
+      }
+      if (abandoned) {
+        return CONFIRM_ABANDONED;
       }
     }
     if (!(await waitActionProgress(overlay))) {
@@ -75,39 +96,47 @@ export async function waitActionFeedback(
   return 'Unknown action feedback overlay';
 }
 
-// Manual-confirm wait: resolves when the overlay leaves the confirmation
-// state. Two exits: (a) the overlay's own classList changes — after the user
+// Calls onDetached once the overlay leaves the document by any route: its
+// own removal, or removal of any ancestor. Watching only the parent's subtree
+// misses the parent itself being removed, so this watches the whole body and
+// asks isConnected, which is true exactly while the node is in the document.
+function observeDetach(overlay: HTMLElement, onDetached: () => void): MutationObserver {
+  const observer = new MutationObserver(() => {
+    if (!overlay.isConnected) {
+      onDetached();
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+  return observer;
+}
+
+// Manual-confirm wait: resolves true when the overlay leaves the confirmation
+// state. Exits: (a) the overlay's own classList changes — after the user
 // taps CONFIRM, APEX transitions the same element through progress to
-// success/error, exactly the transition the auto-click path observes; or
+// success/error, exactly the transition the auto-click path observes;
 // (b) the overlay is detached — the user tapped CANCEL or APEX dismissed it
-// (a cancel then falls through the success/error checks and fails the step).
+// (a cancel then falls through the success/error checks and fails the step);
+// (c) resolves false when the user abandons the wait from APXM.
 // No timeout: like waitAct(), a human decision is unbounded.
-function waitConfirmationResolved(overlay: HTMLElement): Promise<void> {
+function waitConfirmationResolved(overlay: HTMLElement): Promise<boolean> {
   if (!overlay.classList.contains(C.ActionConfirmationOverlay.container) || !overlay.isConnected) {
-    return Promise.resolve();
+    return Promise.resolve(true);
   }
-  return new Promise<void>(resolve => {
-    const done = () => {
+  return new Promise<boolean>(resolve => {
+    const done = (resolved: boolean) => {
       attrObserver.disconnect();
       removalObserver.disconnect();
-      resolve();
+      abandonPendingConfirm = null;
+      resolve(resolved);
     };
     const attrObserver = new MutationObserver(() => {
       if (!overlay.classList.contains(C.ActionConfirmationOverlay.container)) {
-        done();
+        done(true);
       }
     });
     attrObserver.observe(overlay, { attributes: true, attributeFilter: ['class'] });
-    // A class observer never fires on node removal — watch the parent tree.
-    const removalObserver = new MutationObserver(() => {
-      if (!overlay.isConnected) {
-        done();
-      }
-    });
-    removalObserver.observe(overlay.parentElement ?? document.body, {
-      childList: true,
-      subtree: true,
-    });
+    const removalObserver = observeDetach(overlay, () => done(true));
+    abandonPendingConfirm = () => done(false);
   });
 }
 
@@ -134,16 +163,7 @@ function waitActionProgress(overlay: HTMLElement): Promise<boolean> {
       }
     });
     attrObserver.observe(overlay, { attributes: true });
-    // A class observer never fires on node removal — watch the parent tree.
-    const removalObserver = new MutationObserver(() => {
-      if (!overlay.isConnected) {
-        done(false);
-      }
-    });
-    removalObserver.observe(overlay.parentElement ?? document.body, {
-      childList: true,
-      subtree: true,
-    });
+    const removalObserver = observeDetach(overlay, () => done(false));
     const timer = setTimeout(() => done(false), PROGRESS_TIMEOUT_MS);
   });
 }
