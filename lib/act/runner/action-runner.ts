@@ -9,6 +9,7 @@ import { Logger, type LogPart } from './logger';
 import { StepMachine } from './step-machine';
 import { StepGenerator } from './step-generator';
 import { ActionPackageConfig, ActionStep } from '../shared-types';
+import { acquireActionLock } from '../action-lock';
 
 interface ActionRunnerOptions {
   log: Logger;
@@ -66,6 +67,15 @@ export class ActionRunner {
     const { steps, fail } = await this.stepGenerator.generateSteps(copy, config);
     if (fail) {
       this.log.error('Action Package execution failed');
+      return;
+    }
+    // Step generation touches no DOM, so the lock is only taken once the
+    // StepMachine is about to drive #container. It is held for the whole
+    // run, not this synchronous call — execute() returns right after start()
+    // — and released by StepMachine.stop(), the one teardown point every run
+    // reaches.
+    if (!acquireActionLock()) {
+      this.log.error('Another action is already running');
       return;
     }
     this.log.info('Action Package execution started');

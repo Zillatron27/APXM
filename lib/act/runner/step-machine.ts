@@ -12,7 +12,11 @@ import { waitActionFeedback } from '../action-feedback';
 import { openMobileBuffer, closeMobileBuffer } from '../../mobile-buffer-navigator';
 import { clearMtraBufferCache } from '../action-steps/MTRA_TRANSFER';
 import { useSettingsStore } from '../../../stores/settings';
+import { releaseActionLock } from '../action-lock';
 
+// Lock contract: ActionRunner acquires the shared action lock before start();
+// stop() releases it, once per run (stop() is idempotent), after the buffer
+// has finished closing. Construct a StepMachine only through ActionRunner.
 interface StepMachineOptions {
   log: Logger;
   onBufferSplit: () => void;
@@ -102,8 +106,10 @@ export class StepMachine {
     this.nextAct = undefined;
     // Reset the MTRA buffer cache so a fresh run never skips the open step.
     clearMtraBufferCache();
-    // Close any open buffer and restore APEX before signalling the end.
-    void closeMobileBuffer();
+    // Close any open buffer and restore APEX before signalling the end. The
+    // lock is freed only once the close settles: releasing it now would let
+    // another driver start while APEX is still being navigated back.
+    void closeMobileBuffer().finally(releaseActionLock);
     this.options.onEnd();
   }
 
