@@ -91,9 +91,6 @@ export const CXPO_BUY = act.addActionStep<Data>({
     );
 
     const tile = await requestTile(`CXPO ${cxTicker}`);
-    if (!tile) {
-      return;
-    }
 
     setStatus('Setting up CXPO buffer...');
 

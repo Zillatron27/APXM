@@ -226,7 +226,7 @@ export class StepMachine {
   private async requestBuffer(
     command: string,
     ensureCurrent: () => void,
-  ): Promise<PrunTile | undefined> {
+  ): Promise<PrunTile> {
     ensureCurrent();
     await this.waitAct(`Open ${command}`);
     ensureCurrent();
