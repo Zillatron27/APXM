@@ -477,6 +477,43 @@ describe('createEntityStore', () => {
       expect(pstore.getState().dataSource).toBeNull();
     });
 
+    it('rehydrate refuses to overwrite a store already sourced from websocket', async () => {
+      // 1 hour old — well within TTL, so absent the live-data guard this
+      // would normally apply.
+      storageMock.data.set('cache-ws', makeCacheEntry(Date.now() - HOUR_MS));
+      const pstore = createEntityStore<TestEntity>('p-ws', (i) => i.id, {
+        key: 'cache-ws',
+      });
+      pstore.getState().setFetched('websocket');
+
+      await expect(pstore.rehydrate()).resolves.toBe(false);
+
+      // Live (empty, but websocket-sourced) state must survive untouched
+      expect(pstore.getState().entities.size).toBe(0);
+      expect(pstore.getState().dataSource).toBe('websocket');
+    });
+
+    it('rehydrate bails if a websocket update lands while the cache read is in flight', async () => {
+      // Models the actual race from #4: a login-burst batch can land during
+      // the `await browser.storage.local.get(...)` inside rehydrate(), after
+      // the dataSource check that ran before issuing the read. The bail-out
+      // must be re-checked right before the setState that would clobber it.
+      storageMock.data.set('cache-race', makeCacheEntry(Date.now() - HOUR_MS));
+      const pstore = createEntityStore<TestEntity>('p-race', (i) => i.id, {
+        key: 'cache-race',
+      });
+
+      const rehydratePromise = pstore.rehydrate(); // suspends at the storage.get() await
+      // Synchronous websocket delivery landing in that gap, before the
+      // storage promise's continuation gets a microtask turn.
+      pstore.getState().setOne({ id: 'live', name: 'live-data', value: 99 });
+      pstore.getState().setFetched('websocket');
+
+      await expect(rehydratePromise).resolves.toBe(false);
+      expect(pstore.getState().getById('live')?.name).toBe('live-data');
+      expect(pstore.getState().getById('e1')).toBeUndefined();
+    });
+
     it('rehydrate discards cache from a different build version', async () => {
       storageMock.data.set(
         'cache-version',

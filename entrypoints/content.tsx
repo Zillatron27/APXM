@@ -181,13 +181,21 @@ export default defineContentScript({
 
     await rehydrateAllStores();
 
-    // Mark rehydrated sites as cache-sourced for per-site staleness indicators
-    const rehydratedSites = useSitesStore.getState().getAll();
-    if (rehydratedSites.length > 0) {
-      const ts = useSitesStore.getState().lastUpdated ?? Date.now();
-      useSiteSourceStore.getState().markAllSites(
-        rehydratedSites.map((s) => s.siteId), 'cache', ts
-      );
+    // Mark rehydrated sites as cache-sourced for per-site staleness indicators.
+    // Gated on the sites store's OWN dataSource, not just "did we get any
+    // sites back" — a login-burst websocket batch can land during the awaits
+    // above and flip it to 'websocket' before we get here (create-entity-
+    // store's rehydrate() already refuses to clobber that live data, but
+    // this per-site marker is a separate store and needs its own guard so it
+    // doesn't relabel live sites as stale).
+    if (useSitesStore.getState().dataSource === 'cache') {
+      const rehydratedSites = useSitesStore.getState().getAll();
+      if (rehydratedSites.length > 0) {
+        const ts = useSitesStore.getState().lastUpdated ?? Date.now();
+        useSiteSourceStore.getState().markAllSites(
+          rehydratedSites.map((s) => s.siteId), 'cache', ts
+        );
+      }
     }
 
     // 6b. Public reference data — material names, CX prices. No credentials
