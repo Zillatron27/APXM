@@ -90,9 +90,7 @@ export const MTRA_TRANSFER = act.addActionStep<Data>({
       tile = { anchor };
       setStatus('Reusing MTRA buffer...');
     } else {
-      const newTile = await requestTile(command);
-      if (!newTile) return;
-      tile = newTile;
+      tile = await requestTile(command);
       lastMtraCommand = command;
     }
 
