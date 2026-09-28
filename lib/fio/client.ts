@@ -27,8 +27,15 @@ async function handleResponse<T>(response: Response): Promise<FioResult<T>> {
     if (response.status === 204) {
       return { ok: true, data: [] as unknown as T };
     }
-    const data = await response.json();
-    return { ok: true, data };
+    // A 2xx status with an unparseable body is still a failure the caller
+    // must see as a FioResult, not a rejected promise.
+    try {
+      const data = await response.json();
+      return { ok: true, data };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to parse response body';
+      return { ok: false, error: { type: 'parse', message } };
+    }
   }
 
   let error: FioError;
@@ -59,7 +66,7 @@ async function fioFetch<T>(
         Accept: 'application/json',
       },
     });
-    return handleResponse<T>(response);
+    return await handleResponse<T>(response);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown network error';
     return { ok: false, error: { type: 'network', message } };
@@ -79,7 +86,7 @@ async function fioFetchPublic<T>(endpoint: string): Promise<FioResult<T>> {
         Accept: 'application/json',
       },
     });
-    return handleResponse<T>(response);
+    return await handleResponse<T>(response);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown network error';
     return { ok: false, error: { type: 'network', message } };

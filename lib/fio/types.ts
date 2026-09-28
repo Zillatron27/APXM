@@ -181,7 +181,7 @@ export interface FioExchangeEntry {
 // Error Types
 // ============================================================================
 
-export type FioErrorType = 'unauthorized' | 'not_found' | 'network' | 'unknown';
+export type FioErrorType = 'unauthorized' | 'not_found' | 'network' | 'parse' | 'unknown';
 
 export interface FioError {
   type: FioErrorType;

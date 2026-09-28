@@ -206,6 +206,8 @@ export default defineContentScript({
         if (result.success) {
           useSettingsStore.getState().setFioLastFetch(Date.now());
         }
+      }).catch((err) => {
+        logError('FIO population failed:', err);
       });
     }
 

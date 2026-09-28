@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { fetchAllMaterials, fetchExchangeAll, fetchStorage } from '../client';
+import { fetchAllMaterials, fetchExchangeAll, fetchStorage, fetchSites } from '../client';
 import type { FioConfig } from '../types';
 
 /**
@@ -78,6 +78,23 @@ describe('FIO public client', () => {
     if (!result.ok) {
       expect(result.error.type).toBe('network');
       expect(result.error.message).toBe('connection refused');
+    }
+  });
+
+  it('maps an invalid JSON body to a parse error result instead of rejecting (public)', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.reject(new SyntaxError('Unexpected token in JSON')),
+    } as unknown as Response);
+
+    // Must resolve, not reject — callers rely on the FioResult contract
+    // and don't wrap this in try/catch.
+    const result = await fetchAllMaterials();
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.type).toBe('parse');
     }
   });
 });
@@ -172,6 +189,23 @@ describe('FIO authenticated client', () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.data).toEqual([]);
+    }
+  });
+
+  it('maps an invalid JSON body to a parse error result instead of rejecting (authenticated)', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.reject(new SyntaxError('Unexpected token in JSON')),
+    } as unknown as Response);
+
+    // Must resolve, not reject — callers rely on the FioResult contract
+    // and don't wrap this in try/catch.
+    const result = await fetchSites(config);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.type).toBe('parse');
     }
   });
 });
