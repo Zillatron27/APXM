@@ -7,7 +7,7 @@ export type {
 } from './types';
 
 export { executeBufferRefresh, buildBufferCommand, BufferRefreshError } from './engine';
-export { executeBatchRefresh } from './batch';
+export { executeBatchRefresh, startAutoRefresh } from './batch';
 export {
   initRefreshMode,
   getRefreshMode,

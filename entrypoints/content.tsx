@@ -11,7 +11,7 @@ import { rehydrateAllStores } from '../stores/cache';
 import { warn, error as logError } from '../lib/debug/logger';
 import { isDebugEnabled, createOverlay, markStep, markFailed, pollForAttribute, ensureDiagnosticsVisible } from '../lib/diagnostics';
 import { initRefreshMode, isAutoRefreshEnabled } from '../lib/buffer-refresh';
-import { executeBatchRefresh } from '../lib/buffer-refresh';
+import { startAutoRefresh } from '../lib/buffer-refresh';
 import { useSitesStore } from '../stores/entities';
 import { useSiteSourceStore } from '../stores/site-data-sources';
 import { applyTheme } from '../lib/theme';
@@ -254,10 +254,10 @@ export default defineContentScript({
         if (state.fetched && state.getAll().length > 0) {
           unsub();
           // 2s delay ensures the full login burst completes before
-          // refresh begins — avoids competing with message processing
+          // refresh begins — avoids competing with message processing.
+          // startAutoRefresh retries if the user's first action holds the lock.
           setTimeout(() => {
-            const siteIds = useSitesStore.getState().getAll().map((s) => s.siteId);
-            executeBatchRefresh({ siteIds });
+            startAutoRefresh(() => useSitesStore.getState().getAll().map((s) => s.siteId));
           }, 2000);
         }
       });

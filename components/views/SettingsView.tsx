@@ -16,6 +16,7 @@ import {
   type RefreshMode,
 } from '../../lib/buffer-refresh';
 import { useRefreshState } from '../../stores/refreshState';
+import { useGameState } from '../../stores/gameState';
 import { useSitesStore } from '../../stores/entities';
 import {
   scanBufferCards,
@@ -65,6 +66,7 @@ function DevRefreshModePane() {
   const completedCount = useRefreshState((s) => s.completedCount);
   const totalCount = useRefreshState((s) => s.totalCount);
   const persistRefreshMode = useSettingsStore((s) => s.setRefreshMode);
+  const actionInFlight = useGameState((s) => s.actionInFlight);
 
   function selectMode(next: RefreshMode): void {
     applyRefreshMode(next); // runtime: module var + refreshState store
@@ -72,7 +74,7 @@ function DevRefreshModePane() {
   }
 
   function handleRefreshAll(): void {
-    if (isRefreshing) return;
+    if (isRefreshing || actionInFlight) return;
     const siteIds = useSitesStore
       .getState()
       .getAll()
@@ -104,8 +106,12 @@ function DevRefreshModePane() {
         {mode === 'batch' && (
           <button
             onClick={handleRefreshAll}
-            disabled={isRefreshing}
-            className={`${btnSecondary} w-full min-h-touch`}
+            disabled={isRefreshing || actionInFlight}
+            // Dim only when another driver holds the lock; during our own
+            // batch the progress label is the feedback.
+            className={`${btnSecondary} w-full min-h-touch ${
+              actionInFlight && !isRefreshing ? 'opacity-30' : ''
+            }`}
           >
             {isRefreshing
               ? `Refreshing ${completedCount}/${totalCount}…`
