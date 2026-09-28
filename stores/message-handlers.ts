@@ -160,9 +160,15 @@ export function initMessageHandlers(): void {
     if (siteId && platform) {
       const site = useSitesStore.getState().getById(siteId);
       if (site) {
+        // Upsert by id — redelivery of the same message (or a follow-up
+        // update to a platform already known) must not append a duplicate.
+        const existingIndex = site.platforms.findIndex((p) => p.id === platform.id);
+        const platforms = existingIndex === -1
+          ? [...site.platforms, platform]
+          : site.platforms.map((p, i) => (i === existingIndex ? platform : p));
         useSitesStore.getState().setOne({
           ...site,
-          platforms: [...site.platforms, platform],
+          platforms,
         });
       }
     } else {
@@ -301,9 +307,15 @@ export function initMessageHandlers(): void {
     if (order?.id && order?.productionLineId) {
       const line = useProductionStore.getState().getById(order.productionLineId);
       if (line) {
+        // Upsert by id — redelivery of the same message (or a follow-up
+        // update to an order already known) must not append a duplicate.
+        const existingIndex = line.orders.findIndex((o) => o.id === order.id);
+        const orders = existingIndex === -1
+          ? [...line.orders, order]
+          : line.orders.map((o, i) => (i === existingIndex ? order : o));
         useProductionStore.getState().setOne({
           ...line,
-          orders: [...line.orders, order],
+          orders,
         });
       }
     } else {

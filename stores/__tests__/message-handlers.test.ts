@@ -24,6 +24,7 @@ import {
   createTestContract,
   createTestAlert,
   createProductionOrder,
+  createPlatform,
 } from '../../__tests__/fixtures/factories';
 import { useSiteSourceStore } from '../site-data-sources';
 import { useCompanyStore } from '../company';
@@ -321,6 +322,48 @@ describe('message-handlers', () => {
     });
   });
 
+  describe('SITE_PLATFORM_BUILT', () => {
+    it('adds a new platform to the site', () => {
+      const site = createTestSite({ siteId: 'site-1', platforms: [] });
+      dispatchMessage('SITE_SITES', { sites: [site] });
+
+      const platform = createPlatform({ id: 'plat-1', siteId: 'site-1' });
+      dispatchMessage('SITE_PLATFORM_BUILT', { siteId: 'site-1', platform });
+
+      expect(useSitesStore.getState().getById('site-1')?.platforms).toHaveLength(1);
+      expect(useSitesStore.getState().getById('site-1')?.platforms[0].id).toBe('plat-1');
+    });
+
+    it('does not duplicate the platform on redelivery of the same message', () => {
+      const site = createTestSite({ siteId: 'site-1', platforms: [] });
+      dispatchMessage('SITE_SITES', { sites: [site] });
+
+      const platform = createPlatform({ id: 'plat-1', siteId: 'site-1' });
+      dispatchMessage('SITE_PLATFORM_BUILT', { siteId: 'site-1', platform });
+      dispatchMessage('SITE_PLATFORM_BUILT', { siteId: 'site-1', platform });
+
+      expect(useSitesStore.getState().getById('site-1')?.platforms).toHaveLength(1);
+    });
+
+    it('replaces the existing entry when the same platform id arrives with new data', () => {
+      const site = createTestSite({ siteId: 'site-1', platforms: [] });
+      dispatchMessage('SITE_SITES', { sites: [site] });
+
+      dispatchMessage('SITE_PLATFORM_BUILT', {
+        siteId: 'site-1',
+        platform: createPlatform({ id: 'plat-1', siteId: 'site-1', condition: 1.0 }),
+      });
+      dispatchMessage('SITE_PLATFORM_BUILT', {
+        siteId: 'site-1',
+        platform: createPlatform({ id: 'plat-1', siteId: 'site-1', condition: 0.5 }),
+      });
+
+      const platforms = useSitesStore.getState().getById('site-1')?.platforms;
+      expect(platforms).toHaveLength(1);
+      expect(platforms?.[0].condition).toBe(0.5);
+    });
+  });
+
   describe('STORAGE_STORAGES', () => {
     it('populates storage store', () => {
       const stores = [
@@ -479,6 +522,34 @@ describe('message-handlers', () => {
       const updatedLine = useProductionStore.getState().getById('prod-1');
       expect(updatedLine?.orders).toHaveLength(1);
       expect(updatedLine?.orders[0].id).toBe('order-1');
+    });
+
+    it('does not duplicate the order on redelivery of the same message', () => {
+      const line = createTestProductionLine({ id: 'prod-1', orders: [] });
+      dispatchMessage('PRODUCTION_SITE_PRODUCTION_LINES', { productionLines: [line] });
+
+      const order = createProductionOrder({ id: 'order-1', productionLineId: 'prod-1' });
+      dispatchMessage('PRODUCTION_ORDER_ADDED', order);
+      dispatchMessage('PRODUCTION_ORDER_ADDED', order);
+
+      const updatedLine = useProductionStore.getState().getById('prod-1');
+      expect(updatedLine?.orders).toHaveLength(1);
+    });
+
+    it('replaces the existing entry when the same order id arrives with new data', () => {
+      const line = createTestProductionLine({ id: 'prod-1', orders: [] });
+      dispatchMessage('PRODUCTION_SITE_PRODUCTION_LINES', { productionLines: [line] });
+
+      dispatchMessage('PRODUCTION_ORDER_ADDED', createProductionOrder({
+        id: 'order-1', productionLineId: 'prod-1', completed: 10,
+      }));
+      dispatchMessage('PRODUCTION_ORDER_ADDED', createProductionOrder({
+        id: 'order-1', productionLineId: 'prod-1', completed: 90,
+      }));
+
+      const orders = useProductionStore.getState().getById('prod-1')?.orders;
+      expect(orders).toHaveLength(1);
+      expect(orders?.[0].completed).toBe(90);
     });
   });
 
