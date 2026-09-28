@@ -66,20 +66,25 @@ describe('executeBufferRefresh action lock', () => {
     expect(isActionInFlight()).toBe(true);
   });
 
-  it('runs only one of two concurrent refreshes', async () => {
+  it('runs only the first of two concurrent refreshes', async () => {
     const { list } = buildApexStack();
-    let cardsSeen = 0;
+    const cardsCreated: string[] = [];
     new MutationObserver((records) => {
-      for (const r of records) cardsSeen += r.addedNodes.length;
+      for (const r of records) {
+        for (const node of r.addedNodes) {
+          cardsCreated.push((node as HTMLElement).querySelector('h4')?.textContent ?? '');
+        }
+      }
     }).observe(list, { childList: true });
 
-    const results = await Promise.all([
-      executeBufferRefresh({ siteId: 'site-1', command: 'BS A', stepTimeoutMs: 100 }),
-      executeBufferRefresh({ siteId: 'site-2', command: 'BS B', stepTimeoutMs: 100 }),
-    ]);
+    // The lock is taken before the entry path's first await, so the call
+    // made first wins, not whichever happens to reach the DOM first.
+    const first = executeBufferRefresh({ siteId: 'site-1', command: 'BS A', stepTimeoutMs: 100 });
+    const second = executeBufferRefresh({ siteId: 'site-2', command: 'BS B', stepTimeoutMs: 100 });
 
-    expect(results).toEqual([true, false]);
-    expect(cardsSeen).toBe(1);
+    expect(await first).toBe(true);
+    expect(await second).toBe(false);
+    expect(cardsCreated).toEqual(['BS A']);
   });
 
   it('holds the lock while running and releases it afterwards', async () => {
