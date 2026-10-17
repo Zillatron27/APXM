@@ -57,8 +57,9 @@ export function planRefuel(
   if (!tankStore) return { available: false, reason: 'no-tank' };
 
   const ticker = FUEL_TICKER[tank];
+  // + 1e-6: float division can land just under a whole number (e.g. 14.999999999999998)
   const deficitUnits = Math.floor(
-    (tankStore.volumeCapacity - tankStore.volumeLoad) / material.volume
+    (tankStore.volumeCapacity - tankStore.volumeLoad) / material.volume + 1e-6
   );
   if (deficitUnits <= 0) return { available: false, reason: 'tank-full' };
 

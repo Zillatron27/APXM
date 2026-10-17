@@ -89,10 +89,11 @@ export function listLoadableMaterials(
       sawUnknownMaterial = true;
       continue;
     }
+    // + 1e-6: float division can land just under a whole number, losing a unit
     const maxUnits = Math.min(
       stock,
-      Math.floor(freeWeight / mat.weight),
-      Math.floor(freeVolume / mat.volume)
+      Math.floor(freeWeight / mat.weight + 1e-6),
+      Math.floor(freeVolume / mat.volume + 1e-6)
     );
     if (maxUnits <= 0) continue;
     materials.push({
