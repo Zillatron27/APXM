@@ -1,6 +1,5 @@
 export { ConnectionStatusBadge } from './ConnectionStatusBadge';
 export { Panel } from './Panel';
-export { SectionHeader } from './SectionHeader';
 export { btnSecondary, btnPrimary, btnPress, btnSegment } from './button';
 export { TimeBadge } from './TimeBadge';
 export { FilterBar, type FilterOption } from './FilterBar';

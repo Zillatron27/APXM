@@ -1,5 +1,5 @@
-export { BurnBadge, getUrgencyColor, getUrgencyTextColor } from './BurnBadge';
-export { BurnRow, BurnRowCompact } from './BurnRow';
+export { BurnBadge } from './BurnBadge';
+export { BurnRow } from './BurnRow';
 export { SiteBurnCard } from './SiteBurnCard';
 export { BurnDetailView } from './BurnDetailView';
 export { RepairDetailView } from './RepairDetailView';
