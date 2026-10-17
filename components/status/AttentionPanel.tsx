@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Panel, btnPress } from '../shared';
 import { useSiteBurns, useProdStatuses } from '../burn';
 import { useShipsStore } from '../../stores/entities/ships';
-import { getFlightByShipId } from '../../stores/entities/flights';
+import { useFlightsStore, getFlightByShipId } from '../../stores/entities/flights';
 import { shipPhase } from '../../lib/fleet-utils';
 import { useGameState, type TabId } from '../../stores/gameState';
 
@@ -50,6 +50,7 @@ export function AttentionPanel() {
   const siteBurns = useSiteBurns();
   const prodStatuses = useProdStatuses();
   const shipsLastUpdated = useShipsStore((s) => s.lastUpdated);
+  const flightsLastUpdated = useFlightsStore((s) => s.lastUpdated);
 
   const burnCount = useMemo(
     () => siteBurns.filter((s) => s.mostUrgent?.urgency === 'critical').length,
@@ -73,7 +74,7 @@ export function AttentionPanel() {
       .getAll()
       .filter((ship) => !shipPhase(getFlightByShipId(ship.id)).stationary).length;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shipsLastUpdated]);
+  }, [shipsLastUpdated, flightsLastUpdated]);
 
   const go = (tab: TabId) => () => setActiveTab(tab);
 
