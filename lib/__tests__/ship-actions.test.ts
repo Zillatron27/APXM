@@ -457,11 +457,19 @@ describe('runShipRefuel', () => {
       commitDelta: false,
     });
 
-    const result = await runShipRefuel(ship.id, 'stl');
+    // The delta wait runs on timers; fake them so the test doesn't sit out the timeout.
+    vi.useFakeTimers();
+    try {
+      const pending = runShipRefuel(ship.id, 'stl');
+      await vi.advanceTimersByTimeAsync(20000);
+      const result = await pending;
 
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error).toMatch(/not confirmed/);
-  }, 20000);
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error).toMatch(/not confirmed/);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 
   it('maps plan failures to user-readable errors without opening a buffer', async () => {
     const { ship, tank, source } = seedRefuelWorld();
@@ -633,20 +641,28 @@ describe('runShipLoadCargo', () => {
     const records: TransferRecord[] = [];
     installLoadFixture({ holdId: ship.idShipStore, records, failOn: 'Drinking Water' });
 
-    const result = await runShipLoadCargo(ship.id, [
-      { ticker: 'RAT', amount: 100 },
-      { ticker: 'DW', amount: 200 },
-    ]);
+    // The failing wizard's amount-step wait times out at 5s by design; fake the timers.
+    vi.useFakeTimers();
+    try {
+      const pending = runShipLoadCargo(ship.id, [
+        { ticker: 'RAT', amount: 100 },
+        { ticker: 'DW', amount: 200 },
+      ]);
+      await vi.advanceTimersByTimeAsync(15000);
+      const result = await pending;
 
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.loaded).toEqual(['RAT']);
-      expect(result.error).toContain('DW');
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.loaded).toEqual(['RAT']);
+        expect(result.error).toContain('DW');
+      }
+      // Only RAT transferred; both buffers still restored.
+      expect(records.map((r) => r.material)).toEqual(['Basic Rations']);
+      expect(closeMobileBuffer).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
     }
-    // Only RAT transferred; both buffers still restored.
-    expect(records.map((r) => r.material)).toEqual(['Basic Rations']);
-    expect(closeMobileBuffer).toHaveBeenCalledTimes(2);
-  }, 15000); // the failing wizard's amount-step wait times out at 5s by design
+  });
 
   it('refuses an over-capacity batch before opening any buffer', async () => {
     const { ship } = seedLoadWorld();
