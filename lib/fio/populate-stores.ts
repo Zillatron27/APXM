@@ -123,12 +123,17 @@ export async function populateStoresFromFio(
     }
   }
 
-  // Mark all known sites as FIO-sourced for per-site staleness indicators
-  const allSites = useSitesStore.getState().getAll();
-  if (allSites.length > 0) {
-    useSiteSourceStore.getState().markAllSites(
-      allSites.map((s) => s.siteId), 'fio'
-    );
+  // Stamp sites as FIO-sourced only when this call wrote FIO data, and never
+  // downgrade a site the websocket has already refreshed
+  const wroteFioData = Object.values(result.populated).some((count) => count > 0);
+  if (wroteFioData) {
+    const { entries, markAllSites } = useSiteSourceStore.getState();
+    const fioSiteIds = useSitesStore
+      .getState()
+      .getAll()
+      .map((s) => s.siteId)
+      .filter((id) => entries.get(id)?.source !== 'websocket');
+    markAllSites(fioSiteIds, 'fio');
   }
 
   return result;
