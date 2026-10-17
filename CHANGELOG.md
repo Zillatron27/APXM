@@ -18,6 +18,21 @@
 - **Cached data could replace live data at login** — game data arriving while the cache was being read was overwritten by the older cached copy and its bases shown as cached. Cache now never replaces live or FIO data
 - **Duplicate production orders and base platforms** — a repeated order-added or platform-built message added the entry twice; entries are now matched by id
 - **Workforce of removed bases kept in cache** — workforce for a demolished or abandoned base is dropped when the site list arrives
+- **Ships departing or arriving mid-session not tracked** — flight start and end messages were listened for under the wrong names; a departure now shows its flight and ETA, and an arrival clears it instead of leaving the ship parked at its origin
+- **Buildings not updated mid-session** — new buildings were discarded (wrong message shape), and repairs and demolitions were ignored; a repaired building now clears its REPAIR age and a demolished one leaves the list
+- **Demolishing a base's last production line kept it burning** — an empty per-site production list now clears that base's lines
+- **One malformed entry dropped a whole list** — a bad item in a game message is skipped instead of discarding the rest
+- **Closing the send-ship sheet while the route was computing locked APXM** — the Flight Control session opened after the sheet closed was never closed, holding the action lock until reload; it is now closed as soon as it opens
+- **FIO refresh showed stale data as fresh** — every base was stamped "FIO, just now" even when the refresh fetched nothing; bases are only stamped when FIO data was actually written, and never over live game data
+- **FIO-only bases showed core, habitation and storage buildings as needing repair** — FIO buildings now carry their real category (CM, HB1–HB5, HBB/HBC/HBM/HBL, STO/STA/STE/STV/STW)
+- **Burn counted workers who don't consume** — one-pop tiers (a game quirk) and homeless workers after demolishing housing no longer add consumption
+- **Refuel and LOAD sometimes one unit short** — floating-point division could round 15 down to 14
+- **FIO materials missing weight or volume broke refuel and LOAD maths** — such records are now skipped, and a stalled FIO request times out after 15s instead of spinning forever
+- **Threshold settings accepted an empty field** — clearing one box let an out-of-order set of thresholds be saved
+- **MARK ALL READ reported failure when it worked** — it waited on alerts APEX can't reach for you
+- **Fleet panel, IN TRANSIT count, repair age and contract deadlines went stale** — they now follow flight changes and count down as time passes
+- **Closing a detail sheet could close the next one opened straight after it**; the close button's screen-reader label now names the open sheet
+- **Buffer cleanup could tap an unrelated Cancel button or delete your own card** — cleanup only touches the add-card form and the card APXM itself created
 
 ## 1.3.0 (2026-08-28)
 
