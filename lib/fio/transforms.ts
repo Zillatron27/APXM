@@ -411,8 +411,16 @@ export function transformAllSites(fioSites: unknown): PrunApi.Site[] {
  * record instead of storing a half-empty one.
  */
 export function transformMaterial(fio: FioMaterial): MaterialInfo {
-  if (typeof fio.Ticker !== 'string' || typeof fio.Name !== 'string') {
-    throw new Error('material record missing Ticker/Name');
+  // Refuel and load-cargo divide by these, so a missing one must not become NaN
+  if (
+    typeof fio.Ticker !== 'string' ||
+    typeof fio.Name !== 'string' ||
+    !Number.isFinite(fio.Weight) ||
+    !(fio.Weight > 0) ||
+    !Number.isFinite(fio.Volume) ||
+    !(fio.Volume > 0)
+  ) {
+    throw new Error('material record missing Ticker/Name/Weight/Volume');
   }
   return {
     ticker: fio.Ticker,

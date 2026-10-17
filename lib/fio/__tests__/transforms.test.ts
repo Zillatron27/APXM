@@ -559,6 +559,17 @@ describe('FIO reference data transforms', () => {
     });
   });
 
+  describe('transformAllMaterials weight/volume', () => {
+    it('skips records with missing, non-finite or zero weight/volume', () => {
+      const bad = [
+        { ...validMaterial, Volume: undefined },
+        { ...validMaterial, Weight: NaN },
+        { ...validMaterial, Volume: 0 },
+      ];
+      expect(transformAllMaterials([...bad, validMaterial])).toHaveLength(1);
+    });
+  });
+
   describe('transformAllExchange', () => {
     it('maps a valid exchange entry, preserving nullable market fields', () => {
       const result = transformAllExchange([validExchangeEntry]);
