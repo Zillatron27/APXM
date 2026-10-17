@@ -305,12 +305,19 @@ export function initMessageHandlers(): void {
   });
 
   typeHandlers.set('PRODUCTION_SITE_PRODUCTION_LINES', (msg: ProcessedMessage) => {
-    const payload = extractPayload(msg) as { productionLines?: PrunApi.ProductionLine[] };
+    const payload = extractPayload(msg) as {
+      siteId?: string;
+      productionLines?: PrunApi.ProductionLine[];
+    };
     if (Array.isArray(payload?.productionLines)) {
       // This is a per-site message — replace ALL lines for this site.
       // setMany only merges, so stale lines from FIO would linger.
-      // Extract siteId from incoming lines, remove old lines for that site, then add new.
+      // The top-level siteId covers a site whose list is now empty (every line
+      // demolished); the lines' siteIds cover payloads that omit it.
       const siteIds = new Set(payload.productionLines.map((l) => l.siteId).filter(Boolean));
+      if (typeof payload.siteId === 'string' && payload.siteId !== '') {
+        siteIds.add(payload.siteId);
+      }
       if (siteIds.size > 0) {
         const store = useProductionStore.getState();
         const staleIds = store.getAll()

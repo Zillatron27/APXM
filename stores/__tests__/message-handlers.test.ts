@@ -524,6 +524,18 @@ describe('message-handlers', () => {
       expect(useProductionStore.getState().getById('stale-smelter')).toBeUndefined();
     });
 
+    it('an empty line list for a site clears its lines and marks it loaded', () => {
+      dispatchMessage('PRODUCTION_SITE_PRODUCTION_LINES', {
+        siteId: 'site-A',
+        productionLines: [createTestProductionLine({ id: 'line-A', siteId: 'site-A' })],
+      });
+
+      dispatchMessage('PRODUCTION_SITE_PRODUCTION_LINES', { siteId: 'site-A', productionLines: [] });
+
+      expect(useProductionStore.getState().getById('line-A')).toBeUndefined();
+      expect(useProductionLoadedStore.getState().loadedSiteIds.has('site-A')).toBe(true);
+    });
+
     it('does not remove lines for other sites', () => {
       // Lines for two different sites
       dispatchMessage('PRODUCTION_SITE_PRODUCTION_LINES', {
