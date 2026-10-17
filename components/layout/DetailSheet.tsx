@@ -100,7 +100,7 @@ export function DetailSheet() {
           )}
           <button
             onClick={close}
-            aria-label="Close production view"
+            aria-label={`Close ${detailLabels[detailView.type].toLowerCase()} view`}
             className="min-h-touch px-3 flex items-center text-apxm-text/60 hover:text-prun-yellow text-lg"
           >
             ✕

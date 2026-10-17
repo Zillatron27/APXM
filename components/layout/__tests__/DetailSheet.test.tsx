@@ -67,4 +67,13 @@ describe('DetailSheet', () => {
     });
     expect(useGameState.getState().detailView).toBeNull();
   });
+
+  it('labels the close button after the open detail, not always production', () => {
+    act(() => {
+      root.render(<DetailSheet />);
+      useGameState.getState().setDetailView({ type: 'ship', shipId: 'sh1', shipName: 'Hauler' });
+    });
+    expect(container.querySelector('button[aria-label="Close ship view"]')).not.toBeNull();
+    expect(container.querySelector('button[aria-label="Close production view"]')).toBeNull();
+  });
 });
