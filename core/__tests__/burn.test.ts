@@ -265,6 +265,24 @@ describe('burn.ts', () => {
       expect(rates.get('DW')?.consumption).toBe(5);
     });
 
+    it('ignores a one-pop tier, which the game reports but does not feed', () => {
+      const bugged = createWorkforce({
+        population: 1,
+        needs: [createNeed({ material: createMaterial({ ticker: 'RAT' }), unitsPerInterval: 4 })],
+      });
+
+      expect(calculateWorkforceConsumption([bugged]).has('RAT')).toBe(false);
+    });
+
+    it('ignores homeless pops (capacity 0) after housing was demolished', () => {
+      const homeless = createWorkforce({
+        capacity: 0,
+        needs: [createNeed({ material: createMaterial({ ticker: 'RAT' }), unitsPerInterval: 4 })],
+      });
+
+      expect(calculateWorkforceConsumption([homeless]).has('RAT')).toBe(false);
+    });
+
     it('accumulates consumption from multiple tiers', () => {
       const pioneers = createWorkforce({
         level: 'PIONEER',

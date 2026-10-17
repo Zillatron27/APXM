@@ -168,6 +168,11 @@ export function calculateWorkforceConsumption(
   const rates = new Map<string, WorkforceRateEntry>();
 
   for (const workforce of workforces) {
+    // DOMAIN RULES (source: rPrun core/burn.ts):
+    // a tier with population <= 1 is reported by the game but doesn't consume (known game bug);
+    // capacity 0 means homeless pops after housing was demolished, which don't consume either.
+    if (workforce.population <= 1 || workforce.capacity === 0) continue;
+
     for (const need of workforce.needs) {
       const ticker = need.material.ticker;
       // unitsPerInterval is already the daily rate
