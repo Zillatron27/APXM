@@ -253,6 +253,10 @@ export function validateThresholds(
   warning: number,
   resupply: number
 ): string | null {
+  // An empty input parses to NaN, which would pass every comparison below
+  if (![critical, warning, resupply].every(Number.isFinite)) {
+    return 'All values must be numbers';
+  }
   if (critical <= 0 || warning <= 0 || resupply <= 0) {
     return 'All values must be greater than 0';
   }
@@ -269,6 +273,10 @@ export function validateRepairThresholds(
   threshold: number,
   offset: number
 ): string | null {
+  // An empty input parses to NaN, which would pass every comparison below
+  if (![threshold, offset].every(Number.isFinite)) {
+    return 'All values must be numbers';
+  }
   if (threshold <= 0 || offset <= 0) {
     return 'All values must be greater than 0';
   }
