@@ -25,13 +25,12 @@ import {
   getCommandInput,
   findCreateButton,
   findCancelButton,
-  findCardByCommand,
   setInputValue,
   waitForElement,
   type SavedStyles,
 } from './buffer-refresh/dom-helpers';
 import { warn, error } from './debug/logger';
-import { openCardList, deleteLastCardMatching, deleteLastCard, exitEditMode, findCardRows } from './buffer-cards';
+import { openCardList, deleteLastCardMatching, deleteLastCard, exitEditMode, findCardRows, findNewCardByCommand } from './buffer-cards';
 
 /** Timeout for each Stack-navigation DOM step. */
 const STEP_TIMEOUT_MS = 2000;
@@ -156,12 +155,18 @@ export async function openMobileBuffer(
     if (!createBtn) {
       throw new Error('CREATE button did not appear');
     }
-    cardCountAtOpen = findCardRows().length;
+    const rowsBeforeCreate = findCardRows().length;
+    cardCountAtOpen = rowsBeforeCreate;
     createBtn.click();
 
-    // Step 8: open the freshly created card. It exists from here on, so it
-    // is queued for deletion at close whatever happens next.
-    const card = await waitForElement(() => findCardByCommand(command), STEP_TIMEOUT_MS);
+    // Step 8: open the freshly created card. Only a row added by our CREATE
+    // counts — a user's existing card for the same command is never ours to
+    // open or delete. Once it exists it is queued for deletion at close
+    // whatever happens next.
+    const card = await waitForElement(
+      () => findNewCardByCommand(command, rowsBeforeCreate),
+      STEP_TIMEOUT_MS
+    );
     if (!card) {
       throw new Error(`Card for "${command}" did not appear`);
     }

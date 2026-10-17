@@ -26,6 +26,15 @@ describe('openMobileBuffer / closeMobileBuffer card cleanup (#84)', () => {
     expect(remaining[0].classList.contains('user-card')).toBe(true);
   });
 
+  it('does not adopt or delete a user card when CREATE adds no row', async () => {
+    const { container, list } = buildApexStack({ existingCards: ['FLT'] });
+    swallowCreateClicks(container);
+    expect(await openMobileBuffer('FLT')).toBe(false);
+    await closeMobileBuffer();
+    expect(list.querySelectorAll('li').length).toBe(1);
+    expect(list.querySelector('li')?.classList.contains('user-card')).toBe(true);
+  });
+
   it('sweeps every card of a multi-open action package on the one close', async () => {
     const { list } = buildApexStack();
     expect(await openMobileBuffer('CONT 1')).toBe(true);
@@ -44,6 +53,17 @@ describe('openMobileBuffer / closeMobileBuffer card cleanup (#84)', () => {
     expect(container.style.visibility).toBe('');
   });
 });
+
+/** Make CREATE a no-op, as when APEX rejects the card, so no row is added. */
+function swallowCreateClicks(container: HTMLElement) {
+  container.addEventListener(
+    'click',
+    (e) => {
+      if ((e.target as HTMLElement).textContent === 'Create') e.stopImmediatePropagation();
+    },
+    true
+  );
+}
 
 describe('closeMobileBuffer sweepAppended option', () => {
   /** Simulate a driven click inside the open buffer spawning an untracked

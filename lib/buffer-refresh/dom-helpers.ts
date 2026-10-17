@@ -132,25 +132,6 @@ export function findCancelButton(): HTMLElement | null {
 }
 
 
-/**
- * Find a card `<li>` by its command text (case-insensitive).
- *
- * APEX cards show the command (e.g. "BS ZV-194A") in a subtitle element
- * and the resolved name (e.g. "BASE: ANTARES III - NIKE") in the h4.
- * Search the full text content of each card to match the command regardless
- * of which child element contains it.
- */
-export function findCardByCommand(cmd: string): HTMLElement | null {
-  const target = cmd.toLowerCase();
-  const cards = document.querySelectorAll('#container li');
-  for (const li of cards) {
-    if (li.textContent?.toLowerCase().includes(target)) {
-      return li as HTMLElement;
-    }
-  }
-  return null;
-}
-
 /** Find the command input element in the add-card form. */
 export function getCommandInput(): HTMLInputElement | null {
   // APEX may render the add-card form in a portal outside #container

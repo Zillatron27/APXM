@@ -66,6 +66,22 @@ export function findCardRows(): HTMLElement[] {
   );
 }
 
+/**
+ * Find the card a CREATE click just added: a row past `rowsBefore` whose text
+ * contains `command` (case-insensitive; APEX shows the command in a subtitle
+ * and the resolved name in the h4, so the whole row text is searched). Rows
+ * that already existed never match — if our CREATE didn't take, the user's own
+ * card for the same command must not be opened and then deleted at close.
+ */
+export function findNewCardByCommand(command: string, rowsBefore: number): HTMLElement | null {
+  const needle = command.toLowerCase();
+  return (
+    findCardRows()
+      .slice(rowsBefore)
+      .find((li) => li.textContent?.toLowerCase().includes(needle)) ?? null
+  );
+}
+
 function readCard(li: HTMLElement): BufferCard {
   return {
     command:

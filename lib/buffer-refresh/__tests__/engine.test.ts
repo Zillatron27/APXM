@@ -39,6 +39,26 @@ describe('executeBufferRefresh card cleanup (#84)', () => {
     expect(remaining[0].classList.contains('user-card')).toBe(true);
   });
 
+  it('does not open or delete a user card when CREATE adds no row', async () => {
+    const { container, list } = buildApexStack({ existingCards: ['BS ZV-307b'] });
+    container.addEventListener(
+      'click',
+      (e) => {
+        // APEX rejects the card: CREATE is a no-op.
+        if ((e.target as HTMLElement).textContent === 'Create') e.stopImmediatePropagation();
+      },
+      true
+    );
+    const ok = await executeBufferRefresh({
+      siteId: 'site-1',
+      command: 'BS ZV-307b',
+      stepTimeoutMs: 100,
+    });
+    expect(ok).toBe(false);
+    expect(list.querySelectorAll('li').length).toBe(1);
+    expect(list.querySelector('li')?.classList.contains('user-card')).toBe(true);
+  });
+
   it('restores container styles after the run', async () => {
     const { container } = buildApexStack();
     container.style.position = 'relative';

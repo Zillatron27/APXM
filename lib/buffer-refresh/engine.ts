@@ -28,12 +28,11 @@ import {
   getCommandInput,
   findCreateButton,
   findCancelButton,
-  findCardByCommand,
   setInputValue,
   waitForElement,
 } from './dom-helpers';
-import { openCardList, deleteLastCardMatching, exitEditMode } from '../buffer-cards';
 import { acquireActionLock, releaseActionLock } from '../act/action-lock';
+import { openCardList, deleteLastCardMatching, exitEditMode, findCardRows, findNewCardByCommand } from '../buffer-cards';
 
 export class BufferRefreshError extends Error {
   constructor(
@@ -163,11 +162,14 @@ export async function runBufferRefresh(options: BufferRefreshOptions): Promise<b
     if (!createBtn) {
       throw new BufferRefreshError('click-create', 'CREATE button not found');
     }
+    // Only a row added by our CREATE counts: a user's existing card for the
+    // same command must never be opened and then deleted at cleanup.
+    const rowsBeforeCreate = findCardRows().length;
     createBtn.click();
 
     // Step 10: Wait for the new card to appear
     const card = await waitForElement(
-      () => findCardByCommand(command),
+      () => findNewCardByCommand(command, rowsBeforeCreate),
       stepTimeoutMs
     );
     if (!card) {
