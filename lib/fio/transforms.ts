@@ -292,6 +292,26 @@ export function transformAllStorage(fioStorages: unknown): PrunApi.Store[] {
 // Site Transforms
 // ============================================================================
 
+/**
+ * DOMAIN RULE: FIO has no building category, so it is derived from the ticker.
+ * Source: FIO /building/allbuildings checked 2026-10-17 against the game's own
+ * names (coreModule, habitation*, storageFacility/Small/Big/Volume/Weight).
+ * Resource extractors stay PRODUCTION: both kinds are repairable, so the
+ * distinction doesn't matter here.
+ */
+const FIO_CORE_TICKERS = new Set(['CM']);
+const FIO_HABITATION_TICKERS = new Set([
+  'HB1', 'HB2', 'HB3', 'HB4', 'HB5', 'HBB', 'HBC', 'HBM', 'HBL',
+]);
+const FIO_STORAGE_TICKERS = new Set(['STO', 'STA', 'STE', 'STV', 'STW']);
+
+function fioBuildingType(ticker: string): PrunApi.Platform['module']['type'] {
+  if (FIO_CORE_TICKERS.has(ticker)) return 'CORE';
+  if (FIO_HABITATION_TICKERS.has(ticker)) return 'HABITATION';
+  if (FIO_STORAGE_TICKERS.has(ticker)) return 'STORAGE';
+  return 'PRODUCTION';
+}
+
 function transformSiteBuilding(fioBuilding: FioSiteBuilding): PrunApi.Platform {
   return {
     siteId: '', // Will be set by caller
@@ -302,7 +322,7 @@ function transformSiteBuilding(fioBuilding: FioSiteBuilding): PrunApi.Platform {
       reactorId: fioBuilding.BuildingId,
       reactorName: fioBuilding.BuildingName,
       reactorTicker: fioBuilding.BuildingTicker,
-      type: 'PRODUCTION', // FIO doesn't distinguish, default to PRODUCTION
+      type: fioBuildingType(fioBuilding.BuildingTicker),
     },
     area: 0, // FIO doesn't provide this
     creationTime: { timestamp: fioBuilding.BuildingCreated },

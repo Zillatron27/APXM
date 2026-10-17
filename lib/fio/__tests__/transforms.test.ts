@@ -11,6 +11,7 @@ import {
   transformAllMaterials,
   transformAllExchange,
 } from '../transforms';
+import { isRepairableBuilding } from '../../../core/repair';
 import type {
   FioWorkforce,
   FioProductionLine,
@@ -361,6 +362,20 @@ describe('FIO Transforms', () => {
       expect(platform.siteId).toBe('site-123');
       expect(platform.condition).toBe(0.95);
       expect(platform.module.reactorTicker).toBe('FRM');
+    });
+
+    it('core and habitation buildings are not repairable, production still is', () => {
+      const building = (ticker: string, id: string) => ({
+        ...fioSite.Buildings[0],
+        SiteBuildingId: id,
+        BuildingTicker: ticker,
+      });
+      const site = transformSite({
+        ...fioSite,
+        Buildings: [building('CM', 'cm'), building('HB1', 'hb1'), building('FRM', 'frm')],
+      });
+      const repairable = site.platforms.filter(isRepairableBuilding).map((p) => p.id);
+      expect(repairable).toEqual(['frm']);
     });
 
     it('transforms building repair materials', () => {
