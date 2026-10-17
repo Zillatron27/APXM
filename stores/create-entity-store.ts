@@ -97,6 +97,13 @@ export function createEntityStore<T>(
   } | null = null;
   let shadowDirty = false;
 
+  // selectId throws on non-objects (e.g. a null in a list); one bad item must
+  // not drop the rest, so guard before calling it.
+  const idOf = (item: T): string | undefined => {
+    if (typeof item !== 'object' || item === null) return undefined;
+    return selectId(item);
+  };
+
   const store = create<EntityStore<T>>((set, get) => ({
     // State
     entities: new Map<string, T>(),
@@ -113,7 +120,7 @@ export function createEntityStore<T>(
     setAll: (items: T[]) => {
       const entities = new Map<string, T>();
       for (const item of items) {
-        const id = selectId(item);
+        const id = idOf(item);
         if (id === undefined || id === null || id === '') {
           warn(`${_name}: entity missing ID, discarding`);
           continue;
@@ -129,7 +136,7 @@ export function createEntityStore<T>(
     },
 
     setOne: (item: T) => {
-      const id = selectId(item);
+      const id = idOf(item);
       if (id === undefined || id === null || id === '') {
         warn(`${_name}: entity missing ID, discarding`);
         return;
@@ -147,7 +154,7 @@ export function createEntityStore<T>(
     setMany: (items: T[]) => {
       if (shadow) {
         for (const item of items) {
-          const id = selectId(item);
+          const id = idOf(item);
           if (id === undefined || id === null || id === '') {
             warn(`${_name}: entity missing ID, discarding`);
             continue;
@@ -158,7 +165,7 @@ export function createEntityStore<T>(
       } else {
         const entities = new Map(get().entities);
         for (const item of items) {
-          const id = selectId(item);
+          const id = idOf(item);
           if (id === undefined || id === null || id === '') {
             warn(`${_name}: entity missing ID, discarding`);
             continue;
