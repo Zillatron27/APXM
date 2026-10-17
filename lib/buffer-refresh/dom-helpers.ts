@@ -112,12 +112,20 @@ export function findCreateButton(): HTMLElement | null {
   return null;
 }
 
-/** Find the "Cancel" button in the add-card form (for cleanup). */
+/**
+ * Find the "Cancel" button of the add-card form (for cleanup).
+ *
+ * Scoped to the form: the cleanup click runs while a driven buffer (CONT, SFC,
+ * INV...) may still be rendered, and any game "Cancel" control in it must not
+ * be clicked without a user tap. The add-card form is identified by its CREATE
+ * button; the Cancel must share a container with it, below #container/body.
+ */
 export function findCancelButton(): HTMLElement | null {
-  const buttons = document.querySelectorAll('button');
-  for (const btn of buttons) {
-    if (btn.textContent?.trim().toLowerCase() === 'cancel') {
-      return btn as HTMLElement;
+  const create = findCreateButton();
+  const root = document.getElementById('container');
+  for (let el = create?.parentElement; el && el !== root && el !== document.body; el = el.parentElement) {
+    for (const btn of el.querySelectorAll('button')) {
+      if (btn.textContent?.trim().toLowerCase() === 'cancel') return btn as HTMLElement;
     }
   }
   return null;
