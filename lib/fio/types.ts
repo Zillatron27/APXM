@@ -196,13 +196,6 @@ export type FioResult<T> =
 // Aggregate Types
 // ============================================================================
 
-export interface FioAllData {
-  workforce: FioResult<FioWorkforce[]>;
-  production: FioResult<FioProductionLine[]>;
-  storage: FioResult<FioStorage[]>;
-  sites: FioResult<FioSite[]>;
-}
-
 export interface FioConfig {
   apiKey: string;
   username: string;
