@@ -14,9 +14,9 @@ import { openMobileBuffer, closeMobileBuffer } from '../mobile-buffer-navigator'
 import {
   runContractAction,
   findContractActionButton,
-  isApexButtonDisabled,
   type ContractActionTarget,
 } from '../contract-actions';
+import { isApexButtonDisabled } from '../act/apex-button';
 import { setupActGlobals } from '../act/globals-setup';
 import { C } from '../act/prun-css';
 import { useSettingsStore } from '../../stores/settings';

@@ -13,7 +13,6 @@ import { acquireActionLock, releaseActionLock } from './act/action-lock';
 import { useSettingsStore } from '../stores/settings';
 import { useGameState } from '../stores/gameState';
 
-export { isApexButtonDisabled } from './act/apex-button';
 import { isApexButtonDisabled } from './act/apex-button';
 
 export type ContractActionTarget =
