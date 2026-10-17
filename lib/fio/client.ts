@@ -65,6 +65,8 @@ async function fioFetch<T>(
         Authorization: apiKey,
         Accept: 'application/json',
       },
+      // A stalled server must surface as a network error, not an endless spinner
+      signal: AbortSignal.timeout(15000),
     });
     return await handleResponse<T>(response);
   } catch (err) {
@@ -85,6 +87,8 @@ async function fioFetchPublic<T>(endpoint: string): Promise<FioResult<T>> {
       headers: {
         Accept: 'application/json',
       },
+      // A stalled server must surface as a network error, not an endless spinner
+      signal: AbortSignal.timeout(15000),
     });
     return await handleResponse<T>(response);
   } catch (err) {
