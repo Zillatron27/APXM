@@ -336,45 +336,69 @@ describe('message-handlers', () => {
     });
   });
 
-  describe('SITE_PLATFORM_BUILT', () => {
-    it('adds a new platform to the site', () => {
-      const site = createTestSite({ siteId: 'site-1', platforms: [] });
-      dispatchMessage('SITE_SITES', { sites: [site] });
+  describe('SITE_PLATFORM_*', () => {
+    const seedSite = () => {
+      const platform = createPlatform({ siteId: 'site-1', id: 'plat-1', condition: 0.5, lastRepair: null });
+      dispatchMessage('SITE_SITES', { sites: [createTestSite({ siteId: 'site-1', platforms: [platform] })] });
+      return platform;
+    };
+    const platformsOf = () => useSitesStore.getState().getById('site-1')?.platforms ?? [];
 
-      const platform = createPlatform({ id: 'plat-1', siteId: 'site-1' });
-      dispatchMessage('SITE_PLATFORM_BUILT', { siteId: 'site-1', platform });
+    it('a newly built platform appears on its site', () => {
+      seedSite();
 
-      expect(useSitesStore.getState().getById('site-1')?.platforms).toHaveLength(1);
-      expect(useSitesStore.getState().getById('site-1')?.platforms[0].id).toBe('plat-1');
+      dispatchMessage('SITE_PLATFORM_BUILT', createPlatform({ siteId: 'site-1', id: 'plat-2' }));
+
+      expect(platformsOf().map((p) => p.id)).toEqual(['plat-1', 'plat-2']);
     });
 
     it('does not duplicate the platform on redelivery of the same message', () => {
-      const site = createTestSite({ siteId: 'site-1', platforms: [] });
-      dispatchMessage('SITE_SITES', { sites: [site] });
+      const platform = seedSite();
 
-      const platform = createPlatform({ id: 'plat-1', siteId: 'site-1' });
-      dispatchMessage('SITE_PLATFORM_BUILT', { siteId: 'site-1', platform });
-      dispatchMessage('SITE_PLATFORM_BUILT', { siteId: 'site-1', platform });
+      dispatchMessage('SITE_PLATFORM_BUILT', platform);
+      dispatchMessage('SITE_PLATFORM_BUILT', platform);
 
-      expect(useSitesStore.getState().getById('site-1')?.platforms).toHaveLength(1);
+      expect(platformsOf()).toHaveLength(1);
     });
 
-    it('replaces the existing entry when the same platform id arrives with new data', () => {
-      const site = createTestSite({ siteId: 'site-1', platforms: [] });
-      dispatchMessage('SITE_SITES', { sites: [site] });
+    it('replaces in place when the same platform id arrives with new data', () => {
+      seedSite();
+      dispatchMessage('SITE_PLATFORM_BUILT', createPlatform({ siteId: 'site-1', id: 'plat-2' }));
 
-      dispatchMessage('SITE_PLATFORM_BUILT', {
-        siteId: 'site-1',
-        platform: createPlatform({ id: 'plat-1', siteId: 'site-1', condition: 1.0 }),
-      });
-      dispatchMessage('SITE_PLATFORM_BUILT', {
-        siteId: 'site-1',
-        platform: createPlatform({ id: 'plat-1', siteId: 'site-1', condition: 0.5 }),
-      });
+      dispatchMessage('SITE_PLATFORM_BUILT', createPlatform({ siteId: 'site-1', id: 'plat-1', condition: 0.9 }));
 
-      const platforms = useSitesStore.getState().getById('site-1')?.platforms;
-      expect(platforms).toHaveLength(1);
-      expect(platforms?.[0].condition).toBe(0.5);
+      expect(platformsOf().map((p) => p.id)).toEqual(['plat-1', 'plat-2']);
+      expect(platformsOf()[0].condition).toBe(0.9);
+    });
+
+    it('a repair update changes condition and lastRepair on the stored platform', () => {
+      const platform = seedSite();
+      const repaired = { ...platform, condition: 1, lastRepair: { timestamp: 123 } };
+
+      dispatchMessage('SITE_PLATFORM_UPDATED', repaired);
+
+      expect(platformsOf()).toHaveLength(1);
+      expect(platformsOf()[0].condition).toBe(1);
+      expect(platformsOf()[0].lastRepair).toEqual({ timestamp: 123 });
+    });
+
+    it('a removal drops the platform', () => {
+      seedSite();
+
+      dispatchMessage('SITE_PLATFORM_REMOVED', { siteId: 'site-1', platformId: 'plat-1' });
+
+      expect(platformsOf()).toHaveLength(0);
+    });
+
+    it('discards malformed platform payloads', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      dispatchMessage('SITE_PLATFORM_BUILT', { nonsense: true });
+      dispatchMessage('SITE_PLATFORM_UPDATED', { nonsense: true });
+      dispatchMessage('SITE_PLATFORM_REMOVED', { nonsense: true });
+
+      expect(useConnectionStore.getState().discardedMessages).toBe(3);
+      warnSpy.mockRestore();
     });
   });
 

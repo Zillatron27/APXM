@@ -165,29 +165,62 @@ export function initMessageHandlers(): void {
     }
   });
 
-  // Platform updates (construction, demolition)
+  // Platform messages: BUILT and UPDATED payloads ARE the Platform (it carries
+  // siteId); REMOVED is { siteId, platformId }.
+  const isPlatformPayload = (p: unknown): p is PrunApi.Platform => {
+    const platform = p as PrunApi.Platform | undefined;
+    return typeof platform?.siteId === 'string' && platform.siteId !== ''
+      && typeof platform.id === 'string' && platform.id !== '';
+  };
+
   typeHandlers.set('SITE_PLATFORM_BUILT', (msg: ProcessedMessage) => {
-    const payload = extractPayload(msg) as {
-      siteId?: string;
-      platform?: PrunApi.Platform;
-    };
-    const { siteId, platform } = payload;
-    if (siteId && platform) {
-      const site = useSitesStore.getState().getById(siteId);
+    const platform = extractPayload(msg);
+    if (!isPlatformPayload(platform)) {
+      warn('SITE_PLATFORM_BUILT: unexpected payload structure', platform);
+      useConnectionStore.getState().incrementDiscarded();
+      return;
+    }
+    const site = useSitesStore.getState().getById(platform.siteId);
+    if (site) {
+      // Upsert by id — redelivery of the same message (or a follow-up
+      // update to a platform already known) must not append a duplicate.
+      const existingIndex = site.platforms.findIndex((p) => p.id === platform.id);
+      const platforms = existingIndex === -1
+        ? [...site.platforms, platform]
+        : site.platforms.map((p, i) => (i === existingIndex ? platform : p));
+      useSitesStore.getState().setOne({ ...site, platforms });
+    }
+  });
+
+  typeHandlers.set('SITE_PLATFORM_UPDATED', (msg: ProcessedMessage) => {
+    const update = extractPayload(msg);
+    if (!isPlatformPayload(update)) {
+      warn('SITE_PLATFORM_UPDATED: unexpected payload structure', update);
+      useConnectionStore.getState().incrementDiscarded();
+      return;
+    }
+    const site = useSitesStore.getState().getById(update.siteId);
+    if (site) {
+      useSitesStore.getState().setOne({
+        ...site,
+        platforms: site.platforms.map((p) => (p.id === update.id ? { ...p, ...update } : p)),
+      });
+    }
+  });
+
+  typeHandlers.set('SITE_PLATFORM_REMOVED', (msg: ProcessedMessage) => {
+    const payload = extractPayload(msg) as { siteId?: string; platformId?: string };
+    if (typeof payload?.siteId === 'string' && payload.siteId !== ''
+      && typeof payload.platformId === 'string' && payload.platformId !== '') {
+      const site = useSitesStore.getState().getById(payload.siteId);
       if (site) {
-        // Upsert by id — redelivery of the same message (or a follow-up
-        // update to a platform already known) must not append a duplicate.
-        const existingIndex = site.platforms.findIndex((p) => p.id === platform.id);
-        const platforms = existingIndex === -1
-          ? [...site.platforms, platform]
-          : site.platforms.map((p, i) => (i === existingIndex ? platform : p));
         useSitesStore.getState().setOne({
           ...site,
-          platforms,
+          platforms: site.platforms.filter((p) => p.id !== payload.platformId),
         });
       }
     } else {
-      warn('SITE_PLATFORM_BUILT: unexpected payload structure', payload);
+      warn('SITE_PLATFORM_REMOVED: unexpected payload structure', payload);
       useConnectionStore.getState().incrementDiscarded();
     }
   });
