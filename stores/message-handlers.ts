@@ -412,42 +412,24 @@ export function initMessageHandlers(): void {
     }
   });
 
-  typeHandlers.set('SHIP_FLIGHT_STARTED', (msg: ProcessedMessage) => {
+  // Wire names: SHIP_FLIGHT_FLIGHT / SHIP_FLIGHT_FLIGHT_ENDED, both carrying the
+  // full Flight. SHIP_FLIGHT_ENDED is an ALERT type, never a store message.
+  typeHandlers.set('SHIP_FLIGHT_FLIGHT', (msg: ProcessedMessage) => {
     const flight = extractPayload(msg) as PrunApi.Flight;
-    if (flight?.id) {
+    if (typeof flight?.id === 'string' && flight.id !== '') {
       useFlightsStore.getState().setOne(flight);
     } else {
-      warn('SHIP_FLIGHT_STARTED: unexpected payload structure', flight);
+      warn('SHIP_FLIGHT_FLIGHT: unexpected payload structure', flight);
       useConnectionStore.getState().incrementDiscarded();
     }
   });
 
-  typeHandlers.set('SHIP_FLIGHT_ENDED', (msg: ProcessedMessage) => {
-    const payload = extractPayload(msg) as { flightId?: string };
-    if (payload?.flightId) {
-      useFlightsStore.getState().removeOne(payload.flightId);
+  typeHandlers.set('SHIP_FLIGHT_FLIGHT_ENDED', (msg: ProcessedMessage) => {
+    const flight = extractPayload(msg) as PrunApi.Flight;
+    if (typeof flight?.id === 'string' && flight.id !== '') {
+      useFlightsStore.getState().removeOne(flight.id);
     } else {
-      warn('SHIP_FLIGHT_ENDED: unexpected payload structure', payload);
-      useConnectionStore.getState().incrementDiscarded();
-    }
-  });
-
-  typeHandlers.set('SHIP_FLIGHT_SEGMENT', (msg: ProcessedMessage) => {
-    const payload = extractPayload(msg) as {
-      flightId?: string;
-      currentSegmentIndex?: number;
-    };
-    const { flightId, currentSegmentIndex } = payload;
-    if (flightId && currentSegmentIndex !== undefined) {
-      const flight = useFlightsStore.getState().getById(flightId);
-      if (flight) {
-        useFlightsStore.getState().setOne({
-          ...flight,
-          currentSegmentIndex,
-        });
-      }
-    } else {
-      warn('SHIP_FLIGHT_SEGMENT: unexpected payload structure', payload);
+      warn('SHIP_FLIGHT_FLIGHT_ENDED: unexpected payload structure', flight);
       useConnectionStore.getState().incrementDiscarded();
     }
   });

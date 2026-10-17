@@ -605,14 +605,29 @@ describe('message-handlers', () => {
     });
   });
 
-  describe('SHIP_FLIGHT_ENDED', () => {
-    it('removes flight on completion', () => {
+  describe('flight lifecycle', () => {
+    it('a departure mid-session adds the flight', () => {
+      dispatchMessage('SHIP_FLIGHT_FLIGHT', createTestFlight({ id: 'flight-1' }));
+
+      expect(useFlightsStore.getState().getById('flight-1')).toBeDefined();
+    });
+
+    it('the arrival message removes the flight', () => {
       const flight = createTestFlight({ id: 'flight-1' });
       dispatchMessage('SHIP_FLIGHT_FLIGHTS', { flights: [flight] });
 
-      dispatchMessage('SHIP_FLIGHT_ENDED', { flightId: 'flight-1' });
+      dispatchMessage('SHIP_FLIGHT_FLIGHT_ENDED', flight);
 
       expect(useFlightsStore.getState().entities.size).toBe(0);
+    });
+
+    it('discards a flight message without an id', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      dispatchMessage('SHIP_FLIGHT_FLIGHT_ENDED', { nonsense: true });
+
+      expect(useConnectionStore.getState().discardedMessages).toBe(1);
+      warnSpy.mockRestore();
     });
   });
 
