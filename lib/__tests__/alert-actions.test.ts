@@ -19,6 +19,7 @@ import {
 import { setupActGlobals } from '../act/globals-setup';
 import { C } from '../act/prun-css';
 import { useAlertsStore } from '../../stores/entities';
+import { useUserStore } from '../../stores/user';
 import type { PrunApi } from '../../types/prun-api';
 
 beforeAll(() => {
@@ -73,6 +74,7 @@ beforeEach(() => {
   vi.mocked(openMobileBuffer).mockClear();
   vi.mocked(closeMobileBuffer).mockClear();
   useAlertsStore.getState().clear();
+  useUserStore.getState().clear();
 });
 
 afterEach(() => {
@@ -128,6 +130,23 @@ describe('markAllAlertsRead', () => {
     expect(clicks).toEqual(['mark-all']);
     expect(result).toEqual({ ok: true });
     expect(closeMobileBuffer).toHaveBeenCalledWith();
+  });
+
+  it('reports ok when the only alert left unread is one APEX cannot act on', async () => {
+    vi.useFakeTimers();
+    useUserStore.getState().setUser([
+      { id: 'ctx-company', type: 'COMPANY' } as PrunApi.UserContext,
+    ]);
+    useAlertsStore.getState().setOne({ ...makeAlert('own-1', false), contextId: 'ctx-company' });
+    useAlertsStore.getState().setOne({ ...makeAlert('dropped-1', false), contextId: 'ctx-gone' });
+    buildContainer([]);
+
+    const promise = markAllAlertsRead();
+    await vi.advanceTimersByTimeAsync(0);
+    useAlertsStore.getState().setOne({ ...makeAlert('own-1', true), contextId: 'ctx-company' });
+    await vi.advanceTimersByTimeAsync(10000);
+
+    expect(await promise).toEqual({ ok: true });
   });
 
   it('resolves immediately when nothing is unread in the store', async () => {

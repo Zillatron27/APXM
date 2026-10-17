@@ -23,6 +23,8 @@ import { clickElement } from './act/_compat';
 import { acquireActionLock, releaseActionLock } from './act/action-lock';
 import { isApexButtonDisabled } from './act/apex-button';
 import { useAlertsStore } from '../stores/entities';
+import { useUserStore } from '../stores/user';
+import { scopeAlerts } from './alert-scope';
 
 export type AlertActionResult =
   | { ok: true }
@@ -123,12 +125,16 @@ export async function markAllAlertsRead(): Promise<AlertActionResult> {
         return { ok: false, disabledInApex: true, error: 'Nothing unread in APEX' };
       }
       // Captured BEFORE the click: APEX's own view of what's unread is
-      // authoritative, and the click empties this set server-side.
-      const unreadIds = useAlertsStore
-        .getState()
-        .getAll()
-        .filter((a) => a.read === false)
-        .map((a) => a.id);
+      // authoritative, and the click empties this set server-side. Only
+      // `own` alerts are waited on — dropped ones (contexts APEX can't reach
+      // for this user) never flip to read, so waiting on them reports a
+      // false failure.
+      const { contexts, companyContextId } = useUserStore.getState();
+      const unreadIds = scopeAlerts(
+        useAlertsStore.getState().getAll(),
+        contexts,
+        companyContextId
+      ).own.map((a) => a.id);
       await clickElement(button);
       // If APXM's store somehow shows nothing unread but APEX's button was
       // enabled, still wait — for an empty id list waitForAlertsRead
