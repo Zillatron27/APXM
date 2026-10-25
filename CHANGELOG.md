@@ -4,7 +4,7 @@
 
 ### Added
 
-- **Inbound ship cargo counts toward a base's burn** (matches rPrun's BURN) — cargo on your ships flying to a base's planet counts as stock in days remaining and need, with a per-base INBOUND toggle on the BURN sheet to exclude it
+- **Inbound ship cargo counts toward a base's burn** (matches rPrun's BURN) — cargo on your ships flying to a base's planet counts as stock in days remaining and need, with a per-base rocket toggle on the BURN sheet to exclude it (lit = counted, as in rPrun)
 
 ### Changed
 
