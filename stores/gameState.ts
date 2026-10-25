@@ -44,7 +44,7 @@ export type DetailView =
  * light up ALL instead of the tapped filter, reading as "my tap didn't
  * take" (#81, tester report). Both chips lit is the honest state.
  */
-function toggleFilterSelection<T extends string>(
+export function toggleFilterSelection<T extends string>(
   current: ReadonlySet<T | 'all'>,
   filter: T | 'all'
 ): ReadonlySet<T | 'all'> {
