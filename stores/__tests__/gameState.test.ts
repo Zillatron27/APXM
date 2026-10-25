@@ -173,24 +173,25 @@ describe('gameState store', () => {
   describe('toggleContractFilter', () => {
     const filters = () => [...useGameState.getState().contractFilters].sort();
 
-    it('defaults to ACTIVE — fulfilled contracts are history', () => {
-      expect(filters()).toEqual(['active']);
+    it('defaults to ALL, like the other tab filters', () => {
+      expect(filters()).toEqual(['all']);
     });
 
     it('applies the shared toggle rules', () => {
-      // Deselecting the default reverts to ALL
-      useGameState.getState().toggleContractFilter('active');
-      expect(filters()).toEqual(['all']);
-
       useGameState.getState().toggleContractFilter('fulfilled');
       expect(filters()).toEqual(['fulfilled']);
+
+      // Deselecting the only filter reverts to ALL
+      useGameState.getState().toggleContractFilter('fulfilled');
+      expect(filters()).toEqual(['all']);
     });
 
-    it('tapping FULFILLED while ACTIVE is lit selects both — the #81 repro', () => {
-      // Default is ACTIVE; the tester's tap on FULFILLED used to collapse
-      // {active, fulfilled} to ALL, reading as "my tap didn't take".
+    it('tapping FULFILLED while CLOSED is lit selects both — the #81 repro', () => {
+      // The tester's tap on FULFILLED used to collapse {closed, fulfilled}
+      // to ALL, reading as "my tap didn't take".
+      useGameState.getState().toggleContractFilter('closed');
       useGameState.getState().toggleContractFilter('fulfilled');
-      expect(filters()).toEqual(['active', 'fulfilled']);
+      expect(filters()).toEqual(['closed', 'fulfilled']);
     });
   });
 });

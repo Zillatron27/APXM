@@ -7,7 +7,8 @@ import { useGameState } from '../../stores/gameState';
 // UI labels for filter options
 const filterLabels: Record<ContractFilter, string> = {
   all: 'ALL',
-  active: 'ACTIVE',
+  pending: 'PENDING',
+  closed: 'CLOSED',
   fulfilled: 'FULFILLED',
 };
 
@@ -29,7 +30,8 @@ export function ContractsView() {
 
   // Build filter options from counts
   const filterOptions: FilterOption<ContractFilter>[] = [
-    { id: 'active', label: filterLabels.active, count: counts.active },
+    { id: 'pending', label: filterLabels.pending, count: counts.pending },
+    { id: 'closed', label: filterLabels.closed, count: counts.closed },
     { id: 'fulfilled', label: filterLabels.fulfilled, count: counts.fulfilled },
     { id: 'all', label: filterLabels.all, count: counts.all },
   ];
