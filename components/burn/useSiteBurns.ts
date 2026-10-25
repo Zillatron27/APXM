@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import { useSitesStore } from '../../stores/entities/sites';
 import { useProductionStore } from '../../stores/entities/production';
 import { useWorkforceStore } from '../../stores/entities/workforce';
+import { useShipsStore } from '../../stores/entities/ships';
+import { useFlightsStore } from '../../stores/entities/flights';
 import { useStorageStore } from '../../stores/entities/storage';
 import { useSettingsStore } from '../../stores/settings';
 import { calculateAllBurns, type SiteBurnSummary } from '../../core/burn';
@@ -16,11 +18,23 @@ export function useSiteBurns(): SiteBurnSummary[] {
   const productionLastUpdated = useProductionStore((s) => s.lastUpdated);
   const workforceLastUpdated = useWorkforceStore((s) => s.lastUpdated);
   const storageLastUpdated = useStorageStore((s) => s.lastUpdated);
+  const shipsLastUpdated = useShipsStore((s) => s.lastUpdated);
+  const flightsLastUpdated = useFlightsStore((s) => s.lastUpdated);
   const burnThresholds = useSettingsStore((s) => s.burnThresholds);
+  const excludeInboundSiteIds = useSettingsStore((s) => s.excludeInboundSiteIds);
 
   return useMemo(() => {
     return calculateAllBurns();
-  }, [sitesLastUpdated, productionLastUpdated, workforceLastUpdated, storageLastUpdated, burnThresholds]);
+  }, [
+    sitesLastUpdated,
+    productionLastUpdated,
+    workforceLastUpdated,
+    storageLastUpdated,
+    shipsLastUpdated,
+    flightsLastUpdated,
+    burnThresholds,
+    excludeInboundSiteIds,
+  ]);
 }
 
 /**

@@ -10,9 +10,11 @@ import { useSettingsStore, type BurnThresholds } from '../stores/settings';
 export type { BurnThresholds } from '../stores/settings';
 import { getProductionBySiteId } from '../stores/entities/production';
 import { getWorkforceBySiteId } from '../stores/entities/workforce';
-import { getStorageByAddressableId } from '../stores/entities/storage';
+import { getStorageByAddressableId, useStorageStore } from '../stores/entities/storage';
 import { useSitesStore } from '../stores/entities/sites';
-import { getEntityDisplayName } from '../lib/address';
+import { useShipsStore } from '../stores/entities/ships';
+import { useFlightsStore } from '../stores/entities/flights';
+import { getEntityDisplayName, extractPlanetNaturalId } from '../lib/address';
 
 // ============================================================================
 // Types
@@ -28,8 +30,10 @@ export interface BurnRate {
   productionInput: number; // daily consumed by production (>= 0)
   productionOutput: number; // daily produced (>= 0)
   workforceConsumption: number; // daily consumed by workforce (>= 0)
-  /** Store amount plus workforce remaining allocation — see calculateSiteBurn. */
+  /** Store amount plus workforce remaining allocation plus inbound ship cargo — see calculateSiteBurn. */
   inventoryAmount: number;
+  /** Units of inventoryAmount that are still on ships flying to this base (>= 0). */
+  inboundAmount: number;
   daysRemaining: number; // Infinity if not consuming
   need: number; // amount to buy to reach green threshold
   urgency: Urgency;
@@ -40,6 +44,8 @@ export interface SiteBurnSummary {
   siteName: string;
   burns: BurnRate[];
   mostUrgent: BurnRate | null;
+  /** Any ship is flying to this base's planet — true even when the base excludes inbound, so the UI can still offer the toggle. */
+  hasInboundShips: boolean;
   lastCalculated: number;
 }
 
@@ -196,6 +202,39 @@ export function getInventoryFromStores(
 }
 
 /**
+ * Cargo on the player's ships whose current flight is heading to the given
+ * planet, summed by ticker. A freighter already en route is supply the base
+ * will have (matches rPrun's BURN). `now` guards a stale store: a flight whose
+ * arrival has passed is no longer inbound, whatever the ship still says.
+ */
+export function getInboundCargo(
+  planetNaturalId: string | null,
+  now: number
+): { cargo: Map<string, number>; hasShips: boolean } {
+  const cargo = new Map<string, number>();
+  let hasShips = false;
+  if (planetNaturalId === null) return { cargo, hasShips };
+
+  for (const ship of useShipsStore.getState().getAll()) {
+    if (!ship.flightId) continue;
+    const flight = useFlightsStore.getState().getById(ship.flightId);
+    if (!flight || flight.arrival.timestamp <= now) continue;
+    if (extractPlanetNaturalId(flight.destination) !== planetNaturalId) continue;
+
+    hasShips = true;
+    const store = useStorageStore.getState().getById(ship.idShipStore);
+    for (const item of store?.items ?? []) {
+      if (item.quantity?.material?.ticker) {
+        const ticker = item.quantity.material.ticker;
+        cargo.set(ticker, (cargo.get(ticker) ?? 0) + item.quantity.amount);
+      }
+    }
+  }
+
+  return { cargo, hasShips };
+}
+
+/**
  * Classifies the burn type for a material based on its activity.
  * Priority: output > input > workforce
  */
@@ -285,6 +324,7 @@ function buildBurnRate(
   productionOutput: number,
   workforceConsumption: number,
   inventoryAmount: number,
+  inboundAmount: number,
   thresholds: BurnThresholds
 ): BurnRate {
   // Net daily amount: positive = producing, negative = consuming
@@ -314,6 +354,7 @@ function buildBurnRate(
     productionOutput,
     workforceConsumption,
     inventoryAmount,
+    inboundAmount,
     daysRemaining,
     need,
     urgency,
@@ -328,7 +369,8 @@ function buildBurnRate(
  * Calculates burn rates for a single site.
  */
 export function calculateSiteBurn(siteId: string): SiteBurnSummary {
-  const thresholds = useSettingsStore.getState().burnThresholds;
+  const { burnThresholds: thresholds, excludeInboundSiteIds } =
+    useSettingsStore.getState();
   const site = useSitesStore.getState().getById(siteId);
   const siteName = site
     ? getSiteNameFromAddress(site.address)
@@ -345,6 +387,11 @@ export function calculateSiteBurn(siteId: string): SiteBurnSummary {
     workforceEntity?.workforces ?? []
   );
   const inventory = getInventoryFromStores(stores);
+  const inbound = getInboundCargo(
+    site ? extractPlanetNaturalId(site.address) : null,
+    Date.now()
+  );
+  const countInbound = !excludeInboundSiteIds.includes(siteId);
 
   // Collect all material tickers with any activity
   const allTickers = new Set<string>([
@@ -358,6 +405,8 @@ export function calculateSiteBurn(siteId: string): SiteBurnSummary {
     const production = productionRates.get(ticker) ?? { input: 0, output: 0 };
     const workforce = workforceRates.get(ticker) ?? { consumption: 0, allocation: 0 };
 
+    const inboundAmount = countInbound ? (inbound.cargo.get(ticker) ?? 0) : 0;
+
     burns.push(
       buildBurnRate(
         ticker,
@@ -367,7 +416,9 @@ export function calculateSiteBurn(siteId: string): SiteBurnSummary {
         // The store holds whole units; the workforce's remaining allocation
         // is the fraction already drawn from it. Both get consumed before
         // the base runs dry, so days/need count both (#102; matches rPrun).
-        (inventory.get(ticker) ?? 0) + workforce.allocation,
+        // Inbound ship cargo is supply the base will have, so it counts too.
+        (inventory.get(ticker) ?? 0) + workforce.allocation + inboundAmount,
+        inboundAmount,
         thresholds
       )
     );
@@ -378,6 +429,7 @@ export function calculateSiteBurn(siteId: string): SiteBurnSummary {
     siteName,
     burns,
     mostUrgent: findMostUrgent(burns),
+    hasInboundShips: inbound.hasShips,
     lastCalculated: Date.now(),
   };
 }
@@ -413,7 +465,8 @@ export function aggregateEmpireBurn(
     productionOutput: number;
     workforceConsumption: number;
     inventoryAmount: number;
-    }
+    inboundAmount: number;
+  }
 
   const totals = new Map<string, MaterialTotals>();
 
@@ -424,11 +477,13 @@ export function aggregateEmpireBurn(
         productionOutput: 0,
         workforceConsumption: 0,
         inventoryAmount: 0,
+        inboundAmount: 0,
       };
       existing.productionInput += burn.productionInput;
       existing.productionOutput += burn.productionOutput;
       existing.workforceConsumption += burn.workforceConsumption;
       existing.inventoryAmount += burn.inventoryAmount;
+      existing.inboundAmount += burn.inboundAmount;
       totals.set(burn.materialTicker, existing);
     }
   }
@@ -442,6 +497,7 @@ export function aggregateEmpireBurn(
         t.productionOutput,
         t.workforceConsumption,
         t.inventoryAmount,
+        t.inboundAmount,
         thresholds
       )
     );

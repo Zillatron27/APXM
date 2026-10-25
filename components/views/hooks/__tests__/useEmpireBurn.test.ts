@@ -12,6 +12,7 @@ function makeRate(
     productionOutput: 0,
     workforceConsumption: 0,
     inventoryAmount: 0,
+    inboundAmount: 0,
     daysRemaining: Infinity,
     need: 0,
     urgency: 'ok',
