@@ -10,7 +10,7 @@
 
 ### Changed
 
-- Contracts filter ACTIVE is now **CLOSED**, matching the game's own status for accepted, in-progress contracts. The Contracts tab now opens on ALL, like the other tabs
+- Contracts filter ACTIVE is now **CLOSED** and follows the game's own status: it shows accepted, in-progress contracts only. Offers not yet accepted show under PENDING when the acceptance is yours, otherwise under ALL. The Contracts tab now opens on ALL, like the other tabs
 - Stock figures truncate rather than round, so they never show more than you hold
 - Readability pass across all five themes (#27): dim labels, muted text, status colours, red badges and panel codes now meet 4.5:1 contrast. Panel codes (`BS`, `FLT`, `CONT` …) are grey, as in APEX
 

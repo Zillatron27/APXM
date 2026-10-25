@@ -9,9 +9,6 @@ import type { ContractFilter } from '../../../stores/gameState';
 
 export type { ContractFilter };
 
-// Contract statuses considered "active" (need attention)
-const ACTIVE_STATUSES: PrunApi.ContractStatus[] = ['OPEN', 'CLOSED', 'PARTIALLY_FULFILLED'];
-
 // Contract statuses considered "fulfilled/done"
 const FULFILLED_STATUSES: PrunApi.ContractStatus[] = ['FULFILLED'];
 
@@ -211,10 +208,9 @@ function buildConditionDescription(condition: PrunApi.ContractCondition): Condit
 
 /**
  * Statuses where the contract has been accepted and is being worked — its
- * conditions are fulfillable. Distinct from ACTIVE_STATUSES (which also
- * includes OPEN, i.e. awaiting acceptance) and from the "shown in the ACTIVE
- * tab" set. Mirrors the rPrun rule that OPEN means awaiting acceptance, not
- * in-progress.
+ * conditions are fulfillable. Also the CLOSED filter's set: the filter follows
+ * the game's own status, so OPEN (awaiting acceptance) is not CLOSED. Mirrors
+ * the rPrun rule that OPEN means awaiting acceptance, not in-progress.
  */
 const ACCEPTED_STATUSES: PrunApi.ContractStatus[] = ['CLOSED', 'PARTIALLY_FULFILLED'];
 
@@ -353,8 +349,8 @@ export interface ContractDetailsResult {
 
 /**
  * Pure sort/count/filter over built contract details. Extracted from the hook
- * for testability — the CLOSED-includes-OPEN distinction (vs ACCEPTED_STATUSES,
- * which deliberately excludes OPEN) lives here and must stay pinned by tests.
+ * for testability. CLOSED follows the game status (ACCEPTED_STATUSES, no OPEN);
+ * an OPEN contract shows under PENDING when the acceptance is yours, else ALL.
  */
 /**
  * Contract list ordering (#76): OPEN first, then expiration ascending
@@ -387,7 +383,7 @@ export function assembleContractDetails(
   // Count by filter category
   const pending = (c: ContractDetail) => c.actionable || c.acceptance === 'awaiting-mine';
   const pendingCount = details.filter(pending).length;
-  const closedCount = details.filter((c) => ACTIVE_STATUSES.includes(c.status)).length;
+  const closedCount = details.filter((c) => ACCEPTED_STATUSES.includes(c.status)).length;
   const fulfilledCount = details.filter((c) => FULFILLED_STATUSES.includes(c.status)).length;
 
   const counts: Record<ContractFilter, number> = {
@@ -402,7 +398,7 @@ export function assembleContractDetails(
     ? details
     : details.filter((c) => {
         if (activeFilters.has('pending') && pending(c)) return true;
-        if (activeFilters.has('closed') && ACTIVE_STATUSES.includes(c.status)) return true;
+        if (activeFilters.has('closed') && ACCEPTED_STATUSES.includes(c.status)) return true;
         if (activeFilters.has('fulfilled') && FULFILLED_STATUSES.includes(c.status)) return true;
         return false;
       });
