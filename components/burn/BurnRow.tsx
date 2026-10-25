@@ -25,6 +25,7 @@ export function BurnRow({ burn }: BurnRowProps) {
     productionInput,
     productionOutput,
     workforceConsumption,
+    inboundAmount,
   } = burn;
 
   const isConsuming = dailyAmount < 0;
@@ -84,6 +85,11 @@ export function BurnRow({ burn }: BurnRowProps) {
         <div className="overflow-hidden">
           <div className="flex items-center justify-end pb-1 text-[11px] text-apxm-text/50">
             {breakdown && <span className="font-mono">{breakdown} /d</span>}
+            {inboundAmount > 0 && (
+              <span className="font-mono">
+                {breakdown && ' · '}inbound {formatInventory(inboundAmount)}
+              </span>
+            )}
           </div>
         </div>
       </div>

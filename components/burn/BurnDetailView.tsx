@@ -1,5 +1,7 @@
 import type { BurnRate } from '../../core/burn';
 import { useSiteStaleness } from '../../hooks/useSiteStaleness';
+import { useSettingsStore } from '../../stores/settings';
+import { btnSegment } from '../shared';
 import { useSiteBurns } from './useSiteBurns';
 import { BurnRow } from './BurnRow';
 
@@ -43,6 +45,8 @@ function sortBurns(burns: BurnRate[]): BurnRate[] {
 export function BurnDetailView({ siteId }: BurnDetailViewProps) {
   const summary = useSiteBurns().find((s) => s.siteId === siteId);
   const { text: stalenessText, colorClass: stalenessColor } = useSiteStaleness(siteId);
+  const inboundExcluded = useSettingsStore((s) => s.excludeInboundSiteIds.includes(siteId));
+  const toggleExcludeInbound = useSettingsStore((s) => s.toggleExcludeInbound);
 
   const sortedBurns = summary ? sortBurns(summary.burns) : [];
 
@@ -56,7 +60,28 @@ export function BurnDetailView({ siteId }: BurnDetailViewProps) {
 
   return (
     <div className="space-y-3">
-      <p className={`text-[11px] ${stalenessColor}`}>{stalenessText}</p>
+      <div className="flex items-center justify-between gap-2">
+        <p className={`text-[11px] ${stalenessColor}`}>{stalenessText}</p>
+        {summary?.hasInboundShips && (
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-apxm-text/50">
+              {inboundExcluded ? 'Excludes' : 'Includes'} inbound cargo
+            </span>
+            <button
+              onClick={() => toggleExcludeInbound(siteId)}
+              aria-pressed={!inboundExcluded}
+              aria-label={
+                inboundExcluded
+                  ? 'Excludes inbound cargo. Tap to include it.'
+                  : 'Includes inbound cargo. Tap to exclude it.'
+              }
+              className={`min-h-touch px-3 py-2 ${btnSegment(!inboundExcluded)}`}
+            >
+              INBOUND
+            </button>
+          </div>
+        )}
+      </div>
       <div className="divide-y divide-apxm-bg/50">
         {/* Column headers */}
         <div className="flex items-center justify-between gap-1 py-1 text-[10px] text-apxm-text/40 uppercase tracking-wide">
