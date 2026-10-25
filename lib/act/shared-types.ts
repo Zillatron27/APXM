@@ -58,7 +58,9 @@ export interface ActionStepExecuteContext<T> extends ActionRunnerContext<T> {
   skip: () => void;
   fail: (message?: string) => void;
   assert: AssertFn;
-  requestTile: (Command: string) => Promise<PrunTile | undefined>;
+  // Never resolves without a tile: a failed open stops the run and unwinds
+  // the step instead.
+  requestTile: (Command: string) => Promise<PrunTile>;
 }
 
 export const configurableValue = 'Configure on Execution';

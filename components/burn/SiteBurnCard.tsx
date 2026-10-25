@@ -66,6 +66,7 @@ export function SiteBurnCard({ summary, repairAgeDays, prodStatus }: SiteBurnCar
   const mode = useRefreshState((s) => s.mode);
   const siteStatus = useRefreshState((s) => s.siteStatus.get(siteId));
   const setDetailView = useGameState((s) => s.setDetailView);
+  const actionInFlight = useGameState((s) => s.actionInFlight);
 
   // Tile tones: burn from mostUrgent urgency (surplus folds into ok),
   // repair from the user's threshold/offset settings
@@ -81,9 +82,12 @@ export function SiteBurnCard({ summary, repairAgeDays, prodStatus }: SiteBurnCar
 
   const showRefreshButton = mode === 'manual' || mode === 'batch';
   const isLoading = siteStatus === 'loading';
+  // Another driver (action, batch, or this card's own refresh) holds the
+  // shared #container lock — a tap now would only be refused.
+  const refreshDisabled = isLoading || actionInFlight;
 
   function handleRefresh(): void {
-    if (isLoading) return;
+    if (refreshDisabled) return;
     executeBufferRefresh({ siteId, command: buildBufferCommand(siteId) });
   }
 
@@ -104,6 +108,7 @@ export function SiteBurnCard({ summary, repairAgeDays, prodStatus }: SiteBurnCar
             <span
               role="button"
               tabIndex={0}
+              aria-disabled={refreshDisabled}
               onClick={handleRefresh}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleRefresh();
@@ -111,7 +116,9 @@ export function SiteBurnCard({ summary, repairAgeDays, prodStatus }: SiteBurnCar
               className={`min-h-touch w-8 flex items-center justify-center text-sm ${
                 isLoading
                   ? 'text-apxm-muted cursor-wait'
-                  : siteStatus === 'success'
+                  : actionInFlight
+                    ? 'text-apxm-muted opacity-30'
+                    : siteStatus === 'success'
                     ? 'text-status-ok'
                     : siteStatus === 'error'
                       ? 'text-status-critical'

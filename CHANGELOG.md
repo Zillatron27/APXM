@@ -1,5 +1,24 @@
 # APXM Changelog
 
+## 1.3.1 (unreleased)
+
+### Added
+
+- **STOP WAITING** on the confirm bar — ends a manual-confirm wait when APEX's dialog can't be reached. While APEX's dialog is still asking, it taps APEX's cancel (never confirm); the action fails, the buffer closes and other actions are available again without a reload
+
+### Changed
+
+- Base refresh buttons are disabled while another action is driving APEX, instead of accepting a tap that could collide with it
+
+### Fixed
+
+- **Refreshes bypassed the action lock** — a base refresh, a second base's refresh, or the auto-refresh after login could run at the same time as a contract, ship or alert action and navigate APEX out from under it, sometimes leaving APEX hidden. Refreshes now take the shared lock, and the startup auto-refresh retries if an action is running
+- **Actions stuck on "Another action is already running" until reload** — a feedback wait never ended if APEX removed the dialog (or anything above it) mid-action. The wait now ends on removal at any level, and the progress wait times out after 60s with "Action feedback lost — check APEX"
+- **FIO data load stopped partway on a malformed response** — an unreadable FIO response body escaped the client's error handling; it is now reported as a parse error and the remaining data loads
+- **Cached data could replace live data at login** — game data arriving while the cache was being read was overwritten by the older cached copy and its bases shown as cached. Cache now never replaces live or FIO data
+- **Duplicate production orders and base platforms** — a repeated order-added or platform-built message added the entry twice; entries are now matched by id
+- **Workforce of removed bases kept in cache** — workforce for a demolished or abandoned base is dropped when the site list arrives
+
 ## 1.3.0 (2026-08-28)
 
 Notifications

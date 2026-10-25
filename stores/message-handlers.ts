@@ -134,6 +134,21 @@ export function initMessageHandlers(): void {
       // doesn't trigger SITE_SITES, so this won't fire during buffer refresh)
       const siteIds = payload.sites.map((s) => s.siteId);
       useSiteSourceStore.getState().markAllSites(siteIds, 'websocket');
+
+      // Prune orphaned per-site workforce. Workforce is only ever written
+      // via setOne per site (never removed), so a demolished base's entry
+      // would otherwise persist in the cache forever. SITE_SITES is the
+      // authoritative full site list — setAll() above already replaces the
+      // whole sites store on it — so anything not in siteIds no longer
+      // exists. Production lines don't need this: PRODUCTION_PRODUCTION_LINES
+      // replaces that store wholesale with setAll(), so its orphans don't
+      // outlive the next full production message.
+      const siteIdSet = new Set(siteIds);
+      for (const w of useWorkforceStore.getState().getAll()) {
+        if (!siteIdSet.has(w.siteId)) {
+          useWorkforceStore.getState().removeOne(w.siteId);
+        }
+      }
     } else {
       warn('SITE_SITES: unexpected payload structure', payload);
     }
@@ -160,9 +175,15 @@ export function initMessageHandlers(): void {
     if (siteId && platform) {
       const site = useSitesStore.getState().getById(siteId);
       if (site) {
+        // Upsert by id — redelivery of the same message (or a follow-up
+        // update to a platform already known) must not append a duplicate.
+        const existingIndex = site.platforms.findIndex((p) => p.id === platform.id);
+        const platforms = existingIndex === -1
+          ? [...site.platforms, platform]
+          : site.platforms.map((p, i) => (i === existingIndex ? platform : p));
         useSitesStore.getState().setOne({
           ...site,
-          platforms: [...site.platforms, platform],
+          platforms,
         });
       }
     } else {
@@ -301,9 +322,15 @@ export function initMessageHandlers(): void {
     if (order?.id && order?.productionLineId) {
       const line = useProductionStore.getState().getById(order.productionLineId);
       if (line) {
+        // Upsert by id — redelivery of the same message (or a follow-up
+        // update to an order already known) must not append a duplicate.
+        const existingIndex = line.orders.findIndex((o) => o.id === order.id);
+        const orders = existingIndex === -1
+          ? [...line.orders, order]
+          : line.orders.map((o, i) => (i === existingIndex ? order : o));
         useProductionStore.getState().setOne({
           ...line,
-          orders: [...line.orders, order],
+          orders,
         });
       }
     } else {

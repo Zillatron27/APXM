@@ -33,6 +33,7 @@ import {
   waitForElement,
 } from './dom-helpers';
 import { openCardList, deleteLastCardMatching, exitEditMode } from '../buffer-cards';
+import { acquireActionLock, releaseActionLock } from '../act/action-lock';
 
 export class BufferRefreshError extends Error {
   constructor(
@@ -73,10 +74,30 @@ export function buildBufferCommand(siteId: string): string {
 /**
  * Execute a single buffer refresh: open a BS buffer to populate stores.
  *
+ * Takes the shared action lock — the refresh drives the same #container as
+ * contract/ship actions. Returns false without touching the DOM or the
+ * site's refresh status when another action holds the lock: busy is not a
+ * failure, so the card keeps showing whatever it showed before.
+ */
+export async function executeBufferRefresh(options: BufferRefreshOptions): Promise<boolean> {
+  if (!acquireActionLock()) {
+    console.warn('[APXM BufferRefresh] another action is running; refresh skipped');
+    return false;
+  }
+  try {
+    return await runBufferRefresh(options);
+  } finally {
+    releaseActionLock();
+  }
+}
+
+/**
+ * The refresh sequence itself. Caller must hold the action lock.
+ *
  * Returns true on success, false on failure. Always restores container
  * styles in the finally block — no visual leak on error.
  */
-export async function executeBufferRefresh(options: BufferRefreshOptions): Promise<boolean> {
+export async function runBufferRefresh(options: BufferRefreshOptions): Promise<boolean> {
   const { siteId, command, stepTimeoutMs = 1500 } = options;
   const store = useRefreshState.getState();
 

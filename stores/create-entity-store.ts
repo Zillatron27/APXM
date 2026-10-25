@@ -291,6 +291,13 @@ export function createEntityStore<T>(
       const ttl = persist.ttlMs ?? CACHE_TTL_MS;
       if (Date.now() - entry.cachedAt > ttl) return false;
 
+      // Re-check dataSource here, after the async storage read, not before
+      // it. A login-burst websocket batch (or an FIO fetch) can land during
+      // that await; if it did, live data has already replaced whatever was
+      // here when rehydrate() was called, and cache must not clobber it.
+      const currentSource = store.getState().dataSource;
+      if (currentSource === 'websocket' || currentSource === 'fio') return false;
+
       // Rehydrate into store
       const entities = new Map<string, T>(Object.entries(entry.entities));
       store.setState({

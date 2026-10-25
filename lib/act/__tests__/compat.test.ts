@@ -10,6 +10,7 @@ import {
   materialsStore,
   isFiniteOrder,
   calculatePlanetBurn,
+  waitUntil,
 } from '../_compat';
 import { useSitesStore } from '../../../stores/entities/sites';
 import { useStorageStore } from '../../../stores/entities/storage';
@@ -203,5 +204,25 @@ describe('_compat storage adapters used by generateState', () => {
     ]);
     const store = useStorageStore.getState().getById('ws-1');
     expect(store?.items[0]?.quantity?.amount).toBe(500);
+  });
+});
+
+describe('_compat waitUntil timer hygiene (#8)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('clears the timeout timer once the condition resolves (no leaked 15s timer per call)', async () => {
+    vi.useFakeTimers();
+    let ready = false;
+    const promise = waitUntil(() => ready, 10, 15000);
+
+    ready = true;
+    await vi.advanceTimersByTimeAsync(10); // let the poll interval notice
+    await promise;
+
+    // Both the poll interval and the 15s timeout must be gone once resolved —
+    // a lingering timeout timer per call is the leak this guards against.
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

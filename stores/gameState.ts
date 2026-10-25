@@ -83,6 +83,10 @@ interface GameState {
    *  ConfirmBar is the only APXM chrome. Set from the action-feedback
    *  onManualConfirm signal. Session-scoped. */
   actConfirmPending: boolean;
+  /** Reactive mirror of the shared #container action lock
+   *  (lib/act/action-lock.ts), which is a plain module variable React can't
+   *  observe. Written only by acquire/release. Session-scoped. */
+  actionInFlight: boolean;
   /** True while the full Notifications view (#94) replaces the active tab's
    *  content. A view, not a DetailSheet: the single detailView slot must stay
    *  free so an alert's tap-through can open its target sheet over the list.
@@ -94,6 +98,7 @@ interface GameState {
   setActiveTab: (tab: TabId) => void;
   setDetailView: (view: DetailView | null) => void;
   setActConfirmPending: (pending: boolean) => void;
+  setActionInFlight: (inFlight: boolean) => void;
   setAlertsViewOpen: (open: boolean) => void;
   toggleBurnFilter: (filter: BurnFilter) => void;
   toggleFleetFilter: (filter: FleetFilter) => void;
@@ -111,6 +116,7 @@ export const useGameState = create<GameState>((set) => ({
   contractFilters: new Set<ContractFilter>(['active']),
   detailView: null,
   actConfirmPending: false,
+  actionInFlight: false,
   alertsViewOpen: false,
   setOverlayVisible: (overlayVisible) => set({ overlayVisible }),
   setDebugMode: (debugMode) => set({ debugMode }),
@@ -121,6 +127,7 @@ export const useGameState = create<GameState>((set) => ({
   setActiveTab: (activeTab) => set({ activeTab, alertsViewOpen: false }),
   setDetailView: (detailView) => set({ detailView }),
   setActConfirmPending: (actConfirmPending) => set({ actConfirmPending }),
+  setActionInFlight: (actionInFlight) => set({ actionInFlight }),
   setAlertsViewOpen: (alertsViewOpen) => set({ alertsViewOpen }),
   toggleBurnFilter: (filter) =>
     set((state) => ({
