@@ -308,8 +308,9 @@ describe('assembleContractDetails (list sort/count/filter)', () => {
   it('the CLOSED bucket includes OPEN — awaiting-acceptance contracts need attention too', () => {
     // Deliberately broader than the accepted set (CLOSED/PARTIALLY_FULFILLED):
     // the filter answers "needs attention", acceptance gates actions.
+    // pending: the default fixture's self condition is available on the 3 accepted, unfulfilled contracts.
     const { counts } = assembleContractDetails(all, new Set(['all']));
-    expect(counts).toEqual({ all: 6, closed: 5, fulfilled: 1 });
+    expect(counts).toEqual({ all: 6, pending: 3, closed: 5, fulfilled: 1 });
   });
 
   it('sorts OPEN first, then by due date, undated last', () => {
@@ -386,6 +387,28 @@ describe('assembleContractDetails (list sort/count/filter)', () => {
       'PARTIAL',
       'NO-DUE',
     ]);
+  });
+
+  it('the pending filter keeps contracts with an available condition or awaiting-mine acceptance, not partner waits', () => {
+    const selfAvailable = createTestContract({
+      localId: 'MY-MOVE',
+      party: 'PROVIDER',
+      status: 'CLOSED',
+      conditions: [createContractCondition({ id: 'c1', index: 0, party: 'PROVIDER', status: 'PENDING', dependencies: [] })],
+    });
+    const awaitingMine = createTestContract({ localId: 'ACCEPT-ME', party: 'CUSTOMER', status: 'OPEN' });
+    const awaitingPartner = createTestContract({ localId: 'THEIR-ACCEPT', party: 'PROVIDER', status: 'OPEN' });
+    const partnerOnly = createTestContract({
+      localId: 'THEIR-MOVE',
+      party: 'PROVIDER',
+      status: 'CLOSED',
+      conditions: [createContractCondition({ id: 'c1', index: 0, party: 'CUSTOMER', status: 'PENDING', dependencies: [] })],
+    });
+    const list = [selfAvailable, awaitingMine, awaitingPartner, partnerOnly, fulfilled];
+
+    const { contracts, counts } = assembleContractDetails(list, new Set(['pending']));
+    expect(contracts.map((c) => c.localId).sort()).toEqual(['ACCEPT-ME', 'MY-MOVE']);
+    expect(counts.pending).toBe(2);
   });
 
   it('the fulfilled filter keeps only FULFILLED; counts stay global', () => {

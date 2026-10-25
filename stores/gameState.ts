@@ -17,7 +17,7 @@ export type TabId = 'status' | 'fleet' | 'bases' | 'contracts' | 'settings';
  */
 export type BurnFilter = Exclude<Urgency, 'surplus'> | 'all';
 export type FleetFilter = 'idle' | 'in-transit' | 'all';
-export type ContractFilter = 'closed' | 'fulfilled' | 'all';
+export type ContractFilter = 'pending' | 'closed' | 'fulfilled' | 'all';
 
 /**
  * A drill-down detail screen presented over the current tab as a slide-up
