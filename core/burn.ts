@@ -76,7 +76,7 @@ const MS_PER_DAY = 86400000;
  * site and empire paths so a chain that nets out per-site also nets out
  * when aggregated across sites.
  */
-const NET_RATE_EPSILON = 0.001;
+export const NET_RATE_EPSILON = 0.001;
 
 /**
  * Returns the orders that represent the ongoing production plan for rate calculation.
