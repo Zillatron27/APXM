@@ -17,7 +17,7 @@ export type TabId = 'status' | 'fleet' | 'bases' | 'contracts' | 'settings';
  */
 export type BurnFilter = Exclude<Urgency, 'surplus'> | 'all';
 export type FleetFilter = 'idle' | 'in-transit' | 'all';
-export type ContractFilter = 'active' | 'fulfilled' | 'all';
+export type ContractFilter = 'pending' | 'closed' | 'fulfilled' | 'all';
 
 /**
  * A drill-down detail screen presented over the current tab as a slide-up
@@ -44,7 +44,7 @@ export type DetailView =
  * light up ALL instead of the tapped filter, reading as "my tap didn't
  * take" (#81, tester report). Both chips lit is the honest state.
  */
-function toggleFilterSelection<T extends string>(
+export function toggleFilterSelection<T extends string>(
   current: ReadonlySet<T | 'all'>,
   filter: T | 'all'
 ): ReadonlySet<T | 'all'> {
@@ -106,8 +106,7 @@ export const useGameState = create<GameState>((set) => ({
   activeTab: 'status',
   burnFilters: new Set<BurnFilter>(['all']),
   fleetFilters: new Set<FleetFilter>(['all']),
-  // Contracts default to ACTIVE — fulfilled contracts are history
-  contractFilters: new Set<ContractFilter>(['active']),
+  contractFilters: new Set<ContractFilter>(['all']),
   detailView: null,
   actConfirmPending: false,
   actionInFlight: false,

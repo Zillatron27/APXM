@@ -1,8 +1,18 @@
+import { useState } from 'react';
 import type { BurnRate } from '../../core/burn';
 import { useSiteStaleness } from '../../hooks/useSiteStaleness';
 import { useSettingsStore } from '../../stores/settings';
+import { toggleFilterSelection } from '../../stores/gameState';
+import { FilterBar, type FilterOption } from '../shared';
 import { useSiteBurns } from './useSiteBurns';
 import { BurnRow } from './BurnRow';
+import {
+  countMaterialsByFilter,
+  filterMaterials,
+  materialFilterLabels,
+  materialFilterOrder,
+  type MaterialFilter,
+} from './materialFilter';
 
 interface BurnDetailViewProps {
   siteId: string;
@@ -47,7 +57,19 @@ export function BurnDetailView({ siteId }: BurnDetailViewProps) {
   const inboundExcluded = useSettingsStore((s) => s.excludeInboundSiteIds.includes(siteId));
   const toggleExcludeInbound = useSettingsStore((s) => s.toggleExcludeInbound);
 
+  // Sheet-local: resets when the sheet closes, like LoadCargoPicker's filter
+  const [activeFilters, setActiveFilters] = useState<ReadonlySet<MaterialFilter>>(
+    new Set<MaterialFilter>(['all'])
+  );
+
   const sortedBurns = summary ? sortBurns(summary.burns) : [];
+  const visibleBurns = filterMaterials(sortedBurns, activeFilters);
+  const counts = countMaterialsByFilter(sortedBurns);
+  const filterOptions: FilterOption<MaterialFilter>[] = materialFilterOrder.map((id) => ({
+    id,
+    label: materialFilterLabels[id],
+    count: counts[id],
+  }));
 
   if (sortedBurns.length === 0) {
     return (
@@ -96,21 +118,32 @@ export function BurnDetailView({ siteId }: BurnDetailViewProps) {
           </button>
         )}
       </div>
-      <div className="divide-y divide-apxm-bg/50">
-        {/* Column headers */}
-        <div className="flex items-center justify-between gap-1 py-1 text-[10px] text-apxm-text/55 uppercase tracking-wide">
-          <span className="w-10">Mat</span>
-          <div className="flex items-center">
-            <span className="w-12 text-right">Inv</span>
-            <span className="w-20 text-right">Rate</span>
-            <span className="w-14 text-right">Days</span>
-            <span className="w-12 text-right">Need</span>
+      <FilterBar
+        options={filterOptions}
+        activeFilters={activeFilters}
+        onChange={(filter) => setActiveFilters((current) => toggleFilterSelection(current, filter))}
+      />
+      {visibleBurns.length === 0 ? (
+        <p className="text-sm text-apxm-muted py-4 text-center">
+          No materials match the selected filter
+        </p>
+      ) : (
+        <div className="divide-y divide-apxm-bg/50">
+          {/* Column headers */}
+          <div className="flex items-center justify-between gap-1 py-1 text-[10px] text-apxm-text/55 uppercase tracking-wide">
+            <span className="w-10">Mat</span>
+            <div className="flex items-center">
+              <span className="w-12 text-right">Inv</span>
+              <span className="w-20 text-right">Rate</span>
+              <span className="w-14 text-right">Days</span>
+              <span className="w-12 text-right">Need</span>
+            </div>
           </div>
+          {visibleBurns.map((burn) => (
+            <BurnRow key={burn.materialTicker} burn={burn} />
+          ))}
         </div>
-        {sortedBurns.map((burn) => (
-          <BurnRow key={burn.materialTicker} burn={burn} />
-        ))}
-      </div>
+      )}
     </div>
   );
 }
