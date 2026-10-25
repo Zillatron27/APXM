@@ -67,6 +67,7 @@ function buildCxpoBuffer(): Form {
 
 interface Run {
   failed: string[];
+  warnings: string[];
   skipped: number;
   /** Resolves when the step reaches its ACT gate (the form is pre-filled). */
   reachedAct: Promise<void>;
@@ -77,6 +78,7 @@ function runStep(form: Form, amount: number, onOpen: () => void = () => {}): Run
   let markReachedAct!: () => void;
   const run: Run = {
     failed: [],
+    warnings: [],
     skipped: 0,
     reachedAct: new Promise((resolve) => (markReachedAct = resolve)),
   };
@@ -90,7 +92,9 @@ function runStep(form: Form, amount: number, onOpen: () => void = () => {}): Run
       priceLimit: Infinity,
       allowUnfilled: false,
     },
-    log: new Logger(() => {}),
+    log: new Logger((tag, msg) => {
+      if (tag === 'WARNING') run.warnings.push(String(msg));
+    }),
     setStatus: () => {},
     // The ACT gate is held shut: these tests are about the pre-fill only.
     waitAct: () => {
@@ -166,5 +170,32 @@ describe('CXPO_BUY order-book freshness', () => {
 
     expect(form.price.value).toBe('120.00');
     expect(run.failed).toEqual([]);
+  });
+});
+
+describe('CXPO_BUY shortage', () => {
+  it('warns and fills what the book holds instead of failing', async () => {
+    const form = buildCxpoBuffer();
+    const run = runStep(form, 100, () =>
+      useCxobStore.getState().setOrderBook('RAT.AI1', sells([{ amount: 40, price: 90 }])),
+    );
+    await vi.advanceTimersByTimeAsync(200);
+    await run.reachedAct;
+
+    expect(form.quantity.value).toBe('40');
+    expect(run.failed).toEqual([]);
+    expect(run.warnings).toEqual(['60 RAT will not be bought on AI1 (40 of 100 available)']);
+  });
+
+  it('skips the step when the book holds nothing', async () => {
+    const form = buildCxpoBuffer();
+    const run = runStep(form, 100, () =>
+      useCxobStore.getState().setOrderBook('RAT.AI1', sells([])),
+    );
+    await vi.advanceTimersByTimeAsync(200);
+
+    expect(run.skipped).toBe(1);
+    expect(run.failed).toEqual([]);
+    expect(form.quantity.value).toBe('');
   });
 });

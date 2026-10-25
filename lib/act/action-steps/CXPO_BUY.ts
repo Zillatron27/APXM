@@ -20,7 +20,6 @@ interface Data {
   ticker: string;
   amount: number;
   priceLimit: number;
-  buyPartial: boolean;
   allowUnfilled: boolean;
 }
 
@@ -121,16 +120,8 @@ export const CXPO_BUY = act.addActionStep<Data>({
       return;
     }
 
+    // A shortage warns and buys what is available, never fails the package.
     if (filled.amount < amount && !data.allowUnfilled) {
-      if (!data.buyPartial) {
-        let message = `Not enough materials on ${exchange} to buy ${fixed0(amount)} ${ticker}`;
-        if (isFinite(priceLimit)) {
-          message += ` with price limit ${fixed02(priceLimit)}/u`;
-        }
-        fail(message);
-        return;
-      }
-
       const leftover = amount - filled.amount;
       let message =
         `${fixed0(leftover)} ${ticker} will not be bought on ${exchange} ` +
