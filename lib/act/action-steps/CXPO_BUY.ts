@@ -90,6 +90,9 @@ export const CXPO_BUY = act.addActionStep<Data>({
       `Cannot buy ${fixed0(amount)} ${ticker} (will not fit in the warehouse)`,
     );
 
+    // Taken before requestTile, which opens the buffer: the book its open
+    // triggers can land before requestTile returns.
+    const requestedAt = Date.now();
     const tile = await requestTile(`CXPO ${cxTicker}`);
 
     setStatus('Setting up CXPO buffer...');
@@ -104,11 +107,14 @@ export const CXPO_BUY = act.addActionStep<Data>({
 
     // Opening the CXPO tile triggers COMEX_BROKER_DATA which populates the
     // order book asynchronously. Wait for it — this replaces Vue's watchEffect
-    // which re-ran reactively whenever the store changed.
-    await waitUntil(() => cxobStore.getByTicker(cxTicker) !== undefined, 100, 8000)
-      .catch(() => {});
+    // which re-ran reactively whenever the store changed. Books persist until
+    // reconnect, so only one received since the open counts: an older one
+    // could be hours stale.
+    const hasFreshBook = () =>
+      (cxobStore.getByTicker(cxTicker)?.receivedAt ?? -Infinity) >= requestedAt;
+    await waitUntil(hasFreshBook, 100, 8000).catch(() => {});
 
-    const filled = fillAmount(cxTicker, amount, priceLimit);
+    const filled = hasFreshBook() ? fillAmount(cxTicker, amount, priceLimit) : undefined;
 
     if (!filled) {
       fail(`Missing ${cxTicker} order book data`);

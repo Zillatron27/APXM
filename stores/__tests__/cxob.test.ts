@@ -31,6 +31,12 @@ describe('cxob store', () => {
     expect(useCxobStore.getState().getByTicker('DW.CI1')).toBeUndefined();
   });
 
+  it('stamps each book with when it was received', () => {
+    const before = Date.now();
+    useCxobStore.getState().setOrderBook('RAT.CI1', { sellingOrders: [], buyingOrders: [] });
+    expect(useCxobStore.getState().getByTicker('RAT.CI1')?.receivedAt).toBeGreaterThanOrEqual(before);
+  });
+
   it('COMEX_BROKER_DATA (ticker + exchange object) populates the store', () => {
     dispatch('COMEX_BROKER_DATA', {
       ticker: 'RAT',

@@ -29,7 +29,7 @@ import {
 import { useWarehouseStore, type WarehouseLocation } from '../../stores/warehouses';
 import { useExchangeStore } from '../../stores/exchanges';
 import { useMaterialsStore, type MaterialInfo } from '../../stores/reference';
-import { useCxobStore } from '../../stores/cxob';
+import { useCxobStore, type CxobEntry } from '../../stores/cxob';
 import { warn } from '../debug/logger';
 
 export const sitesStore = {
@@ -197,10 +197,9 @@ export const materialsStore = {
 };
 
 export type CXOrder = import('../../types/prun-api').PrunApi.CXOrder;
-export type CXOrderBook = import('../../types/prun-api').PrunApi.CXOrderBook;
 
 export const cxobStore = {
-  getByTicker(cxTicker: string): CXOrderBook | undefined {
+  getByTicker(cxTicker: string): CxobEntry | undefined {
     return useCxobStore.getState().getByTicker(cxTicker);
   },
 };
