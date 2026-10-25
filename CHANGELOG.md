@@ -9,7 +9,7 @@
 
 ### Changed
 
-- Contracts filter ACTIVE is now **CLOSED**, matching the game's own status for accepted, in-progress contracts
+- Contracts filter ACTIVE is now **CLOSED**, matching the game's own status for accepted, in-progress contracts. The Contracts tab now opens on ALL, like the other tabs
 - Stock figures truncate rather than round, so they never show more than you hold
 
 ## 1.3.1 (2026-10-25)

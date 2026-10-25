@@ -106,8 +106,7 @@ export const useGameState = create<GameState>((set) => ({
   activeTab: 'status',
   burnFilters: new Set<BurnFilter>(['all']),
   fleetFilters: new Set<FleetFilter>(['all']),
-  // Contracts default to CLOSED — fulfilled contracts are history
-  contractFilters: new Set<ContractFilter>(['closed']),
+  contractFilters: new Set<ContractFilter>(['all']),
   detailView: null,
   actConfirmPending: false,
   actionInFlight: false,
