@@ -1,5 +1,15 @@
 # APXM Changelog
 
+## 1.4.0 (unreleased)
+
+### Added
+
+- **Inbound ship cargo counts toward a base's burn** (matches rPrun's BURN) — cargo on your ships flying to a base's planet counts as stock in days remaining and need, with a per-base INBOUND toggle on the BURN sheet to exclude it
+
+### Changed
+
+- Stock figures truncate rather than round, so they never show more than you hold
+
 ## 1.3.1 (2026-10-25)
 
 ### Added
