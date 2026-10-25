@@ -353,7 +353,7 @@ export interface ContractDetailsResult {
 
 /**
  * Pure sort/count/filter over built contract details. Extracted from the hook
- * for testability — the ACTIVE-includes-OPEN distinction (vs ACCEPTED_STATUSES,
+ * for testability — the CLOSED-includes-OPEN distinction (vs ACCEPTED_STATUSES,
  * which deliberately excludes OPEN) lives here and must stay pinned by tests.
  */
 /**
@@ -385,12 +385,15 @@ export function assembleContractDetails(
   details.sort(compareContractDetails);
 
   // Count by filter category
-  const activeCount = details.filter((c) => ACTIVE_STATUSES.includes(c.status)).length;
+  const pending = (c: ContractDetail) => c.actionable || c.acceptance === 'awaiting-mine';
+  const pendingCount = details.filter(pending).length;
+  const closedCount = details.filter((c) => ACTIVE_STATUSES.includes(c.status)).length;
   const fulfilledCount = details.filter((c) => FULFILLED_STATUSES.includes(c.status)).length;
 
   const counts: Record<ContractFilter, number> = {
     all: details.length,
-    active: activeCount,
+    pending: pendingCount,
+    closed: closedCount,
     fulfilled: fulfilledCount,
   };
 
@@ -398,7 +401,8 @@ export function assembleContractDetails(
   const filtered = activeFilters.has('all')
     ? details
     : details.filter((c) => {
-        if (activeFilters.has('active') && ACTIVE_STATUSES.includes(c.status)) return true;
+        if (activeFilters.has('pending') && pending(c)) return true;
+        if (activeFilters.has('closed') && ACTIVE_STATUSES.includes(c.status)) return true;
         if (activeFilters.has('fulfilled') && FULFILLED_STATUSES.includes(c.status)) return true;
         return false;
       });
