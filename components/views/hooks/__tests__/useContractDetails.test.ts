@@ -305,11 +305,11 @@ describe('assembleContractDetails (list sort/count/filter)', () => {
   const noDue = contractWith('NO-DUE', 'CLOSED', null);
   const all = [fulfilled, noDue, closedSoon, openLate, partial, openSoon];
 
-  it('the ACTIVE bucket includes OPEN — awaiting-acceptance contracts need attention too', () => {
+  it('the CLOSED bucket includes OPEN — awaiting-acceptance contracts need attention too', () => {
     // Deliberately broader than the accepted set (CLOSED/PARTIALLY_FULFILLED):
     // the filter answers "needs attention", acceptance gates actions.
     const { counts } = assembleContractDetails(all, new Set(['all']));
-    expect(counts).toEqual({ all: 6, active: 5, fulfilled: 1 });
+    expect(counts).toEqual({ all: 6, closed: 5, fulfilled: 1 });
   });
 
   it('sorts OPEN first, then by due date, undated last', () => {
@@ -377,8 +377,8 @@ describe('assembleContractDetails (list sort/count/filter)', () => {
     ]);
   });
 
-  it('the active filter keeps OPEN/CLOSED/PARTIALLY_FULFILLED and drops FULFILLED', () => {
-    const { contracts } = assembleContractDetails(all, new Set(['active']));
+  it('the closed filter keeps OPEN/CLOSED/PARTIALLY_FULFILLED and drops FULFILLED', () => {
+    const { contracts } = assembleContractDetails(all, new Set(['closed']));
     expect(contracts.map((c) => c.localId)).toEqual([
       'OPEN-SOON',
       'OPEN-LATE',

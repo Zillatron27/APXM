@@ -17,7 +17,7 @@ export type TabId = 'status' | 'fleet' | 'bases' | 'contracts' | 'settings';
  */
 export type BurnFilter = Exclude<Urgency, 'surplus'> | 'all';
 export type FleetFilter = 'idle' | 'in-transit' | 'all';
-export type ContractFilter = 'active' | 'fulfilled' | 'all';
+export type ContractFilter = 'closed' | 'fulfilled' | 'all';
 
 /**
  * A drill-down detail screen presented over the current tab as a slide-up
@@ -106,8 +106,8 @@ export const useGameState = create<GameState>((set) => ({
   activeTab: 'status',
   burnFilters: new Set<BurnFilter>(['all']),
   fleetFilters: new Set<FleetFilter>(['all']),
-  // Contracts default to ACTIVE — fulfilled contracts are history
-  contractFilters: new Set<ContractFilter>(['active']),
+  // Contracts default to CLOSED — fulfilled contracts are history
+  contractFilters: new Set<ContractFilter>(['closed']),
   detailView: null,
   actConfirmPending: false,
   actionInFlight: false,
