@@ -305,12 +305,10 @@ describe('assembleContractDetails (list sort/count/filter)', () => {
   const noDue = contractWith('NO-DUE', 'CLOSED', null);
   const all = [fulfilled, noDue, closedSoon, openLate, partial, openSoon];
 
-  it('the CLOSED bucket includes OPEN — awaiting-acceptance contracts need attention too', () => {
-    // Deliberately broader than the accepted set (CLOSED/PARTIALLY_FULFILLED):
-    // the filter answers "needs attention", acceptance gates actions.
+  it('the CLOSED bucket follows the game status — OPEN (awaiting acceptance) is not CLOSED', () => {
     // pending: the default fixture's self condition is available on the 3 accepted, unfulfilled contracts.
     const { counts } = assembleContractDetails(all, new Set(['all']));
-    expect(counts).toEqual({ all: 6, pending: 3, closed: 5, fulfilled: 1 });
+    expect(counts).toEqual({ all: 6, pending: 3, closed: 3, fulfilled: 1 });
   });
 
   it('sorts OPEN first, then by due date, undated last', () => {
@@ -378,15 +376,9 @@ describe('assembleContractDetails (list sort/count/filter)', () => {
     ]);
   });
 
-  it('the closed filter keeps OPEN/CLOSED/PARTIALLY_FULFILLED and drops FULFILLED', () => {
+  it('the closed filter keeps CLOSED/PARTIALLY_FULFILLED and drops OPEN and FULFILLED', () => {
     const { contracts } = assembleContractDetails(all, new Set(['closed']));
-    expect(contracts.map((c) => c.localId)).toEqual([
-      'OPEN-SOON',
-      'OPEN-LATE',
-      'CLOSED-SOON',
-      'PARTIAL',
-      'NO-DUE',
-    ]);
+    expect(contracts.map((c) => c.localId)).toEqual(['CLOSED-SOON', 'PARTIAL', 'NO-DUE']);
   });
 
   it('the pending filter keeps contracts with an available condition or awaiting-mine acceptance, not partner waits', () => {
