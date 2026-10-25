@@ -58,17 +58,17 @@ export interface ApxmThemeTokens {
 // Standard burn-status palette (Tailwind 500-level). Matches the existing
 // `status.*` Tailwind tokens, so anything already using them is unchanged.
 const STATUS_STANDARD = {
-  statusCritical: 0xef4444, // red-500
+  statusCritical: 0xf05151, // red-500 lifted to 4.5:1 on every standard surface
   statusWarning: 0xf59e0b, // amber-500
   statusOk: 0x22c55e, // green-500
-  statusSurplus: 0x3b82f6, // blue-500
+  statusSurplus: 0x4186f6, // blue-500 lifted to 4.5:1 on every standard surface
 } as const;
 
 // Standard data-series colours: info badge + the cargo/fuel ledger bars.
 // Values match the raw Tailwind classes the bars used before tokenisation
 // (orange-500 / yellow-500 / blue-500), so standard presets look unchanged.
 const SERIES_STANDARD = {
-  statusInfo: 0x3b82f6, // blue-500
+  statusInfo: 0x4186f6, // matches statusSurplus (text, so it needs 4.5:1)
   barCargo: 0xf97316, // orange-500
   barFuelStl: 0xeab308, // yellow-500
   barFuelFtl: 0x3b82f6, // blue-500
@@ -81,7 +81,7 @@ const prun: ApxmThemeTokens = {
   surface: 0x16213e,
   accent: 0x0f3460,
   text: 0xe4e4e4,
-  muted: 0x808080,
+  muted: 0x898989, // 4.5:1 on surface (0x808080 was 4.0)
   highlight: 0xf7a600,
   ...STATUS_STANDARD,
   ...SERIES_STANDARD,
@@ -135,7 +135,7 @@ const colorblind: ApxmThemeTokens = {
   text: 0xe0e0e0,
   muted: 0x909090,
   highlight: 0x0088ff, // sky blue
-  statusCritical: 0xd55e00, // vermillion
+  statusCritical: 0xd66105, // vermillion, nudged to 4.5:1 on surface (CVD-checked in contrast.test.ts)
   statusWarning: 0xf0e442, // yellow
   statusOk: 0x009e73, // bluish green
   statusSurplus: 0x56b4e9, // sky blue
