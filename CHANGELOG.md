@@ -6,6 +6,7 @@
 
 - **Inbound ship cargo counts toward a base's burn** (matches rPrun's BURN) — cargo on your ships flying to a base's planet counts as stock in days remaining and need, with a per-base rocket toggle on the BURN sheet to exclude it (lit = counted, as in rPrun)
 - **PENDING contracts filter** — contracts where you have a move: a condition you can fulfil now, or an acceptance waiting on you (requested by beta tester @aemuthi)
+- The BURN sheet can filter its materials by RED / YELLOW / GREEN / INF (#38)
 
 ### Changed
 
