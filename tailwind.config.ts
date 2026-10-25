@@ -23,6 +23,8 @@ export default {
         },
         status: {
           critical: 'rgb(var(--apxm-status-critical-rgb) / <alpha-value>)',
+          // Lighter red for text on a critical badge's own tint (lib/theme criticalBadgeText).
+          'critical-badge': 'rgb(var(--apxm-status-critical-badge-rgb) / <alpha-value>)',
           warning: 'rgb(var(--apxm-status-warning-rgb) / <alpha-value>)',
           ok: 'rgb(var(--apxm-status-ok-rgb) / <alpha-value>)',
           surplus: 'rgb(var(--apxm-status-surplus-rgb) / <alpha-value>)',

@@ -11,7 +11,7 @@ interface TimeBadgeProps {
 }
 
 const urgencyBgColors: Record<Urgency, string> = {
-  critical: 'bg-status-critical/20 text-status-critical',
+  critical: 'bg-status-critical/20 text-status-critical-badge',
   warning: 'bg-status-warning/20 text-status-warning',
   ok: 'bg-status-ok/20 text-status-ok',
   surplus: 'bg-apxm-surface text-apxm-muted',

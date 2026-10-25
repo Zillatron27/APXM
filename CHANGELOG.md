@@ -12,6 +12,7 @@
 
 - Contracts filter ACTIVE is now **CLOSED**, matching the game's own status for accepted, in-progress contracts. The Contracts tab now opens on ALL, like the other tabs
 - Stock figures truncate rather than round, so they never show more than you hold
+- Readability pass across all five themes (#27): dim labels, muted text, status colours, red badges and panel codes now meet 4.5:1 contrast. Panel codes (`BS`, `FLT`, `CONT` …) are grey, as in APEX
 
 ## 1.3.1 (2026-10-25)
 

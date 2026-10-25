@@ -62,7 +62,7 @@ export function Panel({
           {title}
         </span>
         {code && (
-          <span className="font-mono text-[10px] tracking-wider uppercase text-prun-yellow/50 leading-none">
+          <span className="font-mono text-[10px] tracking-wider uppercase text-apxm-muted leading-none">
             {code}
           </span>
         )}

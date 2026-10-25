@@ -29,7 +29,7 @@ export function ProgressBar({ current, max, color, label, unit }: ProgressBarPro
       <span className="w-12 shrink-0 text-xs text-apxm-text/70">{label}</span>
       <span className="w-24 shrink-0 text-right text-xs font-mono text-apxm-text/70 tabular-nums whitespace-nowrap">
         {formatQty(current)} / {formatQty(max)}
-        {unit && <span className="text-apxm-text/40"> {unit}</span>}
+        {unit && <span className="text-apxm-text/55"> {unit}</span>}
       </span>
       <div className="flex-1 h-2 bg-apxm-bg rounded-sm overflow-hidden">
         <div

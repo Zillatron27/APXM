@@ -267,7 +267,7 @@ export function SendShipView({ shipId, registration, onClose }: SendShipViewProp
   if (phase === 'pick') {
     return (
       <div className="space-y-2">
-        <p className="text-[10px] uppercase tracking-wide text-apxm-text/40">Destination</p>
+        <p className="text-[10px] uppercase tracking-wide text-apxm-text/55">Destination</p>
         {/* Errors sit above the list — a failed pick lands the user back here
             with the reason in view, not below the fold. */}
         {error && <p className="text-xs text-status-critical">{error}</p>}
@@ -283,7 +283,7 @@ export function SendShipView({ shipId, registration, onClose }: SendShipViewProp
               onClick={() => pickDestination(d)}
             >
               <span className="font-mono">{d.label}</span>
-              <span className="ml-2 text-xs text-apxm-text/50">{d.kind}</span>
+              <span className="ml-2 text-xs text-apxm-text/55">{d.kind}</span>
             </button>
           ))}
         </div>
@@ -376,7 +376,7 @@ export function SendShipView({ shipId, registration, onClose }: SendShipViewProp
               appearance never reflows the controls below (device feedback
               2026-08-19: the old bottom-of-panel line pushed every button up
               and back on each recompute). */}
-          <p className="mt-1 flex items-baseline justify-between gap-2 text-[10px] text-apxm-text/40">
+          <p className="mt-1 flex items-baseline justify-between gap-2 text-[10px] text-apxm-text/55">
             <span className="shrink-0">{snapshot?.segments.length} segments</span>
             {statusSlot}
           </p>
@@ -395,7 +395,7 @@ export function SendShipView({ shipId, registration, onClose }: SendShipViewProp
       <div className="space-y-2">
         {snapshot?.reactor != null && (
           <div className="flex items-center gap-2">
-            <span className="w-14 shrink-0 text-[10px] uppercase tracking-wide text-apxm-text/40">
+            <span className="w-14 shrink-0 text-[10px] uppercase tracking-wide text-apxm-text/55">
               Reactor
               <span className="block font-mono tabular-nums text-apxm-text/70 normal-case">
                 {snapshot.reactor.valuePct}%
@@ -409,7 +409,7 @@ export function SendShipView({ shipId, registration, onClose }: SendShipViewProp
           </div>
         )}
         <div className="flex items-center gap-2">
-          <span className="w-14 shrink-0 text-[10px] uppercase tracking-wide text-apxm-text/40">
+          <span className="w-14 shrink-0 text-[10px] uppercase tracking-wide text-apxm-text/55">
             Fuel
             {snapshot?.fuel && (
               <span
@@ -431,7 +431,7 @@ export function SendShipView({ shipId, registration, onClose }: SendShipViewProp
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="w-14 shrink-0 text-[10px] uppercase tracking-wide text-apxm-text/40">
+          <span className="w-14 shrink-0 text-[10px] uppercase tracking-wide text-apxm-text/55">
             Route
           </span>
           <div className="grid flex-1 grid-cols-2 gap-1">
@@ -454,7 +454,7 @@ export function SendShipView({ shipId, registration, onClose }: SendShipViewProp
           </div>
         </div>
         <div className="flex items-start gap-2">
-          <span className="w-14 shrink-0 text-[10px] uppercase tracking-wide text-apxm-text/40 pt-2">
+          <span className="w-14 shrink-0 text-[10px] uppercase tracking-wide text-apxm-text/55 pt-2">
             Options
           </span>
           <div className="grid flex-1 grid-cols-2 gap-1">

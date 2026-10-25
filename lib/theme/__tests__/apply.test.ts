@@ -33,8 +33,8 @@ describe('applyTheme', () => {
     expect(readVar('--apxm-bg')).toBe('#050a05');
     expect(readVar('--apxm-bg-rgb')).toBe('5 10 5');
     // Status tokens are present too.
-    expect(readVar('--apxm-status-critical')).toBe('#ef4444');
-    expect(readVar('--apxm-status-surplus-rgb')).toBe('59 130 246');
+    expect(readVar('--apxm-status-critical')).toBe('#f05151');
+    expect(readVar('--apxm-status-surplus-rgb')).toBe('65 134 246');
   });
 
   it('updates the vars when switching themes', () => {
@@ -47,7 +47,7 @@ describe('applyTheme', () => {
   it('Colorblind preset uses CVD-safe status colours', () => {
     applyTheme('colorblind');
     expect(readVar('--apxm-status-ok')).toBe('#009e73'); // bluish green, not green-500
-    expect(readVar('--apxm-status-critical')).toBe('#d55e00'); // vermillion
+    expect(readVar('--apxm-status-critical')).toBe('#d66105'); // vermillion
   });
 
   it('re-applying the same theme is a no-op (guard)', () => {

@@ -69,9 +69,9 @@ export function BasesMiniList({ handle }: { handle?: ReactNode }) {
       <div className="grid grid-cols-[minmax(0,1fr)_3.5rem_3.5rem_3.5rem] gap-x-2 gap-y-1 items-center">
         {/* Column headers */}
         <span />
-        <span className="font-mono text-[10px] text-apxm-text/40 uppercase tracking-wide text-center">Burn</span>
-        <span className="font-mono text-[10px] text-apxm-text/40 uppercase tracking-wide text-center">Repair</span>
-        <span className="font-mono text-[10px] text-apxm-text/40 uppercase tracking-wide text-center">Prod</span>
+        <span className="font-mono text-[10px] text-apxm-text/55 uppercase tracking-wide text-center">Burn</span>
+        <span className="font-mono text-[10px] text-apxm-text/55 uppercase tracking-wide text-center">Repair</span>
+        <span className="font-mono text-[10px] text-apxm-text/55 uppercase tracking-wide text-center">Prod</span>
 
         {topBases.map((site) => (
           <div key={site.siteId} className="contents">

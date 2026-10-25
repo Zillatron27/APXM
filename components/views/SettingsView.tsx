@@ -571,7 +571,7 @@ export function SettingsView() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="FIO username"
-              className="w-full min-h-touch px-3 py-2 text-sm bg-apxm-bg border border-apxm-accent text-apxm-text placeholder:text-apxm-muted/50 outline-none focus:border-prun-yellow"
+              className="w-full min-h-touch px-3 py-2 text-sm bg-apxm-bg border border-apxm-accent text-apxm-text placeholder:text-apxm-muted outline-none focus:border-prun-yellow"
             />
           </div>
 
@@ -582,7 +582,7 @@ export function SettingsView() {
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder="Your FIO API key"
-              className="w-full min-h-touch px-3 py-2 text-sm bg-apxm-bg border border-apxm-accent text-apxm-text placeholder:text-apxm-muted/50 outline-none focus:border-prun-yellow font-mono"
+              className="w-full min-h-touch px-3 py-2 text-sm bg-apxm-bg border border-apxm-accent text-apxm-text placeholder:text-apxm-muted outline-none focus:border-prun-yellow font-mono"
             />
           </div>
 

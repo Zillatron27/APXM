@@ -11,7 +11,12 @@
  * components use colour-alpha modifiers (e.g. `text-apxm-text/70`).
  */
 
-import { getPresetById, type ApxmThemeId, type ApxmThemeTokens } from './presets';
+import {
+  criticalBadgeText,
+  getPresetById,
+  type ApxmThemeId,
+  type ApxmThemeTokens,
+} from './presets';
 
 function hexToCssHex(hex: number): string {
   return `#${hex.toString(16).padStart(6, '0')}`;
@@ -62,6 +67,11 @@ export function applyTheme(id: ApxmThemeId): void {
     root.setProperty(name, hexToCssHex(value));
     root.setProperty(`${name}-rgb`, hexToRgbChannels(value));
   }
+
+  // Derived, not a preset token: every preset gets it from its own red.
+  const badgeText = criticalBadgeText(tokens.statusCritical);
+  root.setProperty('--apxm-status-critical-badge', hexToCssHex(badgeText));
+  root.setProperty('--apxm-status-critical-badge-rgb', hexToRgbChannels(badgeText));
 
   appliedId = resolvedId;
 }

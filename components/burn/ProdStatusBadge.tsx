@@ -5,7 +5,7 @@ import type { ProdStatus } from './useProdStatus';
 const tierClasses = {
   ok: 'bg-status-ok/20 text-status-ok',
   warning: 'bg-status-warning/20 text-status-warning',
-  critical: 'bg-status-critical/20 text-status-critical',
+  critical: 'bg-status-critical/20 text-status-critical-badge',
 } as const;
 
 /**

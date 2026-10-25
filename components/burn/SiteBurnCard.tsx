@@ -122,7 +122,7 @@ export function SiteBurnCard({ summary, repairAgeDays, prodStatus }: SiteBurnCar
                     ? 'text-status-ok'
                     : siteStatus === 'error'
                       ? 'text-status-critical'
-                      : 'text-apxm-text/50 hover:text-prun-yellow'
+                      : 'text-apxm-text/55 hover:text-prun-yellow'
               }`}
               aria-label={`Refresh ${siteName}`}
             >
