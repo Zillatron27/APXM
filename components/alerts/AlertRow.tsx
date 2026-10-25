@@ -15,7 +15,7 @@ const TONE_CLASS: Record<AlertTone, string> = {
   warning: 'text-status-warning',
   ok: 'text-status-ok',
   info: 'text-status-info',
-  neutral: 'text-apxm-text/50',
+  neutral: 'text-apxm-text/55',
 };
 
 // 'repair' is a valid DetailView variant elsewhere in the app, but no alert
@@ -68,7 +68,7 @@ export function AlertRow({ alert }: { alert: PrunApi.Alert }) {
           {tone === 'critical' ? '! ' : ''}
           {label}
         </span>
-        <span className="text-apxm-text/50">{formatRelativeTime(alert.time.timestamp)}</span>
+        <span className="text-apxm-text/55">{formatRelativeTime(alert.time.timestamp)}</span>
       </span>
       {material &&
         (material.ticker ? (
@@ -79,7 +79,7 @@ export function AlertRow({ alert }: { alert: PrunApi.Alert }) {
           <span
             title={material.name}
             aria-label={`Unknown material ${material.name}`}
-            className="shrink-0 w-8 h-5 flex items-center justify-center font-mono text-[10px] rounded border border-apxm-text/30 text-apxm-text/50"
+            className="shrink-0 w-8 h-5 flex items-center justify-center font-mono text-[10px] rounded border border-apxm-text/30 text-apxm-text/55"
           >
             {UNRESOLVED_MATERIAL}
           </span>

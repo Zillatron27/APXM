@@ -210,7 +210,7 @@ export function ContractDetailView({ contractId }: ContractDetailViewProps) {
           (disabled) buttons even on rows APXM doesn't consider available, so
           ordinal counting would misalign. */}
       <div>
-        <p className="text-[10px] uppercase tracking-wide text-apxm-text/40 mb-1">Conditions</p>
+        <p className="text-[10px] uppercase tracking-wide text-apxm-text/55 mb-1">Conditions</p>
         {contract.conditions.map((cond) => (
           <ConditionBlock
             key={cond.id}

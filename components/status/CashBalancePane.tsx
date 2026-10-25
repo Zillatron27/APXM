@@ -30,7 +30,7 @@ function BalanceRow({ currency, amount, indicator, hiddenCount, prominent }: Bal
     : { ind: 'text-xs w-4', code: 'text-xs w-9', amount: 'text-sm w-32', hint: 'text-xs', pad: 'py-0.5' };
   return (
     <div className={`flex items-baseline gap-2 ${s.pad}`}>
-      <span className={`text-apxm-text/50 shrink-0 ${s.ind}`}>{indicator ?? ''}</span>
+      <span className={`text-apxm-text/55 shrink-0 ${s.ind}`}>{indicator ?? ''}</span>
       <span className={`font-mono text-apxm-text/70 shrink-0 ${s.code}`}>{currency}</span>
       <span className={`font-mono text-apxm-text tabular-nums text-right shrink-0 ${s.amount}`}>
         {formatAmount(amount)}

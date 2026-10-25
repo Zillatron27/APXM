@@ -58,7 +58,7 @@ export function ProductionLineSection({ line, nowMs }: ProductionLineSectionProp
                   instead. Skipped above the first row — nothing to divide. */}
               {index > 0 &&
                 (index === queueStart ? (
-                  <div className="my-1 flex items-center gap-2 text-[10px] uppercase tracking-wide text-apxm-text/40">
+                  <div className="my-1 flex items-center gap-2 text-[10px] uppercase tracking-wide text-apxm-text/55">
                     <span>Queue</span>
                     <span className="flex-1 h-px bg-apxm-bg" />
                   </div>

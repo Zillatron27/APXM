@@ -44,7 +44,7 @@ export function ProductionOrderRow({ order, nowMs }: ProductionOrderRowProps) {
             <MaterialTile key={output.material.ticker} ticker={output.material.ticker} size="sm" />
           ))}
           {state === 'queued' && order.recurring && (
-            <span className="text-[10px] uppercase tracking-wide text-apxm-text/40">
+            <span className="text-[10px] uppercase tracking-wide text-apxm-text/55">
               recurring
             </span>
           )}

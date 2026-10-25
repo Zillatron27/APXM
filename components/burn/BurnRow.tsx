@@ -83,7 +83,7 @@ export function BurnRow({ burn }: BurnRowProps) {
         }`}
       >
         <div className="overflow-hidden">
-          <div className="flex items-center justify-end pb-1 text-[11px] text-apxm-text/50">
+          <div className="flex items-center justify-end pb-1 text-[11px] text-apxm-text/55">
             {breakdown && <span className="font-mono">{breakdown} /d</span>}
             {inboundAmount > 0 && (
               <span className="font-mono">

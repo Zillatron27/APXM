@@ -90,7 +90,7 @@ export function DetailSheet() {
         {/* Header: dimension + base name + close */}
         <div className="flex items-center justify-between gap-2 px-4 h-12 border-b border-apxm-surface shrink-0">
           <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-wide text-apxm-text/40">
+            <p className="text-[10px] uppercase tracking-wide text-apxm-text/55">
               {detailLabels[detailView.type]}
             </p>
             <h2 className="font-semibold text-apxm-text truncate">{detailTitle(detailView)}</h2>

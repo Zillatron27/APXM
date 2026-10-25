@@ -19,7 +19,7 @@ export function EmpireBurnList({ rows }: EmpireBurnListProps) {
   return (
     <div className="divide-y divide-apxm-bg/50">
       {/* Column headers — same layout as the per-site card rows */}
-      <div className="flex items-center justify-between gap-1 py-1 font-mono text-[10px] text-apxm-text/40 uppercase tracking-wide">
+      <div className="flex items-center justify-between gap-1 py-1 font-mono text-[10px] text-apxm-text/55 uppercase tracking-wide">
         <span className="w-10">Mat</span>
         <div className="flex items-center">
           <span className="w-12 text-right">Inv</span>

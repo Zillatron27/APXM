@@ -51,7 +51,7 @@ export function BurnDetailView({ siteId }: BurnDetailViewProps) {
 
   if (sortedBurns.length === 0) {
     return (
-      <p className="px-1 py-4 text-sm text-apxm-text/50">
+      <p className="px-1 py-4 text-sm text-apxm-text/55">
         Awaiting data — refresh this base from the Bases tab or open its BS buffer in APEX.
       </p>
     );
@@ -98,7 +98,7 @@ export function BurnDetailView({ siteId }: BurnDetailViewProps) {
       </div>
       <div className="divide-y divide-apxm-bg/50">
         {/* Column headers */}
-        <div className="flex items-center justify-between gap-1 py-1 text-[10px] text-apxm-text/40 uppercase tracking-wide">
+        <div className="flex items-center justify-between gap-1 py-1 text-[10px] text-apxm-text/55 uppercase tracking-wide">
           <span className="w-10">Mat</span>
           <div className="flex items-center">
             <span className="w-12 text-right">Inv</span>

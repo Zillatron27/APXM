@@ -46,7 +46,7 @@ export function RepairDetailView({ siteId }: RepairDetailViewProps) {
   return (
     <div className="space-y-3">
       <div className="space-y-1">
-        <p className="font-mono text-[10px] uppercase tracking-wide text-apxm-text/40">
+        <p className="font-mono text-[10px] uppercase tracking-wide text-apxm-text/55">
           {buildings.length} repairable {buildings.length === 1 ? 'building' : 'buildings'} · oldest{' '}
           {formatDays(buildings[0].ageDays)}
         </p>
