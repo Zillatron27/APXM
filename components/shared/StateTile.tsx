@@ -9,7 +9,7 @@ const variantStyles: Record<TileVariant, string> = {
   neutral: 'bg-apxm-surface text-apxm-text/70',
   success: 'bg-status-ok/20 text-status-ok',
   warning: 'bg-status-warning/20 text-status-warning',
-  danger: 'bg-status-critical/20 text-status-critical',
+  danger: 'bg-status-critical/20 text-status-critical-badge',
   muted: 'bg-apxm-surface text-apxm-muted',
 };
 

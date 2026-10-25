@@ -3,7 +3,7 @@ import { classifyRepairUrgency, type RepairUrgency } from '../../core/repair';
 import { keycapClasses } from '../shared';
 
 const urgencyColors: Record<RepairUrgency, string> = {
-  critical: 'bg-status-critical/20 text-status-critical',
+  critical: 'bg-status-critical/20 text-status-critical-badge',
   warning: 'bg-status-warning/20 text-status-warning',
   ok: 'bg-status-ok/20 text-status-ok',
 };

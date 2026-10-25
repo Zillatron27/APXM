@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { themePresets, getPresetById, type ApxmThemeTokens } from '../presets';
+import {
+  criticalBadgeText,
+  themePresets,
+  getPresetById,
+  type ApxmThemeTokens,
+} from '../presets';
 
 // Requirement tests for #27: every preset must keep APXM's text readable
 // (WCAG 2.x AA, 4.5:1 — almost all APXM text is 10–13px, so no large-text
@@ -12,6 +17,9 @@ const AA_NORMAL_TEXT = 4.5;
  *  The off state of the BURN sheet's inbound rocket (/30) is deliberately dim
  *  and not text. */
 const MIN_TEXT_OPACITY = 0.55;
+
+/** Tint behind critical badges (`bg-status-critical/20`). */
+const CRITICAL_BADGE_TINT = 0.2;
 
 type Rgb = [number, number, number];
 
@@ -73,6 +81,14 @@ describe.each(themePresets.map((p) => [p.name, p.tokens] as const))(
         expect(contrast(blend(t.text, bg, MIN_TEXT_OPACITY), bg)).toBeGreaterThanOrEqual(
           AA_NORMAL_TEXT
         );
+      }
+    });
+
+    it('critical badge text reads at 4.5:1 on its own tint', () => {
+      const badgeText = criticalBadgeText(t.statusCritical);
+      for (const [, bg] of backgrounds) {
+        const tint = blend(t.statusCritical, bg, CRITICAL_BADGE_TINT);
+        expect(contrast(badgeText, tint)).toBeGreaterThanOrEqual(AA_NORMAL_TEXT);
       }
     });
   }

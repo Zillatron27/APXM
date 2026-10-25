@@ -145,6 +145,19 @@ const colorblind: ApxmThemeTokens = {
   barFuelFtl: 0x56b4e9, // Okabe-Ito sky blue
 };
 
+/**
+ * Text colour for critical badges: the status red mixed 25% toward white.
+ * Plain status red on its own /20 tint falls below 4.5:1 over the raised
+ * surface in every preset; lifting the text keeps the badge look (#27).
+ */
+export function criticalBadgeText(statusCritical: number): number {
+  const lift = (channel: number) => Math.round(channel + 0.25 * (255 - channel));
+  const r = lift((statusCritical >> 16) & 0xff);
+  const g = lift((statusCritical >> 8) & 0xff);
+  const b = lift(statusCritical & 0xff);
+  return (r << 16) | (g << 8) | b;
+}
+
 export interface ApxmThemePreset {
   id: ApxmThemeId;
   name: string;
