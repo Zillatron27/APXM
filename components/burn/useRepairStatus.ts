@@ -4,6 +4,7 @@
  */
 import { useMemo } from 'react';
 import { useSitesStore } from '../../stores/entities/sites';
+import { useTick } from '../../hooks/useTick';
 import {
   calculateAllRepairStatuses,
   calculateSiteRepairBuildings,
@@ -19,20 +20,23 @@ export type { RepairStatusSummary, BuildingRepairStatus };
  */
 export function useRepairStatus(): RepairStatusSummary[] {
   const sitesLastUpdated = useSitesStore((s) => s.lastUpdated);
+  // Ages are measured against Date.now(), so recompute as time passes too
+  const tick = useTick(60000);
 
   return useMemo(() => {
     return calculateAllRepairStatuses();
-    // sitesLastUpdated is the recompute trigger; the data is read from the store
+    // sitesLastUpdated and tick are the recompute triggers; the data is read from the store
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sitesLastUpdated]);
+  }, [sitesLastUpdated, tick]);
 }
 
 /** Per-building repair detail for one site (oldest-since-repair first). */
 export function useSiteRepairBuildings(siteId: string): BuildingRepairStatus[] {
   const sitesLastUpdated = useSitesStore((s) => s.lastUpdated);
+  const tick = useTick(60000);
 
   return useMemo(() => {
     return calculateSiteRepairBuildings(siteId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [siteId, sitesLastUpdated]);
+  }, [siteId, sitesLastUpdated, tick]);
 }

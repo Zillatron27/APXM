@@ -75,6 +75,13 @@ describe('planRefuel', () => {
     expect(plan.available && plan.sourceStore.id).toBe('store-base');
   });
 
+  it('counts every unit that fits despite float rounding (1.2 m3 tank holding 0.30 has room for 15)', () => {
+    const { ship, tank, source } = seed();
+    const nearlyFull = { ...tank, volumeCapacity: 1.2, volumeLoad: 0.3 };
+    const plan = planRefuel(ship, [nearlyFull, source], SF, 'stl');
+    expect(plan).toMatchObject({ available: true, units: 15 });
+  });
+
   it('caps the amount at the source stock', () => {
     const { ship, tank, source } = seed({ sourceSF: 50 });
     const plan = planRefuel(ship, [tank, source], SF, 'stl');

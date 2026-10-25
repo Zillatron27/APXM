@@ -67,6 +67,20 @@ describe('createEntityStore', () => {
   });
 
   describe('setAll', () => {
+    it('skips a null item without dropping the rest of the list', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      store.getState().setAll([
+        { id: '1', name: 'one', value: 1 },
+        null as never,
+        { id: '2', name: 'two', value: 2 },
+      ]);
+
+      expect(store.getState().getById('1')).toBeDefined();
+      expect(store.getState().getById('2')).toBeDefined();
+      warnSpy.mockRestore();
+    });
+
     it('replaces all entities', () => {
       store.getState().setAll([
         { id: '1', name: 'one', value: 1 },

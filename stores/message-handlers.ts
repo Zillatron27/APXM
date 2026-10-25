@@ -165,29 +165,62 @@ export function initMessageHandlers(): void {
     }
   });
 
-  // Platform updates (construction, demolition)
+  // Platform messages: BUILT and UPDATED payloads ARE the Platform (it carries
+  // siteId); REMOVED is { siteId, platformId }.
+  const isPlatformPayload = (p: unknown): p is PrunApi.Platform => {
+    const platform = p as PrunApi.Platform | undefined;
+    return typeof platform?.siteId === 'string' && platform.siteId !== ''
+      && typeof platform.id === 'string' && platform.id !== '';
+  };
+
   typeHandlers.set('SITE_PLATFORM_BUILT', (msg: ProcessedMessage) => {
-    const payload = extractPayload(msg) as {
-      siteId?: string;
-      platform?: PrunApi.Platform;
-    };
-    const { siteId, platform } = payload;
-    if (siteId && platform) {
-      const site = useSitesStore.getState().getById(siteId);
+    const platform = extractPayload(msg);
+    if (!isPlatformPayload(platform)) {
+      warn('SITE_PLATFORM_BUILT: unexpected payload structure', platform);
+      useConnectionStore.getState().incrementDiscarded();
+      return;
+    }
+    const site = useSitesStore.getState().getById(platform.siteId);
+    if (site) {
+      // Upsert by id — redelivery of the same message (or a follow-up
+      // update to a platform already known) must not append a duplicate.
+      const existingIndex = site.platforms.findIndex((p) => p.id === platform.id);
+      const platforms = existingIndex === -1
+        ? [...site.platforms, platform]
+        : site.platforms.map((p, i) => (i === existingIndex ? platform : p));
+      useSitesStore.getState().setOne({ ...site, platforms });
+    }
+  });
+
+  typeHandlers.set('SITE_PLATFORM_UPDATED', (msg: ProcessedMessage) => {
+    const update = extractPayload(msg);
+    if (!isPlatformPayload(update)) {
+      warn('SITE_PLATFORM_UPDATED: unexpected payload structure', update);
+      useConnectionStore.getState().incrementDiscarded();
+      return;
+    }
+    const site = useSitesStore.getState().getById(update.siteId);
+    if (site) {
+      useSitesStore.getState().setOne({
+        ...site,
+        platforms: site.platforms.map((p) => (p.id === update.id ? { ...p, ...update } : p)),
+      });
+    }
+  });
+
+  typeHandlers.set('SITE_PLATFORM_REMOVED', (msg: ProcessedMessage) => {
+    const payload = extractPayload(msg) as { siteId?: string; platformId?: string };
+    if (typeof payload?.siteId === 'string' && payload.siteId !== ''
+      && typeof payload.platformId === 'string' && payload.platformId !== '') {
+      const site = useSitesStore.getState().getById(payload.siteId);
       if (site) {
-        // Upsert by id — redelivery of the same message (or a follow-up
-        // update to a platform already known) must not append a duplicate.
-        const existingIndex = site.platforms.findIndex((p) => p.id === platform.id);
-        const platforms = existingIndex === -1
-          ? [...site.platforms, platform]
-          : site.platforms.map((p, i) => (i === existingIndex ? platform : p));
         useSitesStore.getState().setOne({
           ...site,
-          platforms,
+          platforms: site.platforms.filter((p) => p.id !== payload.platformId),
         });
       }
     } else {
-      warn('SITE_PLATFORM_BUILT: unexpected payload structure', payload);
+      warn('SITE_PLATFORM_REMOVED: unexpected payload structure', payload);
       useConnectionStore.getState().incrementDiscarded();
     }
   });
@@ -272,12 +305,19 @@ export function initMessageHandlers(): void {
   });
 
   typeHandlers.set('PRODUCTION_SITE_PRODUCTION_LINES', (msg: ProcessedMessage) => {
-    const payload = extractPayload(msg) as { productionLines?: PrunApi.ProductionLine[] };
+    const payload = extractPayload(msg) as {
+      siteId?: string;
+      productionLines?: PrunApi.ProductionLine[];
+    };
     if (Array.isArray(payload?.productionLines)) {
       // This is a per-site message — replace ALL lines for this site.
       // setMany only merges, so stale lines from FIO would linger.
-      // Extract siteId from incoming lines, remove old lines for that site, then add new.
+      // The top-level siteId covers a site whose list is now empty (every line
+      // demolished); the lines' siteIds cover payloads that omit it.
       const siteIds = new Set(payload.productionLines.map((l) => l.siteId).filter(Boolean));
+      if (typeof payload.siteId === 'string' && payload.siteId !== '') {
+        siteIds.add(payload.siteId);
+      }
       if (siteIds.size > 0) {
         const store = useProductionStore.getState();
         const staleIds = store.getAll()
@@ -412,42 +452,24 @@ export function initMessageHandlers(): void {
     }
   });
 
-  typeHandlers.set('SHIP_FLIGHT_STARTED', (msg: ProcessedMessage) => {
+  // Wire names: SHIP_FLIGHT_FLIGHT / SHIP_FLIGHT_FLIGHT_ENDED, both carrying the
+  // full Flight. SHIP_FLIGHT_ENDED is an ALERT type, never a store message.
+  typeHandlers.set('SHIP_FLIGHT_FLIGHT', (msg: ProcessedMessage) => {
     const flight = extractPayload(msg) as PrunApi.Flight;
-    if (flight?.id) {
+    if (typeof flight?.id === 'string' && flight.id !== '') {
       useFlightsStore.getState().setOne(flight);
     } else {
-      warn('SHIP_FLIGHT_STARTED: unexpected payload structure', flight);
+      warn('SHIP_FLIGHT_FLIGHT: unexpected payload structure', flight);
       useConnectionStore.getState().incrementDiscarded();
     }
   });
 
-  typeHandlers.set('SHIP_FLIGHT_ENDED', (msg: ProcessedMessage) => {
-    const payload = extractPayload(msg) as { flightId?: string };
-    if (payload?.flightId) {
-      useFlightsStore.getState().removeOne(payload.flightId);
+  typeHandlers.set('SHIP_FLIGHT_FLIGHT_ENDED', (msg: ProcessedMessage) => {
+    const flight = extractPayload(msg) as PrunApi.Flight;
+    if (typeof flight?.id === 'string' && flight.id !== '') {
+      useFlightsStore.getState().removeOne(flight.id);
     } else {
-      warn('SHIP_FLIGHT_ENDED: unexpected payload structure', payload);
-      useConnectionStore.getState().incrementDiscarded();
-    }
-  });
-
-  typeHandlers.set('SHIP_FLIGHT_SEGMENT', (msg: ProcessedMessage) => {
-    const payload = extractPayload(msg) as {
-      flightId?: string;
-      currentSegmentIndex?: number;
-    };
-    const { flightId, currentSegmentIndex } = payload;
-    if (flightId && currentSegmentIndex !== undefined) {
-      const flight = useFlightsStore.getState().getById(flightId);
-      if (flight) {
-        useFlightsStore.getState().setOne({
-          ...flight,
-          currentSegmentIndex,
-        });
-      }
-    } else {
-      warn('SHIP_FLIGHT_SEGMENT: unexpected payload structure', payload);
+      warn('SHIP_FLIGHT_FLIGHT_ENDED: unexpected payload structure', flight);
       useConnectionStore.getState().incrementDiscarded();
     }
   });

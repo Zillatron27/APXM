@@ -65,8 +65,6 @@ function toggleFilterSelection<T extends string>(
 }
 
 interface GameState {
-  overlayVisible: boolean;
-  debugMode: boolean;
   apexVisible: boolean;
   activeTab: TabId;
   // Filter selections are session-scoped (not persisted): they survive tab
@@ -92,8 +90,6 @@ interface GameState {
    *  free so an alert's tap-through can open its target sheet over the list.
    *  Session-scoped. */
   alertsViewOpen: boolean;
-  setOverlayVisible: (visible: boolean) => void;
-  setDebugMode: (debug: boolean) => void;
   setApexVisible: (visible: boolean) => void;
   setActiveTab: (tab: TabId) => void;
   setDetailView: (view: DetailView | null) => void;
@@ -106,8 +102,6 @@ interface GameState {
 }
 
 export const useGameState = create<GameState>((set) => ({
-  overlayVisible: true,
-  debugMode: false,
   apexVisible: false,
   activeTab: 'status',
   burnFilters: new Set<BurnFilter>(['all']),
@@ -118,8 +112,6 @@ export const useGameState = create<GameState>((set) => ({
   actConfirmPending: false,
   actionInFlight: false,
   alertsViewOpen: false,
-  setOverlayVisible: (overlayVisible) => set({ overlayVisible }),
-  setDebugMode: (debugMode) => set({ debugMode }),
   setApexVisible: (apexVisible) => set({ apexVisible }),
   // A tab tap is also the way out of the Notifications view: the tab bar
   // stays visible beneath it, so leaving it open would show a tab lit for

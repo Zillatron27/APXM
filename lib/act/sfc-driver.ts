@@ -335,7 +335,7 @@ export class SendSession {
     }
     try {
       await waitUntil(
-        // ANY flight with a new id — SHIP_FLIGHT_STARTED adds the new flight
+        // ANY flight with a new id — SHIP_FLIGHT_FLIGHT adds the new flight
         // alongside stale cached ones for the same ship, so a find-first
         // check can stare at an old record forever (device 2026-08-14: the
         // ship dispatched while this wait timed out). The ship's flightId

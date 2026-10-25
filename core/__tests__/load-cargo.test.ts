@@ -62,6 +62,20 @@ beforeEach(() => {
 });
 
 describe('listLoadableMaterials', () => {
+  it('counts every unit that fits despite float rounding (1.2 m3 hold holding 0.30 has room for 15)', () => {
+    const { ship, site, hold } = seed();
+    const partlyFull = { ...hold, volumeCapacity: 1.2, volumeLoad: 0.3 };
+    const base = createTestStorage({
+      id: 'store-base',
+      addressableId: site.siteId,
+      type: 'STORE',
+      items: [item('SF', 1000)],
+    });
+    const sf: MaterialInfo = { ticker: 'SF', name: 'stlFuel', category: 'fuels', weight: 0.001, volume: 0.06 };
+    const list = listLoadableMaterials(ship, [partlyFull, base], () => sf);
+    expect(list.available && list.materials[0].maxUnits).toBe(15);
+  });
+
   it('lists local materials with per-row fit caps (weight- and volume-bound)', () => {
     const { ship, site, hold } = seed();
     const base = createTestStorage({

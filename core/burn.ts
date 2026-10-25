@@ -21,27 +21,6 @@ import { getEntityDisplayName } from '../lib/address';
 export type BurnType = 'input' | 'output' | 'workforce';
 export type Urgency = 'critical' | 'warning' | 'ok' | 'surplus';
 
-/**
- * Classifies overall burn status from an array of BurnRates.
- * Filters to consuming types (workforce + input), finds lowest days remaining,
- * and returns status + days.
- */
-export function classifyBurnStatus(
-  burns: ReadonlyArray<{ type: BurnType; daysRemaining: number }>,
-  thresholds: BurnThresholds,
-): { burnStatus: 'critical' | 'warning' | 'ok' | 'unknown'; lowestBurnDays: number | null } {
-  const consuming = burns.filter((b) => b.type === 'workforce' || b.type === 'input');
-  if (consuming.length === 0) return { burnStatus: 'unknown', lowestBurnDays: null };
-
-  const lowest = Math.min(...consuming.map((b) => b.daysRemaining));
-  const lowestBurnDays = lowest === Infinity ? null : lowest;
-
-  if (lowestBurnDays === null) return { burnStatus: 'ok', lowestBurnDays: null };
-  if (lowestBurnDays <= thresholds.critical) return { burnStatus: 'critical', lowestBurnDays };
-  if (lowestBurnDays <= thresholds.warning) return { burnStatus: 'warning', lowestBurnDays };
-  return { burnStatus: 'ok', lowestBurnDays };
-}
-
 export interface BurnRate {
   materialTicker: string;
   dailyAmount: number; // negative = consuming, positive = producing
@@ -168,6 +147,11 @@ export function calculateWorkforceConsumption(
   const rates = new Map<string, WorkforceRateEntry>();
 
   for (const workforce of workforces) {
+    // DOMAIN RULES (source: rPrun core/burn.ts):
+    // a tier with population <= 1 is reported by the game but doesn't consume (known game bug);
+    // capacity 0 means homeless pops after housing was demolished, which don't consume either.
+    if (workforce.population <= 1 || workforce.capacity === 0) continue;
+
     for (const need of workforce.needs) {
       const ticker = need.material.ticker;
       // unitsPerInterval is already the daily rate

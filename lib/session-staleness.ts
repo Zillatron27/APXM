@@ -62,8 +62,9 @@ export function startSessionStalenessMonitor(): () => void {
   const intervalId = setInterval(() => evaluateSessionStaleness(), FOREGROUND_CHECK_INTERVAL_MS);
 
   // Any handled message clears the stale flag immediately (indicator returns
-  // to live). CLIENT_CONNECTION_OPENED's clear-stores path is untouched —
-  // reset() reinitialises sessionStale to false along with everything else.
+  // to live). That includes CLIENT_CONNECTION_OPENED: its handler clears the
+  // entity stores but never touches the connection store, so sessionStale is
+  // cleared here by the batch's timestamp update in content.tsx, not by reset().
   const unsubscribe = useConnectionStore.subscribe((state, prev) => {
     if (
       state.sessionStale &&

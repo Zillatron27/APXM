@@ -8,6 +8,11 @@ import {
 
 describe('SettingsView repair threshold validation', () => {
   describe('validateRepairThresholds', () => {
+    it('rejects an empty field (parsed as NaN)', () => {
+      expect(validateRepairThresholds(parseFloat(''), 10)).not.toBeNull();
+      expect(validateRepairThresholds(60, parseFloat(''))).not.toBeNull();
+    });
+
     it('returns null for valid values', () => {
       expect(validateRepairThresholds(60, 10)).toBeNull();
     });
@@ -68,6 +73,12 @@ describe('SettingsView burn threshold validation', () => {
   describe('validateThresholds', () => {
     it('returns null for valid thresholds', () => {
       expect(validateThresholds(3, 5, 30)).toBeNull();
+    });
+
+    it('rejects an empty field (parsed as NaN) instead of saving a broken order', () => {
+      expect(validateThresholds(3, 5, parseFloat(''))).not.toBeNull();
+      expect(validateThresholds(3, parseFloat(''), 30)).not.toBeNull();
+      expect(validateThresholds(parseFloat(''), 5, 30)).not.toBeNull();
     });
 
     it('rejects critical >= warning', () => {

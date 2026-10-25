@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useGameState, type DetailView } from '../../stores/gameState';
 import { ProductionView } from '../production';
 import { BurnDetailView, RepairDetailView } from '../burn';
@@ -40,12 +40,22 @@ export function DetailSheet() {
   const detailView = useGameState((s) => s.detailView);
   const setDetailView = useGameState((s) => s.setDetailView);
   const [shown, setShown] = useState(false);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // A close timer left running would clear whichever detail opened since.
+  const cancelCloseTimer = () => {
+    if (closeTimerRef.current !== null) clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = null;
+  };
+
+  useEffect(() => cancelCloseTimer, []);
 
   useEffect(() => {
     if (!detailView) {
       setShown(false);
       return;
     }
+    cancelCloseTimer();
     // Next frame so the enter transition runs from the off-screen start state.
     const id = requestAnimationFrame(() => setShown(true));
     return () => cancelAnimationFrame(id);
@@ -56,7 +66,8 @@ export function DetailSheet() {
   function close() {
     setShown(false);
     // Match the panel transition duration before unmounting.
-    setTimeout(() => setDetailView(null), 200);
+    cancelCloseTimer();
+    closeTimerRef.current = setTimeout(() => setDetailView(null), 200);
   }
 
   return (
@@ -89,7 +100,7 @@ export function DetailSheet() {
           )}
           <button
             onClick={close}
-            aria-label="Close production view"
+            aria-label={`Close ${detailLabels[detailView.type].toLowerCase()} view`}
             className="min-h-touch px-3 flex items-center text-apxm-text/60 hover:text-prun-yellow text-lg"
           >
             ✕

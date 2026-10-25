@@ -6,6 +6,7 @@ import { useConnectionStore } from '../../stores/connection';
 import { useConnectionStatus } from '../../hooks/useConnectionStatus';
 import type { PrunApi } from '../../types/prun-api';
 import { formatDeadline } from '../contracts/format';
+import { useTick } from '../../hooks/useTick';
 
 // Active statuses that need attention
 const ACTIVE_STATUSES: PrunApi.ContractStatus[] = ['OPEN', 'CLOSED', 'PARTIALLY_FULFILLED'];
@@ -63,6 +64,8 @@ export function ContractsMiniList({ handle }: { handle?: ReactNode }) {
   const contractsLastUpdated = useContractsStore((s) => s.lastUpdated);
   const contractsFetched = useContractsStore((s) => s.fetched);
   const connectionStatus = useConnectionStatus();
+  // Deadlines render relative to now; re-render each minute
+  useTick(60000);
 
   const topContracts = useMemo(() => {
     const contracts = useContractsStore.getState().getAll();

@@ -19,14 +19,6 @@ describe('gameState store', () => {
   });
 
   describe('initial state', () => {
-    it('overlay is visible by default', () => {
-      expect(useGameState.getState().overlayVisible).toBe(true);
-    });
-
-    it('debug mode is off by default', () => {
-      expect(useGameState.getState().debugMode).toBe(false);
-    });
-
     it('APEX is hidden by default — the overlay covers it', () => {
       expect(useGameState.getState().apexVisible).toBe(false);
     });
@@ -70,20 +62,6 @@ describe('gameState store', () => {
       expect(useGameState.getState().actConfirmPending).toBe(true);
       useGameState.getState().setActConfirmPending(false);
       expect(useGameState.getState().actConfirmPending).toBe(false);
-    });
-  });
-
-  describe('setOverlayVisible', () => {
-    it('updates overlay visibility', () => {
-      useGameState.getState().setOverlayVisible(false);
-      expect(useGameState.getState().overlayVisible).toBe(false);
-    });
-  });
-
-  describe('setDebugMode', () => {
-    it('updates debug mode', () => {
-      useGameState.getState().setDebugMode(true);
-      expect(useGameState.getState().debugMode).toBe(true);
     });
   });
 

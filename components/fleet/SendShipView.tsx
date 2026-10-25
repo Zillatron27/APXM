@@ -169,6 +169,7 @@ function usageChips(
 export function SendShipView({ shipId, registration, onClose }: SendShipViewProps) {
   const destinations = useOwnDestinations(shipId);
   const sessionRef = useRef<SendSession | null>(null);
+  const mountedRef = useRef(true);
   const [phase, setPhase] = useState<'pick' | 'opening' | 'review' | 'sending' | 'sent'>('pick');
   const [destination, setDestination] = useState<SendDestination | null>(null);
   const [snapshot, setSnapshot] = useState<SfcSnapshot | null>(null);
@@ -179,6 +180,7 @@ export function SendShipView({ shipId, registration, onClose }: SendShipViewProp
   // closed and the lock freed.
   useEffect(() => {
     return () => {
+      mountedRef.current = false;
       void sessionRef.current?.close();
     };
   }, []);
@@ -194,6 +196,11 @@ export function SendShipView({ shipId, registration, onClose }: SendShipViewProp
     setDestination(dest);
     setPhase('opening');
     const opened = await openSendSession(registration, shipId);
+    // Closed mid-open: the unmount cleanup saw no session, so close it here.
+    if (opened.ok && !mountedRef.current) {
+      await opened.session.close();
+      return;
+    }
     if (!opened.ok) {
       setError(opened.error);
       setPhase('pick');
@@ -201,6 +208,7 @@ export function SendShipView({ shipId, registration, onClose }: SendShipViewProp
     }
     sessionRef.current = opened.session;
     const set = await opened.session.setDestination(dest);
+    if (!mountedRef.current) return; // the cleanup already closed sessionRef
     if (!set.ok) {
       setError(set.error);
       await opened.session.close();

@@ -20,7 +20,6 @@ interface ExchangeState {
   exchanges: ExchangeEntry[];
   setExchange: (code: string, naturalId: string) => void;
   getNaturalIdFromCode: (code: string) => string | undefined;
-  getCodeFromNaturalId: (naturalId: string) => string | undefined;
   clear: () => void;
 }
 
@@ -41,9 +40,6 @@ export const useExchangeStore = create<ExchangeState>((set, get) => ({
 
   getNaturalIdFromCode: (code) =>
     get().exchanges.find((e) => e.code === code)?.naturalId,
-
-  getCodeFromNaturalId: (naturalId) =>
-    get().exchanges.find((e) => e.naturalId === naturalId)?.code,
 
   clear: () => set({ exchanges: [] }),
 }));

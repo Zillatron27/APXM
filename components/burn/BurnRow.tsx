@@ -90,15 +90,3 @@ export function BurnRow({ burn }: BurnRowProps) {
     </button>
   );
 }
-
-/**
- * Compact version for tight spaces - just ticker and days.
- */
-export function BurnRowCompact({ burn }: { burn: BurnRate }) {
-  return (
-    <div className="flex items-center gap-2">
-      <MaterialTile ticker={burn.materialTicker} size="sm" />
-      <BurnBadge urgency={burn.urgency} daysRemaining={burn.daysRemaining} size="sm" />
-    </div>
-  );
-}

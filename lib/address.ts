@@ -46,10 +46,3 @@ export function extractPlanetNaturalId(address: PrunApi.Address): string | null 
   }
   return null;
 }
-
-export function extractSystemNaturalId(address: PrunApi.Address): string | null {
-  for (const line of address.lines) {
-    if (line.type === 'SYSTEM' && line.entity) return line.entity.naturalId;
-  }
-  return null;
-}

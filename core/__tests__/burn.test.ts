@@ -6,7 +6,6 @@ import {
   calculateWorkforceConsumption,
   getInventoryFromStores,
   classifyBurnType,
-  classifyBurnStatus,
   classifyUrgency,
   calculateNeed,
   getSiteNameFromAddress,
@@ -263,6 +262,24 @@ describe('burn.ts', () => {
 
       expect(rates.get('RAT')?.consumption).toBe(4);
       expect(rates.get('DW')?.consumption).toBe(5);
+    });
+
+    it('ignores a one-pop tier, which the game reports but does not feed', () => {
+      const bugged = createWorkforce({
+        population: 1,
+        needs: [createNeed({ material: createMaterial({ ticker: 'RAT' }), unitsPerInterval: 4 })],
+      });
+
+      expect(calculateWorkforceConsumption([bugged]).has('RAT')).toBe(false);
+    });
+
+    it('ignores homeless pops (capacity 0) after housing was demolished', () => {
+      const homeless = createWorkforce({
+        capacity: 0,
+        needs: [createNeed({ material: createMaterial({ ticker: 'RAT' }), unitsPerInterval: 4 })],
+      });
+
+      expect(calculateWorkforceConsumption([homeless]).has('RAT')).toBe(false);
     });
 
     it('accumulates consumption from multiple tiers', () => {
@@ -1553,100 +1570,6 @@ describe('burn.ts', () => {
         summaries.flatMap((s) => s.burns.map((b) => b.materialTicker))
       );
       expect(new Set(tickers)).toEqual(allSiteTickers);
-    });
-  });
-
-  describe('classifyBurnStatus', () => {
-    const thresholds: BurnThresholds = { critical: 3, warning: 5, resupply: 30 };
-
-    it('returns unknown when no consuming burns', () => {
-      const result = classifyBurnStatus([], thresholds);
-      expect(result).toEqual({ burnStatus: 'unknown', lowestBurnDays: null });
-    });
-
-    it('returns unknown when only output burns', () => {
-      const result = classifyBurnStatus(
-        [{ type: 'output', daysRemaining: 10 }],
-        thresholds,
-      );
-      expect(result).toEqual({ burnStatus: 'unknown', lowestBurnDays: null });
-    });
-
-    it('returns ok with null days when all consuming burns are Infinity', () => {
-      const result = classifyBurnStatus(
-        [
-          { type: 'workforce', daysRemaining: Infinity },
-          { type: 'input', daysRemaining: Infinity },
-        ],
-        thresholds,
-      );
-      expect(result).toEqual({ burnStatus: 'ok', lowestBurnDays: null });
-    });
-
-    it('returns critical when lowest days <= critical threshold', () => {
-      const result = classifyBurnStatus(
-        [
-          { type: 'workforce', daysRemaining: 2 },
-          { type: 'input', daysRemaining: 10 },
-        ],
-        thresholds,
-      );
-      expect(result).toEqual({ burnStatus: 'critical', lowestBurnDays: 2 });
-    });
-
-    it('returns critical at exactly the critical threshold', () => {
-      const result = classifyBurnStatus(
-        [{ type: 'workforce', daysRemaining: 3 }],
-        thresholds,
-      );
-      expect(result).toEqual({ burnStatus: 'critical', lowestBurnDays: 3 });
-    });
-
-    it('returns warning when lowest days > critical but <= warning', () => {
-      const result = classifyBurnStatus(
-        [{ type: 'input', daysRemaining: 4 }],
-        thresholds,
-      );
-      expect(result).toEqual({ burnStatus: 'warning', lowestBurnDays: 4 });
-    });
-
-    it('returns warning at exactly the warning threshold', () => {
-      const result = classifyBurnStatus(
-        [{ type: 'workforce', daysRemaining: 5 }],
-        thresholds,
-      );
-      expect(result).toEqual({ burnStatus: 'warning', lowestBurnDays: 5 });
-    });
-
-    it('returns ok when lowest days > warning threshold', () => {
-      const result = classifyBurnStatus(
-        [{ type: 'workforce', daysRemaining: 6 }],
-        thresholds,
-      );
-      expect(result).toEqual({ burnStatus: 'ok', lowestBurnDays: 6 });
-    });
-
-    it('picks lowest across mixed workforce and input types', () => {
-      const result = classifyBurnStatus(
-        [
-          { type: 'workforce', daysRemaining: 10 },
-          { type: 'input', daysRemaining: 2 },
-          { type: 'output', daysRemaining: 1 }, // output ignored
-        ],
-        thresholds,
-      );
-      expect(result).toEqual({ burnStatus: 'critical', lowestBurnDays: 2 });
-    });
-
-    it('ignores output type when determining status', () => {
-      const result = classifyBurnStatus(
-        [
-          { type: 'output', daysRemaining: 0 },
-          { type: 'workforce', daysRemaining: 10 },
-        ],
-        thresholds,
-      );
-      expect(result).toEqual({ burnStatus: 'ok', lowestBurnDays: 10 });
     });
   });
 });

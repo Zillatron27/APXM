@@ -11,6 +11,7 @@ import {
   transformAllMaterials,
   transformAllExchange,
 } from '../transforms';
+import { isRepairableBuilding } from '../../../core/repair';
 import type {
   FioWorkforce,
   FioProductionLine,
@@ -363,6 +364,20 @@ describe('FIO Transforms', () => {
       expect(platform.module.reactorTicker).toBe('FRM');
     });
 
+    it('core and habitation buildings are not repairable, production still is', () => {
+      const building = (ticker: string, id: string) => ({
+        ...fioSite.Buildings[0],
+        SiteBuildingId: id,
+        BuildingTicker: ticker,
+      });
+      const site = transformSite({
+        ...fioSite,
+        Buildings: [building('CM', 'cm'), building('HB1', 'hb1'), building('FRM', 'frm')],
+      });
+      const repairable = site.platforms.filter(isRepairableBuilding).map((p) => p.id);
+      expect(repairable).toEqual(['frm']);
+    });
+
     it('transforms building repair materials', () => {
       const result = transformSite(fioSite);
       const platform = result.platforms[0];
@@ -541,6 +556,17 @@ describe('FIO reference data transforms', () => {
       const result = transformAllMaterials([missingTicker, validMaterial, missingName]);
       expect(result).toHaveLength(1);
       expect(result[0].ticker).toBe('RAT');
+    });
+  });
+
+  describe('transformAllMaterials weight/volume', () => {
+    it('skips records with missing, non-finite or zero weight/volume', () => {
+      const bad = [
+        { ...validMaterial, Volume: undefined },
+        { ...validMaterial, Weight: NaN },
+        { ...validMaterial, Volume: 0 },
+      ];
+      expect(transformAllMaterials([...bad, validMaterial])).toHaveLength(1);
     });
   });
 

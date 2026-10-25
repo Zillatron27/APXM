@@ -3,7 +3,6 @@ import type { PrunApi } from '../../types/prun-api';
 import {
   getEntityDisplayName,
   extractPlanetNaturalId,
-  extractSystemNaturalId,
 } from '../address';
 
 function makeAddress(...lines: PrunApi.AddressLine[]): PrunApi.Address {
@@ -94,17 +93,5 @@ describe('extractPlanetNaturalId', () => {
   it('returns null when no planet line', () => {
     const address = makeAddress(station('ANT', 'ANT'));
     expect(extractPlanetNaturalId(address)).toBeNull();
-  });
-});
-
-describe('extractSystemNaturalId', () => {
-  it('returns system naturalId when present', () => {
-    const address = makeAddress(system('Moria', 'OT-580'));
-    expect(extractSystemNaturalId(address)).toBe('OT-580');
-  });
-
-  it('returns null when no system line', () => {
-    const address = makeAddress(planet('Montem', 'OT-580b'));
-    expect(extractSystemNaturalId(address)).toBeNull();
   });
 });

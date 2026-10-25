@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useContractsStore } from '../../../stores/entities/contracts';
 import { getEntityDisplayName } from '../../../lib/address';
+import { useTick } from '../../../hooks/useTick';
 import { formatSignedDeadline } from '../../contracts/format';
 import type { PrunApi } from '../../../types/prun-api';
 
@@ -334,13 +335,15 @@ export function buildContractDetail(contract: PrunApi.Contract): ContractDetail 
  */
 export function useContractDetail(contractId: string): ContractDetail | null {
   const contractsLastUpdated = useContractsStore((s) => s.lastUpdated);
+  // Condition deadlines are baked into the detail relative to now
+  const tick = useTick(60000);
 
   return useMemo(() => {
     const contract = useContractsStore.getState().getById(contractId);
     return contract ? buildContractDetail(contract) : null;
     // contractsLastUpdated re-derives when the contract's data changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contractId, contractsLastUpdated]);
+  }, [contractId, contractsLastUpdated, tick]);
 }
 
 export interface ContractDetailsResult {
@@ -408,11 +411,13 @@ export function assembleContractDetails(
  */
 export function useContractDetails(activeFilters: ReadonlySet<ContractFilter>): ContractDetailsResult {
   const contractsLastUpdated = useContractsStore((s) => s.lastUpdated);
+  // Condition deadlines are baked into the details relative to now
+  const tick = useTick(60000);
 
   return useMemo(
     () => assembleContractDetails(useContractsStore.getState().getAll(), activeFilters),
     // contractsLastUpdated re-derives when contract data changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [contractsLastUpdated, activeFilters]
+    [contractsLastUpdated, activeFilters, tick]
   );
 }

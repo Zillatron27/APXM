@@ -52,17 +52,28 @@ export function commandPrefix(command: string): string {
   return command.trim().split(/\s+/)[0]?.toUpperCase() ?? '';
 }
 
-/**
- * Exported for mobile-buffer-navigator's appended-card sweep (a driven click
- * inside a buffer can open a further buffer as a new card, distinct from the
- * cards this module tracks by command — see closeMobileBuffer's sweepAppended
- * option).
- */
+/** Card rows in the Buffer stack list (li elements carrying a command subtitle). */
 export function findCardRows(): HTMLElement[] {
   const container = getContainer();
   if (!container) return [];
   return Array.from(container.querySelectorAll<HTMLElement>('li')).filter((li) =>
     li.querySelector('[class*="Stack__commandSubTitle"]')
+  );
+}
+
+/**
+ * Find the card a CREATE click just added: a row past `rowsBefore` whose text
+ * contains `command` (case-insensitive; APEX shows the command in a subtitle
+ * and the resolved name in the h4, so the whole row text is searched). Rows
+ * that already existed never match — if our CREATE didn't take, the user's own
+ * card for the same command must not be opened and then deleted at close.
+ */
+export function findNewCardByCommand(command: string, rowsBefore: number): HTMLElement | null {
+  const needle = command.toLowerCase();
+  return (
+    findCardRows()
+      .slice(rowsBefore)
+      .find((li) => li.textContent?.toLowerCase().includes(needle)) ?? null
   );
 }
 
@@ -254,18 +265,6 @@ export async function deleteLastCardMatching(command: string): Promise<boolean> 
     const matches = rows.filter((li) => li.textContent?.toLowerCase().includes(needle));
     return matches[matches.length - 1] ?? null;
   });
-  return result.done ? false : result.ok;
-}
-
-/**
- * Delete the LAST card in the open card list, whatever it is. Used by the
- * appended-card sweep (mobile-buffer-navigator's sweepAppended option), which
- * removes cards by POSITION (everything past the count recorded at open time)
- * rather than by command — the card it's cleaning up wasn't created by any
- * command APXM issued, so there's no command text to match against.
- */
-export async function deleteLastCard(): Promise<boolean> {
-  const result = await removeCardRow((rows) => rows[rows.length - 1] ?? null);
   return result.done ? false : result.ok;
 }
 

@@ -69,9 +69,9 @@ export function useFilteredBurns(
 ): FilteredBurnsResult {
   const allBurns = useSiteBurns();
   const repairThresholds = useSettingsStore((s) => s.repairThresholds);
-  const sorted = sortByUrgency(allBurns);
 
   return useMemo(() => {
+    const sorted = sortByUrgency(allBurns);
     const counts: Record<BurnFilter, number> = {
       all: sorted.length,
       critical: 0,
@@ -97,5 +97,5 @@ export function useFilteredBurns(
       : sorted.filter((s) => activeFilters.has(tierBySite.get(s.siteId) ?? 'ok'));
 
     return { summaries, counts };
-  }, [sorted, activeFilters, repairBySite, prodStatuses, repairThresholds]);
+  }, [allBurns, activeFilters, repairBySite, prodStatuses, repairThresholds]);
 }

@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { SendShipView, usageChipLabels, stlConsumptionPct, fuelChipSpecs } from '../SendShipView';
 import { useShipsStore, useSitesStore } from '../../../stores/entities';
 import { createTestShip, createTestSite, createAddress } from '../../../__tests__/fixtures/factories';
-import type { SfcSnapshot } from '../../../lib/act/sfc-driver';
+import { openSendSession, type SfcSnapshot } from '../../../lib/act/sfc-driver';
 
 const closeSpy = vi.fn(async () => {});
 let snapshot: SfcSnapshot;
@@ -133,6 +133,24 @@ describe('SendShipView', () => {
     act(() => root.unmount());
     expect(closeSpy).toHaveBeenCalled();
     root = createRoot(container); // for afterEach symmetry
+  });
+
+  it('closes a session that finishes opening after the sheet was closed', async () => {
+    let resolveOpen!: (v: Awaited<ReturnType<typeof openSendSession>>) => void;
+    vi.mocked(openSendSession).mockImplementationOnce(
+      () => new Promise((resolve) => { resolveOpen = resolve; })
+    );
+    await render();
+    await pickFirstDestination();
+    act(() => root.unmount());
+    await act(async () => {
+      resolveOpen({
+        ok: true,
+        session: { setDestination: vi.fn(), readSnapshot: vi.fn(), commitStart: vi.fn(), close: closeSpy },
+      } as unknown as Awaited<ReturnType<typeof openSendSession>>);
+    });
+    expect(closeSpy).toHaveBeenCalled();
+    root = createRoot(container);
   });
 });
 

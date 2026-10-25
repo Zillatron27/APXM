@@ -1,62 +1,21 @@
-import { useMemo, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { useShipsStore } from '../../stores/entities/ships';
-import { getFlightByShipId } from '../../stores/entities/flights';
 import { Panel } from '../shared';
-import { useGameState } from '../../stores/gameState';
+import { useGameState, type FleetFilter } from '../../stores/gameState';
 import { useConnectionStore } from '../../stores/connection';
 import { useConnectionStatus } from '../../hooks/useConnectionStatus';
-import { formatEta, getDestinationName, getCurrentLocation, shipPhase } from '../../lib/fleet-utils';
-import type { ShipDisplayStatus } from '../../lib/ship-status';
-import { useTick } from '../../hooks/useTick';
+import { formatEta } from '../../lib/fleet-utils';
+import { useFleetDetails } from '../views/hooks/useFleetDetails';
 
-interface ShipSummary {
-  id: string;
-  name: string;
-  phase: ShipDisplayStatus;
-  stationary: boolean;
-  location: string;
-  destination: string | null;
-  etaMs: number | null;
-}
+// Module-level so useFleetDetails' memo (keyed on this Set) isn't rebuilt every render.
+const ALL_SHIPS: ReadonlySet<FleetFilter> = new Set<FleetFilter>(['all']);
 
 export function FleetMiniList({ handle }: { handle?: ReactNode }) {
   const { setActiveTab } = useGameState();
   const apexUnresponsive = useConnectionStore((s) => s.apexUnresponsive);
-  const shipsLastUpdated = useShipsStore((s) => s.lastUpdated);
   const shipsFetched = useShipsStore((s) => s.fetched);
   const connectionStatus = useConnectionStatus();
-  // Tick every minute to update ETAs
-  const tick = useTick(60000);
-
-  const topShips = useMemo(() => {
-    const ships = useShipsStore.getState().getAll();
-    const now = Date.now();
-
-    const summaries: ShipSummary[] = ships.map((ship) => {
-      const flight = getFlightByShipId(ship.id);
-      const { phase, stationary } = shipPhase(flight);
-      const etaMs = flight ? flight.arrival.timestamp - now : null;
-
-      return {
-        id: ship.id,
-        name: ship.name || ship.registration,
-        phase,
-        stationary,
-        location: flight ? getDestinationName(flight.origin) : getCurrentLocation(ship),
-        destination: flight ? getDestinationName(flight.destination) : null,
-        etaMs: etaMs && etaMs > 0 ? etaMs : null,
-      };
-    });
-
-    // Sort: stationary (idle) first, then by ETA (soonest first)
-    summaries.sort((a, b) => {
-      if (a.stationary && !b.stationary) return -1;
-      if (!a.stationary && b.stationary) return 1;
-      return (a.etaMs ?? Infinity) - (b.etaMs ?? Infinity);
-    });
-
-    return summaries.slice(0, 5);
-  }, [shipsLastUpdated, tick]);
+  const topShips = useFleetDetails(ALL_SHIPS).ships.slice(0, 5);
 
   // Determine loading state for empty-state message
   const emptyMessage = !shipsFetched

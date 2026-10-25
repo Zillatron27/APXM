@@ -2,18 +2,8 @@ import type { Urgency } from '../../core/burn';
 
 interface BurnBadgeProps {
   urgency: Urgency;
-  /** Optional: show days remaining instead of just color */
-  daysRemaining?: number;
-  /** Size variant */
-  size?: 'sm' | 'md';
+  daysRemaining: number;
 }
-
-const urgencyColors: Record<Urgency, string> = {
-  critical: 'bg-status-critical',
-  warning: 'bg-status-warning',
-  ok: 'bg-status-ok',
-  surplus: 'bg-status-surplus',
-};
 
 const urgencyTextColors: Record<Urgency, string> = {
   critical: 'text-status-critical',
@@ -23,21 +13,9 @@ const urgencyTextColors: Record<Urgency, string> = {
 };
 
 /**
- * Visual indicator for burn urgency.
- * Shows a colored dot, optionally with days remaining.
+ * Days remaining, coloured by burn urgency.
  */
-export function BurnBadge({ urgency, daysRemaining, size = 'md' }: BurnBadgeProps) {
-  const dotSize = size === 'sm' ? 'h-2 w-2' : 'h-3 w-3';
-
-  if (daysRemaining === undefined) {
-    return (
-      <span
-        className={`inline-block rounded-full ${dotSize} ${urgencyColors[urgency]}`}
-        title={urgency}
-      />
-    );
-  }
-
+export function BurnBadge({ urgency, daysRemaining }: BurnBadgeProps) {
   // Infinity = surplus (∞), zero shows as 0d, otherwise X.Xd
   if (daysRemaining === Infinity) {
     return (
@@ -54,15 +32,4 @@ export function BurnBadge({ urgency, daysRemaining, size = 'md' }: BurnBadgeProp
       {displayDays}d
     </span>
   );
-}
-
-/**
- * Returns the urgency color class for custom styling.
- */
-export function getUrgencyColor(urgency: Urgency): string {
-  return urgencyColors[urgency];
-}
-
-export function getUrgencyTextColor(urgency: Urgency): string {
-  return urgencyTextColors[urgency];
 }
