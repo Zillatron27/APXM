@@ -22,6 +22,8 @@ import { useSitesStore } from '../../stores/entities/sites';
 import { useProductionStore } from '../../stores/entities/production';
 import { useWorkforceStore } from '../../stores/entities/workforce';
 import { useStorageStore } from '../../stores/entities/storage';
+import { useShipsStore } from '../../stores/entities/ships';
+import { useFlightsStore } from '../../stores/entities/flights';
 import {
   createProductionOrder,
   createTestProductionLine,
@@ -38,6 +40,8 @@ import {
   createStorageWithItems,
   createOrderWithIO,
   createDateTime,
+  createTestShip,
+  createTestFlight,
 } from '../../__tests__/fixtures/factories';
 import { createEmpireFixture } from '../../__tests__/fixtures/empire';
 import type { WorkforceEntity } from '../../stores/entities/workforce';
@@ -53,6 +57,8 @@ describe('burn.ts', () => {
     useProductionStore.getState().clear();
     useWorkforceStore.getState().clear();
     useStorageStore.getState().clear();
+    useShipsStore.getState().clear();
+    useFlightsStore.getState().clear();
   });
 
   // ==========================================================================
@@ -541,6 +547,7 @@ describe('burn.ts', () => {
           productionOutput: 10,
           workforceConsumption: 5,
           inventoryAmount: 100,
+          inboundAmount: 0,
           daysRemaining: Infinity,
           need: 0,
           urgency: 'surplus',
@@ -559,6 +566,7 @@ describe('burn.ts', () => {
           productionOutput: 0,
           workforceConsumption: 0,
           inventoryAmount: 50,
+          inboundAmount: 0,
           daysRemaining: 10,
           need: 0,
           urgency: 'ok',
@@ -571,6 +579,7 @@ describe('burn.ts', () => {
           productionOutput: 0,
           workforceConsumption: 10,
           inventoryAmount: 20,
+          inboundAmount: 0,
           daysRemaining: 2,
           need: 30,
           urgency: 'critical',
@@ -591,6 +600,7 @@ describe('burn.ts', () => {
           productionOutput: 0,
           workforceConsumption: 10,
           inventoryAmount: 50,
+          inboundAmount: 0,
           daysRemaining: 5,
           need: 0,
           urgency: 'warning',
@@ -603,6 +613,7 @@ describe('burn.ts', () => {
           productionOutput: 0,
           workforceConsumption: 0,
           inventoryAmount: 50,
+          inboundAmount: 0,
           daysRemaining: 5,
           need: 0,
           urgency: 'warning',
@@ -1351,6 +1362,117 @@ describe('burn.ts', () => {
     });
   });
 
+  describe('inbound ship cargo', () => {
+    const siteId = 'inbound-site';
+    const now = Date.now();
+    const HOUR = 3600000;
+
+    beforeEach(() => {
+      useSitesStore.getState().setOne(
+        createTestSite({ siteId, address: createAddress({ planetName: 'Montem' }) })
+      );
+      useWorkforceStore.getState().setOne({
+        siteId,
+        address: createAddress({ planetName: 'Montem' }),
+        workforces: [
+          createWorkforce({
+            level: 'PIONEER',
+            needs: [
+              createNeed({
+                material: createMaterial({ ticker: 'RAT' }),
+                unitsPerInterval: 10,
+                remainingAllocation: 5,
+              }),
+            ],
+          }),
+        ],
+      });
+      useStorageStore.getState().setOne(createStorageWithItems(siteId, [{ ticker: 'RAT', amount: 20 }]));
+    });
+
+    /** Seeds a ship carrying `amount` RAT; flight overrides decide whether it is inbound. */
+    function seedShip(
+      amount: number,
+      flight: Partial<PrunApi.Flight> | null,
+      planetName = 'Montem'
+    ): void {
+      const shipStore = createStorageWithItems('ship', [{ ticker: 'RAT', amount }], 'SHIP_STORE');
+      useStorageStore.getState().setOne(shipStore);
+      const ship = createTestShip({ idShipStore: shipStore.id });
+      if (flight) {
+        const f = createTestFlight({
+          shipId: ship.id,
+          destination: createAddress({ planetName }),
+          arrival: createDateTime(now + HOUR),
+          ...flight,
+        });
+        useFlightsStore.getState().setOne(f);
+        ship.flightId = f.id;
+      }
+      useShipsStore.getState().setOne(ship);
+    }
+
+    const rat = () => calculateSiteBurn(siteId).burns.find((b) => b.materialTicker === 'RAT');
+
+    it('counts cargo on a ship flying to the base planet; days use store + allocation + inbound', () => {
+      seedShip(50, {});
+
+      expect(rat()?.inboundAmount).toBe(50);
+      expect(rat()?.inventoryAmount).toBe(75);
+      expect(rat()?.daysRemaining).toBeCloseTo(7.5);
+      expect(calculateSiteBurn(siteId).hasInboundShips).toBe(true);
+    });
+
+    it('raises need only by what the ship does not already cover', () => {
+      const without = rat()?.need ?? 0;
+      seedShip(50, {});
+      expect(rat()?.need).toBeCloseTo(without - 50);
+    });
+
+    it('ignores a ship heading to a different planet', () => {
+      seedShip(50, {}, 'Promitor');
+      expect(rat()?.inboundAmount).toBe(0);
+      expect(calculateSiteBurn(siteId).hasInboundShips).toBe(false);
+    });
+
+    it('ignores a flight whose arrival has passed, even if the ship still references it', () => {
+      seedShip(50, { arrival: createDateTime(now - 1) });
+      expect(rat()?.inboundAmount).toBe(0);
+      expect(calculateSiteBurn(siteId).hasInboundShips).toBe(false);
+    });
+
+    it('ignores a ship with no flightId', () => {
+      seedShip(50, null);
+      expect(rat()?.inboundAmount).toBe(0);
+    });
+
+    it('ignores a ship whose flight is missing from the flights store', () => {
+      seedShip(50, {});
+      useFlightsStore.getState().clear();
+      expect(rat()?.inboundAmount).toBe(0);
+      expect(calculateSiteBurn(siteId).hasInboundShips).toBe(false);
+    });
+
+    it('excluded site: inbound is 0 and days ignore the cargo, but hasInboundShips stays true', () => {
+      seedShip(50, {});
+      useSettingsStore.getState().toggleExcludeInbound(siteId);
+
+      const summary = calculateSiteBurn(siteId);
+      const burn = summary.burns.find((b) => b.materialTicker === 'RAT');
+      expect(burn?.inboundAmount).toBe(0);
+      expect(burn?.inventoryAmount).toBe(25);
+      expect(burn?.daysRemaining).toBeCloseTo(2.5);
+      expect(summary.hasInboundShips).toBe(true);
+    });
+
+    it('toggleExcludeInbound adds then removes the site id', () => {
+      useSettingsStore.getState().toggleExcludeInbound(siteId);
+      expect(useSettingsStore.getState().excludeInboundSiteIds).toEqual([siteId]);
+      useSettingsStore.getState().toggleExcludeInbound(siteId);
+      expect(useSettingsStore.getState().excludeInboundSiteIds).toEqual([]);
+    });
+  });
+
   describe('aggregateEmpireBurn', () => {
     const thresholds: BurnThresholds = { critical: 3, warning: 5, resupply: 30 };
 
@@ -1368,6 +1490,7 @@ describe('burn.ts', () => {
         productionOutput: 0,
         workforceConsumption: 0,
         inventoryAmount: 0,
+        inboundAmount: 0,
         daysRemaining: Infinity,
         need: 0,
         urgency: 'ok',
@@ -1381,9 +1504,27 @@ describe('burn.ts', () => {
         siteName: siteId,
         burns,
         mostUrgent: null,
+        hasInboundShips: false,
         lastCalculated: 0,
       };
     }
+
+    it('sums inbound amounts across sites', () => {
+      const rows = aggregateEmpireBurn(
+        [
+          makeSummary('a', [
+            makeRate({ materialTicker: 'DW', workforceConsumption: 2, inventoryAmount: 30, inboundAmount: 20 }),
+          ]),
+          makeSummary('b', [
+            makeRate({ materialTicker: 'DW', workforceConsumption: 1, inventoryAmount: 10, inboundAmount: 5 }),
+          ]),
+        ],
+        thresholds
+      );
+
+      expect(rows[0].inboundAmount).toBe(25);
+      expect(rows[0].inventoryAmount).toBe(40);
+    });
 
     it('returns empty array for no sites', () => {
       expect(aggregateEmpireBurn([], thresholds)).toEqual([]);

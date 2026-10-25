@@ -61,6 +61,9 @@ interface SettingsState {
    *  the company's faction; a currency code overrides — players often trade
    *  in a non-faction currency based on location (#63). */
   preferredCurrency: string | null;
+  /** Site ids whose burn ignores cargo on inbound ships — for a chartered or
+   *  diverted ship whose cargo the base will not actually receive. */
+  excludeInboundSiteIds: string[];
 }
 
 interface SettingsActions {
@@ -76,6 +79,7 @@ interface SettingsActions {
   setRefreshMode: (mode: RefreshMode) => void;
   setAutoConfirm: (enabled: boolean) => void;
   setPreferredCurrency: (currency: string | null) => void;
+  toggleExcludeInbound: (siteId: string) => void;
   reset: () => void;
 }
 
@@ -104,6 +108,7 @@ const initialState: SettingsState = {
   refreshMode: 'manual',
   autoConfirm: false,
   preferredCurrency: null,
+  excludeInboundSiteIds: [],
 };
 
 // Check if browser storage API is available
@@ -204,6 +209,12 @@ export const useSettingsStore = create<SettingsStore>()(
       setRefreshMode: (mode) => set({ refreshMode: mode }),
       setAutoConfirm: (enabled) => set({ autoConfirm: enabled }),
       setPreferredCurrency: (currency) => set({ preferredCurrency: currency }),
+      toggleExcludeInbound: (siteId) =>
+        set((state) => ({
+          excludeInboundSiteIds: state.excludeInboundSiteIds.includes(siteId)
+            ? state.excludeInboundSiteIds.filter((id) => id !== siteId)
+            : [...state.excludeInboundSiteIds, siteId],
+        })),
 
       reset: () => set(initialState),
     }),

@@ -21,6 +21,7 @@ function burnRate(overrides: Partial<BurnRate>): BurnRate {
     productionOutput: 0,
     workforceConsumption: 0,
     inventoryAmount: 100,
+    inboundAmount: 0,
     daysRemaining: Infinity,
     need: 0,
     urgency: 'ok',
@@ -34,6 +35,7 @@ function summaryWith(mostUrgent: BurnRate | null): SiteBurnSummary {
     siteName: 'Montem Base',
     burns: mostUrgent ? [mostUrgent] : [],
     mostUrgent,
+    hasInboundShips: false,
     lastCalculated: 1_700_000_000_000,
   };
 }

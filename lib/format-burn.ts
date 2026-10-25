@@ -7,10 +7,12 @@
  * stacks stay terse.
  */
 
-/** Stock on hand: whole units when ≥ 10, else one decimal (0.59 → "0.6"). */
+/** Stock on hand: whole units when ≥ 10, else one decimal truncated, never
+ *  rounded up past what is held (0.59 → "0.5"). */
 export function formatInventory(amount: number): string {
   if (amount >= 10 || Number.isInteger(amount)) return String(Math.floor(amount));
-  return amount.toFixed(1);
+  // Epsilon: 0.7 * 10 is 7.000000000000001 or 6.99999… depending on the value.
+  return (Math.floor(amount * 10 + 1e-6) / 10).toFixed(1);
 }
 
 /** Signed daily rate: one decimal, two when the rate would otherwise show as 0.0. */

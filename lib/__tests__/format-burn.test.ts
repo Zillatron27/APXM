@@ -3,8 +3,12 @@ import { formatInventory, formatDailyRate } from '../format-burn';
 
 describe('formatInventory', () => {
   it('shows one decimal for fractional sub-10 stock instead of truncating to 0', () => {
-    expect(formatInventory(0.59)).toBe('0.6');
     expect(formatInventory(1.23)).toBe('1.2');
+  });
+  it('truncates rather than rounds, so it never shows more than is held', () => {
+    expect(formatInventory(0.59)).toBe('0.5');
+    expect(formatInventory(0.7)).toBe('0.7');
+    expect(formatInventory(0.1 + 0.2)).toBe('0.3');
   });
   it('shows whole units for integers and larger stacks', () => {
     expect(formatInventory(0)).toBe('0');
