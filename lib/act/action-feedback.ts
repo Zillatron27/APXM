@@ -53,7 +53,12 @@ export async function waitActionFeedback(
   }
   if (overlay.classList.contains(C.ActionConfirmationOverlay.container)) {
     if (autoConfirm) {
-      const confirm = _$$(overlay, C.Button.btn)[1];
+      // Matched by label, never position — the mirror of the cancel match in
+      // waitConfirmationResolved. No label match clicks nothing: guessing
+      // here could tap the wrong button. textContent is lowercase in APEX.
+      const confirm = _$$(overlay, C.Button.btn).find(btn =>
+        /confirm/i.test(btn.textContent ?? ''),
+      );
       if (confirm === undefined) {
         return 'Confirmation overlay is missing confirm button';
       }

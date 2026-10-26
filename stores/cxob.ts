@@ -9,9 +9,13 @@
 import { create } from 'zustand';
 import type { PrunApi } from '../types/prun-api';
 
+/** A book stamped with when it arrived (epoch ms). Books outlive the buffer
+ *  that requested them, so a consumer needing a live book checks receivedAt. */
+export type CxobEntry = PrunApi.CXOrderBook & { receivedAt: number };
+
 interface CxobState {
-  orderBooks: Map<string, PrunApi.CXOrderBook>;
-  getByTicker: (cxTicker: string) => PrunApi.CXOrderBook | undefined;
+  orderBooks: Map<string, CxobEntry>;
+  getByTicker: (cxTicker: string) => CxobEntry | undefined;
   setOrderBook: (cxTicker: string, book: PrunApi.CXOrderBook) => void;
   clear: () => void;
 }
@@ -23,7 +27,7 @@ export const useCxobStore = create<CxobState>((set, get) => ({
 
   setOrderBook: (cxTicker, book) => {
     const orderBooks = new Map(get().orderBooks);
-    orderBooks.set(cxTicker, book);
+    orderBooks.set(cxTicker, { ...book, receivedAt: Date.now() });
     set({ orderBooks });
   },
 

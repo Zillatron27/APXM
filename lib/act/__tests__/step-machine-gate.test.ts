@@ -65,10 +65,13 @@ function buildConfirmationOverlay(): Fixture {
 
   const overlay = document.createElement('div');
   overlay.className = 'af-overlay aco-container';
+  // Lowercase, as in APEX's DOM (CSS uppercases the visible label).
   const cancelBtn = document.createElement('button');
   cancelBtn.className = 'apex-btn';
+  cancelBtn.textContent = 'cancel';
   const confirmBtn = document.createElement('button');
   confirmBtn.className = 'apex-btn';
+  confirmBtn.textContent = 'confirm';
   let clicks = 0;
   confirmBtn.addEventListener('click', () => {
     clicks++;
@@ -110,7 +113,7 @@ describe('settings default', () => {
 });
 
 describe('waitActionFeedback confirmation gate', () => {
-  it('autoConfirm ON: clicks the confirm button (second APEX button) itself', async () => {
+  it('autoConfirm ON: clicks the confirm button (matched by label) itself', async () => {
     useSettingsStore.getState().setAutoConfirm(true);
     const fixture = buildConfirmationOverlay();
     const { done, errors } = runMachine();

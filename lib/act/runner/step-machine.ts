@@ -12,6 +12,7 @@ import { waitActionFeedback } from '../action-feedback';
 import { openMobileBuffer, closeMobileBuffer } from '../../mobile-buffer-navigator';
 import { clearMtraBufferCache } from '../action-steps/MTRA_TRANSFER';
 import { useSettingsStore } from '../../../stores/settings';
+import { useGameState } from '../../../stores/gameState';
 import { releaseActionLock } from '../action-lock';
 
 // Lock contract: ActionRunner acquires the shared action lock before start();
@@ -158,7 +159,12 @@ export class StepMachine {
               ? 'Waiting for action feedback...'
               : 'Waiting for action feedback (confirm in APEX if prompted)...',
           );
-          const error = await waitActionFeedback(tile, autoConfirm);
+          // actConfirmPending raises the ConfirmBar over APEX's dialog, and
+          // with it STOP WAITING: abandoning returns an error, which fails
+          // this step below like any APEX error.
+          const error = await waitActionFeedback(tile, autoConfirm, pending =>
+            useGameState.getState().setActConfirmPending(pending),
+          );
           ensureCurrent();
           if (error) {
             log.error(error);

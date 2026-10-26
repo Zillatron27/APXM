@@ -12,14 +12,30 @@ import { getEntityDisplayName } from '../../address';
 // serializeStorage — human-readable name for a Store
 // ---------------------------------------------------------------------------
 
+// An unnamed ship has no name (null, or empty), so it goes by its
+// registration — the label APEX shows for it.
+function shipLabel(ship: PrunApi.Ship): string {
+  return ship.name || ship.registration;
+}
+
+// Ship stores are labelled by their ship, not Store.name, which is empty for
+// an unnamed ship. Falls back to the store's own fields if the ship is unknown.
+function shipStoreLabel(storage: PrunApi.Store): string {
+  const ship = useShipsStore
+    .getState()
+    .getAll()
+    .find((s) => [s.idShipStore, s.idStlFuelStore, s.idFtlFuelStore].includes(storage.id));
+  return ship ? shipLabel(ship) : (storage.name ?? storage.id);
+}
+
 export function serializeStorage(storage: PrunApi.Store): string {
   switch (storage.type) {
     case 'STL_FUEL_STORE':
-      return (storage.name ?? storage.id) + ' STL Store';
+      return shipStoreLabel(storage) + ' STL Store';
     case 'FTL_FUEL_STORE':
-      return (storage.name ?? storage.id) + ' FTL Store';
+      return shipStoreLabel(storage) + ' FTL Store';
     case 'SHIP_STORE':
-      return (storage.name ?? storage.id) + ' Cargo';
+      return shipStoreLabel(storage) + ' Cargo';
     case 'STORE': {
       const site = useSitesStore.getState().getAll().find(
         (s) => s.siteId === storage.addressableId,
@@ -49,6 +65,20 @@ function extractName(name: string, suffix: string): string | undefined {
   return name.endsWith(' ' + suffix) ? name.slice(0, -(suffix.length + 1)) : undefined;
 }
 
+// Reverse of shipStoreLabel. Callers pass a non-empty label, so an unnamed
+// ship can never match on its missing name.
+function getShipStore(
+  label: string,
+  storeIdKey: 'idShipStore' | 'idStlFuelStore' | 'idFtlFuelStore',
+  type: PrunApi.StoreType,
+): PrunApi.Store | undefined {
+  const ship = useShipsStore
+    .getState()
+    .getAll()
+    .find((s) => shipLabel(s) === label);
+  return ship ? storagesStore.getById(ship[storeIdKey]) : storagesStore.getByNameAndType(label, type);
+}
+
 export function deserializeStorage(serializedName: string | undefined): PrunApi.Store | undefined {
   if (!serializedName) return undefined;
 
@@ -69,17 +99,17 @@ export function deserializeStorage(serializedName: string | undefined): PrunApi.
 
   name = extractName(serializedName, 'Cargo');
   if (name) {
-    return storagesStore.getByNameAndType(name, 'SHIP_STORE');
+    return getShipStore(name, 'idShipStore', 'SHIP_STORE');
   }
 
   name = extractName(serializedName, 'FTL Store');
   if (name) {
-    return storagesStore.getByNameAndType(name, 'FTL_FUEL_STORE');
+    return getShipStore(name, 'idFtlFuelStore', 'FTL_FUEL_STORE');
   }
 
   name = extractName(serializedName, 'STL Store');
   if (name) {
-    return storagesStore.getByNameAndType(name, 'STL_FUEL_STORE');
+    return getShipStore(name, 'idStlFuelStore', 'STL_FUEL_STORE');
   }
 
   return undefined;

@@ -132,15 +132,27 @@ describe('CX Buy generateSteps', () => {
     expect(war.AI1.RAT).toBeUndefined();
   });
 
-  it('fails when the book cannot fill and neither buyPartial nor allowUnfilled is set', async () => {
+  it('a shortage warns and keeps the full amount, never failing the package', async () => {
     useCxobStore.getState().setOrderBook('RAT.AI1', sells([{ amount: 40, price: 90 }]));
-    const { failed, failMessage, steps } = await runCxBuy({}, { RAT: 100 });
-    expect(failed).toBe(true);
-    expect(failMessage).toContain('Not enough materials on AI1');
-    expect(steps).toHaveLength(0);
+    useCxobStore.getState().setOrderBook('DW.AI1', sells([{ amount: 1000, price: 50 }]));
+    const { failed, steps, logs } = await runCxBuy({}, { RAT: 100, DW: 40 });
+    expect(failed).toBe(false);
+    // The step buys whatever the live book holds when it runs.
+    expect(steps).toHaveLength(2);
+    expect(steps[0]).toMatchObject({ ticker: 'RAT', amount: 100 });
+    expect(steps[1]).toMatchObject({ ticker: 'DW', amount: 40 });
+    expect(logs.some((l) => l.tag === 'WARNING')).toBe(true);
   });
 
-  it('buyPartial bids the available amount with a warning', async () => {
+  it('nothing available: warns and emits no step for that ticker', async () => {
+    useCxobStore.getState().setOrderBook('RAT.AI1', sells([{ amount: 10, price: 200 }]));
+    const { failed, steps, logs } = await runCxBuy({ priceLimits: { RAT: 100 } }, { RAT: 100 });
+    expect(failed).toBe(false);
+    expect(steps).toHaveLength(0);
+    expect(logs.some((l) => l.tag === 'WARNING')).toBe(true);
+  });
+
+  it('buyPartial locks the bid to the available amount with a warning', async () => {
     useCxobStore.getState().setOrderBook('RAT.AI1', sells([{ amount: 40, price: 90 }]));
     const { failed, steps, logs } = await runCxBuy({ buyPartial: true }, { RAT: 100 });
     expect(failed).toBe(false);

@@ -16,7 +16,10 @@ import { act } from '../act-registry';
 import { setupActGlobals } from '../globals-setup';
 import { C } from '../prun-css';
 import { Logger } from '../runner/logger';
-import { openMobileBuffer } from '../../mobile-buffer-navigator';
+import { openMobileBuffer, closeMobileBuffer } from '../../mobile-buffer-navigator';
+import { abandonManualConfirmWait } from '../action-feedback';
+import { acquireActionLock, isActionInFlight, releaseActionLock } from '../action-lock';
+import { useGameState } from '../../../stores/gameState';
 import type { ActionStep } from '../shared-types';
 
 beforeAll(() => {
@@ -119,6 +122,9 @@ beforeEach(() => {
   gates.clear();
   document.body.innerHTML = '';
   vi.mocked(openMobileBuffer).mockResolvedValue(true);
+  vi.mocked(closeMobileBuffer).mockClear();
+  releaseActionLock();
+  useGameState.getState().setActConfirmPending(false);
 });
 
 describe('StepMachine lifecycle (#2)', () => {
@@ -192,6 +198,43 @@ describe('StepMachine lifecycle (#2)', () => {
     await flush();
     expect(executed).toEqual(['A', 'B', 'A:after-wait', 'B:after-wait', 'C']);
     expect(ends()).toBe(1);
+  });
+
+  it('STOP WAITING during a manual confirm (#114): APEX cancel tapped, run ends once, lock freed', async () => {
+    anchorEl = document.createElement('div');
+    const overlay = document.createElement('div');
+    overlay.className = 'af-overlay aco-container';
+    let cancelClicks = 0;
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'apex-btn';
+    cancelBtn.textContent = 'cancel';
+    cancelBtn.addEventListener('click', () => cancelClicks++);
+    const confirmBtn = document.createElement('button');
+    confirmBtn.className = 'apex-btn';
+    confirmBtn.textContent = 'confirm';
+    overlay.append(cancelBtn, confirmBtn);
+    anchorEl.appendChild(overlay);
+    document.body.appendChild(anchorEl);
+
+    // ActionRunner takes the lock before start(); the machine owns releasing it.
+    expect(acquireActionLock()).toBe(true);
+    const { ends } = runMachine([
+      makeFeedbackStep({ name: 'A' }),
+      makeInstantStep({ name: 'B' }),
+    ]);
+    await flush();
+    // autoConfirm defaults off: the run waits on the user, with the ConfirmBar up.
+    expect(useGameState.getState().actConfirmPending).toBe(true);
+
+    abandonManualConfirmWait();
+    await flush();
+
+    expect(cancelClicks).toBe(1);
+    expect(executed).toEqual(['A']);
+    expect(ends()).toBe(1);
+    expect(useGameState.getState().actConfirmPending).toBe(false);
+    expect(closeMobileBuffer).toHaveBeenCalledTimes(1);
+    expect(isActionInFlight()).toBe(false);
   });
 
   it('a normal run still executes every step and ends once', async () => {

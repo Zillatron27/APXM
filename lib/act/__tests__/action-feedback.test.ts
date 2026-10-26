@@ -132,6 +132,33 @@ describe('waitActionFeedback onManualConfirm signal', () => {
   });
 });
 
+describe('autoConfirm button match', () => {
+  it('clicks the button labelled confirm, wherever it sits', async () => {
+    const fixture = buildConfirmationOverlay();
+    // Put the cancel button second so an index-based pick would hit it.
+    fixture.overlay.appendChild(fixture.overlay.querySelector('button')!);
+
+    const error = await waitActionFeedback({ anchor: fixture.anchor }, true);
+
+    expect(error).toBeUndefined();
+    expect(fixture.cancelClicks()).toBe(0);
+    expect(fixture.overlay.classList.contains('af-success')).toBe(true);
+  });
+
+  it('clicks nothing and reports an error when no button is labelled confirm', async () => {
+    const fixture = buildConfirmationOverlay();
+    const buttons = fixture.overlay.querySelectorAll('button');
+    buttons[1].textContent = 'ok';
+    const clicked: string[] = [];
+    buttons.forEach((btn) => btn.addEventListener('click', () => clicked.push(btn.textContent!)));
+
+    const error = await waitActionFeedback({ anchor: fixture.anchor }, true);
+
+    expect(error).toBe('Confirmation overlay is missing confirm button');
+    expect(clicked).toEqual([]);
+  });
+});
+
 describe('waitActionFeedback progress wait (#5)', () => {
   function buildProgressOverlay(): { anchor: HTMLElement; overlay: HTMLElement } {
     const anchor = document.createElement('div');
